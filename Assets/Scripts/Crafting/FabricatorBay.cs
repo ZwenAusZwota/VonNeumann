@@ -22,13 +22,13 @@ public class FabricatorBay : MonoBehaviour
     /* ---------- Public API ---------- */
     public bool CanInteract() => probe && Vector3.Distance(probe.transform.position, transform.position) <= commRange;
 
-    public bool HasResources(ProductBlueprint bp) =>
-        bp.buildCost.All(c => probe.Player.Cargo.Get(c.res) >= c.amt);
+    /*public bool HasResources(ProductBlueprint bp) =>
+        bp.buildCost.All(c => probe.Player.Cargo.Get(c.res) >= c.amt);*/
 
     public void QueueBuild(ProductBlueprint bp)
     {
-        if (!CanInteract() || !HasResources(bp)) return;
-        foreach (var c in bp.buildCost) probe.Player.Cargo.Sub(c.res, c.amt);
+        //if (!CanInteract() || !HasResources(bp)) return;
+        //foreach (var c in bp.buildCost) probe.Player.Cargo.Sub(c.res, c.amt);
 
         float endTime = Time.time + bp.buildTime;
         queue.Enqueue((bp, endTime));
@@ -39,9 +39,9 @@ public class FabricatorBay : MonoBehaviour
     {
         var src = target.Blueprint;
         if (!src.upgradeable || !src.successor) return false;
-        if (!CanInteract() || !src.upgradeCost.All(c => probe.Player.Cargo.Get(c.res) >= c.amt)) return false;
+        //if (!CanInteract() || !src.upgradeCost.All(c => probe.Player.Cargo.Get(c.res) >= c.amt)) return false;
 
-        foreach (var c in src.upgradeCost) probe.Player.Cargo.Sub(c.res, c.amt);
+        //foreach (var c in src.upgradeCost) probe.Player.Cargo.Sub(c.res, c.amt);
 
         // Direktes Upgrade → altes Objekt entfernen, neues instanziieren
         Instantiate(src.successor.prefab, target.transform.position, target.transform.rotation);

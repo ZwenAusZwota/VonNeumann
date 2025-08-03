@@ -14,13 +14,13 @@ public class ProbeCraftingBay : MonoBehaviour
     Queue<(CraftRecipe, float endTime)> queue = new();
 
     /* ---------------- Public API ---------------- */
-    public bool CanCraft(CraftRecipe r) => r.costs.All(c => player.cargo.GetValueOrDefault(c.resource, 0) >= c.amount);
+   // public bool CanCraft(CraftRecipe r) => r.costs.All(c => player.cargo.GetValueOrDefault(c.resource, 0) >= c.amount);
     public void StartCraft(CraftRecipe r)
     {
-        if (!CanCraft(r)) return;
+       // if (!CanCraft(r)) return;
 
         // 1) Ressourcen abziehen
-        foreach (var c in r.costs) player.cargo[c.resource] -= c.amount;
+        //foreach (var c in r.costs) player.cargo[c.resource] -= c.amount;
 
         // 2) Event & Build-Queue
         OnCraftStarted?.Invoke(r);
