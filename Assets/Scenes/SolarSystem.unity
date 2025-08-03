@@ -2382,10 +2382,21 @@ MonoBehaviour:
   innerRadius: 1
   outerRadius: 150
   asteroidCount: 1000
+  useObjectPooling: 1
+  preSpawnCount: 100
   asteroidPrefabs: []
   cubeChance: 0.2
   sizeRange: {x: 0.4, y: 2}
   visibilityDistance: 500
+  enableLOD: 1
+  lodDistances:
+  - 50
+  - 150
+  - 300
+  lodDensityMultipliers:
+  - 1
+  - 0.5
+  - 0.25
   asteroidMaterials:
   - {fileID: 2100000, guid: ae33eeea667fa474cb11d51841393893, type: 2}
   - {fileID: 2100000, guid: cab331ec1e581174fab43831fe84e7f2, type: 2}

@@ -73,6 +73,14 @@ public class GameManager : MonoBehaviour
         _planets.Sort((a, b) => SqrDist(a).CompareTo(SqrDist(b)));
 
         /* 3) Planeten anzeigenamen vergeben, Objekte erzeugen, registrieren */
+
+        // Pool vor Planeten-Erstellung initialisieren
+        if (!AsteroidPool.Instance)
+        {
+            GameObject poolGO = new GameObject("AsteroidPool");
+            poolGO.AddComponent<AsteroidPool>();
+        }
+
         int roman = 1;
         foreach (var p in _planets)
         {
