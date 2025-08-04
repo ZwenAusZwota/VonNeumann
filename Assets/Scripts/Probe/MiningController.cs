@@ -6,7 +6,7 @@ public class MiningController : MonoBehaviour
 {
     public Key mineKey = Key.M;
 
-    HUDController hud;          // liefert Item der Scan-Liste
+    HUDControllerModular hud;          // liefert Item der Scan-Liste
     ProbeInventory cargo;
 
     MineableAsteroid target;
@@ -14,7 +14,7 @@ public class MiningController : MonoBehaviour
 
     void Awake()
     {
-        hud = FindObjectOfType<HUDController>();
+        hud = FindObjectOfType<HUDControllerModular>();
         cargo = GetComponent<ProbeInventory>();
     }
 
@@ -45,13 +45,13 @@ public class MiningController : MonoBehaviour
 
     public void StartMining()
     {
-        var sel = hud?.CurrentSelection?.GameObject;
+        /*var sel = hud?.CurrentSelection?.GameObject;
         if (sel != null && sel.TryGetComponent(out MineableAsteroid ast))
         {
             Debug.Log($"Mining {ast.name} ({ast.materialId})");
             target = ast;
             isMining = true;
-        }
+        }*/
     }
     /* -------------------------------------------------- */
     void DoMining()

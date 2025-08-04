@@ -68,7 +68,7 @@ public class ProbeController : MonoBehaviour
     ProbeControls controls;
     Rigidbody rb;
     PlanetRegistry registry;
-    HUDController hud;
+    HUDControllerModular hud;
 
     public event Action AutoPilotStarted;
     public event Action AutoPilotStopped;
@@ -82,7 +82,7 @@ public class ProbeController : MonoBehaviour
     {
         rb = GetComponent<Rigidbody>();
         registry = PlanetRegistry.Instance;
-        hud = FindObjectOfType<HUDController>();
+        hud = FindObjectOfType<HUDControllerModular>();
         controls = new ProbeControls();
 
         transform.localScale = Vector3.one * spawnScale;
@@ -179,7 +179,8 @@ public class ProbeController : MonoBehaviour
     public void SetNavTarget(Transform tgt)
     {
         navTarget = tgt;
-        hud?.SetActiveBody(tgt ? tgt.name : "");
+        //hud?.SetActiveBody(tgt ? tgt.name : "");
+ 
     }
 
     public void StartAutopilot()
@@ -299,7 +300,7 @@ public class ProbeController : MonoBehaviour
     #region Helpers & reset
     void ResetProbe()
     {
-        hud?.SetActiveBody("");
+        //hud?.SetActiveBody("");
         rb.isKinematic = false;
         rb.linearVelocity = rb.angularVelocity = Vector3.zero;
 

@@ -14,8 +14,8 @@ public class GameManager : MonoBehaviour
     public StarGenerator starGenerator;
     public GameObject probePrefab;
     public CameraController cameraController;
-    public HUDController hud;
-    public PlanetIndicatorManager indicatorManager;
+    public HUDControllerModular hud; // Geändert zu HUDControllerModular
+    //public PlanetIndicatorManager indicatorManager;
 
     [Header("Spawn Settings")]
     [Tooltip("Faktor *Planet-Radius* für Spawn-Distanz der Sonde")]
@@ -40,7 +40,7 @@ public class GameManager : MonoBehaviour
         Instance = this;
 
         connector.RegisterInitListener(OnInit);
-        connector.OnMineResult += hud.HandleMineResult;
+        //connector.OnMineResult += hud.HandleMineResult;
     }
 
     /*──────────────────────────── Initialisierung */
@@ -100,14 +100,13 @@ public class GameManager : MonoBehaviour
 
         /* 5) HUD‑ & Indicator‑Aufbau (verwendet weiterhin die Planetenliste) */
         //indicatorManager.BuildIndicators(_planets);
-        hud.HandleInit(payload);
-        hud.SetObjects(_systemObjects);
-        hud.NearScanClicked += PerformNearScan;
-        //hud.planetList.BuildList(_planets);
+        //hud.HandleInit(payload);
+        //hud.SetSystemObjects(_systemObjects);
+        //hud.NearScanClicked += PerformNearScan;
 
         /* 6) Sonde spawnen, Kamera & HUD verbinden */
         _probeTf = SpawnProbeNear(_planets[Random.Range(0, _planets.Count)]);
-        hud.SetProbe(_probeTf.GetComponent<Rigidbody>());
+        //hud.SetProbe(_probeTf.GetComponent<Rigidbody>());
 
         cameraController.target = _probeTf;
         cameraController.ResetCamera();
@@ -177,21 +176,11 @@ public class GameManager : MonoBehaviour
                 GameObject = col.gameObject
             };
 
-            // Kind-Relation (optional nur als Transform-Elternschaft)
-            /*if (nearestMain != null)
-            {
-                col.transform.SetParent(nearestMain.GameObject.transform, true);
-                // nearestMain.Children.Add(newObj);
-                // newObj.Parent = nearestMain;
-            }*/
-
             _scanObjects.Add(newObj);
         }
 
         // ---- 4) UI aktualisieren (duplikatsicher) ------------------------
         if (_scanObjects.Count > 0)
-            hud.UpdateScan(_scanObjects);
+            hud.UpdateNearScan(_scanObjects);
     }
-
-
 }
