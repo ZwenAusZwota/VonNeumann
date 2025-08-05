@@ -37,6 +37,7 @@ public class ScanningModule : UIModule
             scanResultsList.Clear();
             scanResultsList.AddObjects(results);
         }
+        UpdateScanStatus("Done");
     }
     
     public void UpdateScanStatus(string status)

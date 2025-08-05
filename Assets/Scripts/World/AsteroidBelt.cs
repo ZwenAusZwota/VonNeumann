@@ -412,13 +412,13 @@ public class AsteroidBelt : MonoBehaviour
     {
         if (!Debug.isDebugBuild) return;
         
-        var stats = GetStats();
-        GUILayout.BeginArea(new Rect(220, 100, 200, 120));
-        GUILayout.Label($"Belt: {name}");
-        GUILayout.Label($"Total: {stats.TotalAsteroids}");
-        GUILayout.Label($"Visible: {stats.VisibleAsteroids}");
-        GUILayout.Label($"Pooling: {stats.UsePooling}");
-        GUILayout.EndArea();
+        //var stats = GetStats();
+        //GUILayout.BeginArea(new Rect(220, 100, 200, 120));
+        //GUILayout.Label($"Belt: {name}");
+        //GUILayout.Label($"Total: {stats.TotalAsteroids}");
+        //GUILayout.Label($"Visible: {stats.VisibleAsteroids}");
+        //GUILayout.Label($"Pooling: {stats.UsePooling}");
+        //GUILayout.EndArea();
     }
 #endif
 }

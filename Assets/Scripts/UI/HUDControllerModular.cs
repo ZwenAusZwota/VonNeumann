@@ -57,12 +57,14 @@ public class HUDControllerModular : MonoBehaviour
         {
             objectSelectionModule.OnObjectSelected += HandleObjectSelection;
         }
-        
+
         // Set up probe reference
         if (probe != null && navigationModule != null)
         {
             navigationModule.SetProbe(probe);
         }
+
+
     }
     
     public void HandleInit(InitPayload payload)
@@ -70,15 +72,16 @@ public class HUDControllerModular : MonoBehaviour
         statusModule?.SetPlayer(payload.player);
     }
 
-    public void SetProbe(Rigidbody rb)
+    //public void SetProbe(Rigidbody rb)
+    public void SetProbe(ProbeController _probe)
     {
-       /* probeRb = rb;
-        probe = rb.GetComponent<ProbeController>();
-        inv = rb.GetComponent<ProbeInventory>();
-        if (inv) inv.CargoChanged += HandleCargoChanged;
-        probe.AutoPilotStopped += () => SetButtonColor(false); // Autopilot-Stop-Event abonnieren
-        probe.AutoPilotStarted += () => SetButtonColor(true); // Autopilot-Start-Event abonnieren
-       */
+        probe = _probe;
+        navigationModule.SetProbe(probe);
+    }
+
+    public void UpdateProbePosition(Vector3 position, float speed)
+    {
+        //navigationModule.UpdateProbePosition(position, speed);
     }
 
     public void SetSystemObjects(List<SystemObject> objects)
@@ -88,7 +91,7 @@ public class HUDControllerModular : MonoBehaviour
     
     public void UpdateNearScan(List<SystemObject> objects)
     {
-        objectSelectionModule?.UpdateNearbyObjects(objects);
+        //objectSelectionModule?.UpdateNearbyObjects(objects);
         scanningModule?.UpdateScanResults(objects);
     }
     

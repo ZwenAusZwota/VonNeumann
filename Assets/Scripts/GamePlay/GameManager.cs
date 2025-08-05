@@ -100,13 +100,11 @@ public class GameManager : MonoBehaviour
 
         /* 5) HUD‑ & Indicator‑Aufbau (verwendet weiterhin die Planetenliste) */
         //indicatorManager.BuildIndicators(_planets);
-        //hud.HandleInit(payload);
-        //hud.SetSystemObjects(_systemObjects);
-        //hud.NearScanClicked += PerformNearScan;
+        hud.HandleInit(payload);
+        hud.SetSystemObjects(_systemObjects);
 
         /* 6) Sonde spawnen, Kamera & HUD verbinden */
         _probeTf = SpawnProbeNear(_planets[Random.Range(0, _planets.Count)]);
-        //hud.SetProbe(_probeTf.GetComponent<Rigidbody>());
 
         cameraController.target = _probeTf;
         cameraController.ResetCamera();

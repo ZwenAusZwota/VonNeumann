@@ -218,11 +218,11 @@ public class AsteroidPool : MonoBehaviour
     {
         if (!Debug.isDebugBuild) return;
 
-        GUILayout.BeginArea(new Rect(10, 100, 200, 100));
-        GUILayout.Label($"Pool Verfügbar: {availableAsteroids.Count}");
-        GUILayout.Label($"Pool Aktiv: {activeAsteroids.Count}");
-        GUILayout.Label($"Pool Gesamt: {availableAsteroids.Count + activeAsteroids.Count}");
-        GUILayout.EndArea();
+        //GUILayout.BeginArea(new Rect(10, 100, 200, 100));
+        //GUILayout.Label($"Pool Verfügbar: {availableAsteroids.Count}");
+        //GUILayout.Label($"Pool Aktiv: {activeAsteroids.Count}");
+        //GUILayout.Label($"Pool Gesamt: {availableAsteroids.Count + activeAsteroids.Count}");
+        //GUILayout.EndArea();
     }
 
     void OnDestroy()

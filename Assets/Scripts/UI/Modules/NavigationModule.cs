@@ -9,6 +9,7 @@ public class NavigationModule : UIModule
     [Header("Navigation UI")]
     public TextMeshProUGUI textCurrentTarget;
     public TextMeshProUGUI textSpeed;
+    public TextMeshProUGUI textDistance;
     public Button btnAutoPilot;
     
     [Header("Colors")]
@@ -61,10 +62,10 @@ public class NavigationModule : UIModule
     
     void Update()
     {
-        if (probeRb != null)
+        if (probe != null)
         {
-            float speed = probeRb.linearVelocity.magnitude;
-            textSpeed.text = $"Speed: {speed:F1} m/s";
+            textSpeed.text = $"Speed: {probe.CurrentSpeed:F1} km/s";
+            textDistance.text = $"Distance: {probe.Distance} Units";
         }
     }
     

@@ -236,6 +236,7 @@ GameObject:
   - component: {fileID: 7300228923661181239}
   - component: {fileID: 5032952614951569857}
   - component: {fileID: 1903883377686821233}
+  - component: {fileID: 7440666688485284584}
   m_Layer: 0
   m_Name: Probe
   m_TagString: Player
@@ -380,12 +381,7 @@ MonoBehaviour:
   maxDegPerSec: 90
   accelDegPerSec2: 180
   resetDecelDeg2: 360
-  alignDegPerSec: 60
-  alignToleranceDeg: 1
-  orbitAltitudeFactor: 1.3
-  minOrbitAltitudeUnits: 5
-  radialApproachFraction: 0.2
-  orbitPeriod: 60
+  brakeAccel: 50
   spawnScale: 0.05
 --- !u!114 &5032952614951569857
 MonoBehaviour:
@@ -413,6 +409,25 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   maxVolume: 500
+--- !u!114 &7440666688485284584
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1336562065826069938}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0c60106d9cd82334285c689d1785aab6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  alignDegPerSec: 60
+  alignToleranceDeg: 1
+  radialAccel: 1
+  orbitAltitudeFactor: 1.3
+  minOrbitAltitudeUnits: 5
+  radialApproachFraction: 0.2
+  orbitPeriod: 60
 --- !u!1 &2351539471288224827
 GameObject:
   m_ObjectHideFlags: 0
