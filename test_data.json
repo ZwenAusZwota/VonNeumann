@@ -1,1 +1,160 @@
-{"method":"init","args":{"player":{"id":"764659b8-98c5-4ef9-84c4-cb8eb057454f","name":"Anonymous","credit":1000.0,"cargo":{},"location":null,"last_mine":null},"star":{"id":100322,"name":"Star100322","spect":"K2","mag":7.95,"dist_pc":303.0303,"pos":{"x":171.962788,"y":-235.604396,"z":82.138488}},"world":[{"id":"3e54e35d-0d8c-49f3-b785-78a9904d9797","name":"Star100322 - I","position":{"x":-4041504816.922676,"y":0.0,"z":1578664445.775849},"radius_km":2906.423375960494,"object_type":"planet","orbital_period_days":57051.84025821917,"atmosphere":"kein","gravity_g":1.74,"resources":{"Eisenerz":0.08393822683708396,"Silizium":0.7664809327917963,"Wasser":0.23680977536311776}},{"id":"6dbe72a1-832b-407c-9b08-d3bff489db70","name":"Star100322 - II","position":{"x":43849688.882003635,"y":0.0,"z":-176419987.19452032},"radius_km":25795.614074365523,"object_type":"planet","orbital_period_days":489.2707335857648,"atmosphere":"stickstoffreich","gravity_g":1.62,"resources":{"Eisenerz":0.14855463870828756,"Silizium":0.18309064740993164,"Wasser":0.11441296968868764}},{"id":"cb40119f-f8db-4178-92cf-57feb74494cc","name":"Star100322 - III","position":{"x":-109451123.37917009,"y":0.0,"z":9132090.723709034},"radius_km":67627.34551793619,"object_type":"planet","orbital_period_days":229.769341495667,"atmosphere":"kein","gravity_g":1.73,"resources":{"Eisenerz":0.91231514115556,"Silizium":0.06856924743550596,"Wasser":0.6751269332239689}},{"id":"f79c6101-0cee-423f-87cd-77bc4a522686","name":"Star100322 - IV","position":{"x":2236619078.915669,"y":0.0,"z":664534755.3428414},"radius_km":58128.20079337687,"object_type":"planet","orbital_period_days":22498.05455869816,"atmosphere":"kein","gravity_g":1.68,"resources":{"Eisenerz":0.48103637136651844,"Silizium":0.35523914744298335,"Wasser":0.249152121361209}},{"id":"8864c612-b69a-490a-a606-4931318a5cfe","name":"Hauptgürtel","position":{"x":369021705.05956215,"y":0.0,"z":0.0},"radius_km":428860853.05956215,"object_type":"asteroid_belt","inner_radius_km":369021705.05956215,"outer_radius_km":488700001.05956215,"density":0.002321601295434818}]}}
+{
+  "args": {
+    "player": {
+      "cargo": {
+      },
+      "credit": 1000.0,
+      "id": "764659b8-98c5-4ef9-84c4-cb8eb057454f",
+      "last_mine": null,
+      "location": null,
+      "name": "ZwenAusZwota"
+    },
+    "star": {
+      "dist_pc": 0.0,
+      "id": 100322,
+      "mag": 7.95,
+      "name": "Sol",
+      "position": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "spect": "K2"
+    },
+    "planets": [
+      {
+        "atmosphere": "kein",
+        "gravity_g": 1.74,
+        "id": "3e54e35d-0d8c-49f3-b785-78a9904d9797",
+        "name": "Merkus",
+        "object_type": "planet",
+        "orbital_period_days": 87.969,
+        "star_distance_km": 57909227.0,
+        "radius_km": 2439.7,
+        "resources": {
+          "Eisenerz": 0.083938226837084,
+          "Silizium": 0.766480932791796,
+          "Wasser": 0.236809775363118
+        }
+      },
+      {
+        "atmosphere": "stickstoffreich",
+        "gravity_g": 1.62,
+        "id": "6dbe72a1-832b-407c-9b08-d3bff489db70",
+        "name": "Venus",
+        "object_type": "planet",
+        "orbital_period_days": 224.701,
+        "star_distance_km": 108208930.0,
+        "radius_km": 6051.8,
+        "resources": {
+          "Eisenerz": 0.148554638708288,
+          "Silizium": 0.183090647409932,
+          "Wasser": 0.114412969688688
+        }
+      },
+      {
+        "atmosphere": "kein",
+        "gravity_g": 1.73,
+        "id": "cb40119f-f8db-4178-92cf-57feb74494cc",
+        "name": "Erde",
+        "object_type": "planet",
+        "orbital_period_days": 365.256,
+        "star_distance_km": 150920940.0,
+        "radius_km": 6378.0,
+        "resources": {
+          "Eisenerz": 0.91231514115556,
+          "Silizium": 0.068569247435506,
+          "Wasser": 0.675126933223969
+        }
+      },
+      {
+        "atmosphere": "kein",
+        "gravity_g": 1.68,
+        "id": "f79c6101-0cee-423f-87cd-77bc4a522686",
+        "name": "Mars",
+        "object_type": "planet",
+        "orbital_period_days": 686.98,
+        "star_distance_km": 228939100.0,
+        "radius_km": 3389.5,
+        "resources": {
+          "Eisenerz": 0.481036371366518,
+          "Silizium": 0.355239147442983,
+          "Wasser": 0.249152121361209
+        }
+      },
+      {
+        "atmosphere": "kein",
+        "gravity_g": 1.68,
+        "id": "f79c6101-0cee-423f-87cd-77bc4a522686",
+        "name": "Jupiter",
+        "object_type": "planet",
+        "orbital_period_days": 11.862,
+        "star_distance_km": 778300000.0,
+        "radius_km": 69911,
+        "resources": {
+          "Eisenerz": 0.481036371366518,
+          "Silizium": 0.355239147442983,
+          "Wasser": 0.249152121361209
+        }
+      },
+      {
+        "atmosphere": "kein",
+        "gravity_g": 1.68,
+        "id": "f79c6101-0cee-423f-87cd-77bc4a522686",
+        "name": "Saturn",
+        "object_type": "planet",
+        "orbital_period_days": 10752.17,
+        "star_distance_km": 1429400000.0,
+        "radius_km": 58232,
+        "resources": {
+          "Eisenerz": 0.481036371366518,
+          "Silizium": 0.355239147442983,
+          "Wasser": 0.249152121361209
+        }
+      },
+      {
+        "atmosphere": "kein",
+        "gravity_g": 1.68,
+        "id": "f79c6101-0cee-423f-87cd-77bc4a522686",
+        "name": "Uranus",
+        "object_type": "planet",
+        "orbital_period_days": 30663.65,
+        "star_distance_km": 2870990000.0,
+        "radius_km": 25362,
+        "resources": {
+          "Eisenerz": 0.481036371366518,
+          "Silizium": 0.355239147442983,
+          "Wasser": 0.249152121361209
+        }
+      },
+      {
+        "atmosphere": "kein",
+        "gravity_g": 1.68,
+        "id": "f79c6101-0cee-423f-87cd-77bc4a522686",
+        "name": "Neptun",
+        "object_type": "planet",
+        "orbital_period_days": 60149.445,
+        "star_distance_km": 44982500000.0,
+        "radius_km": 24622,
+        "resources": {
+          "Eisenerz": 0.481036371366518,
+          "Silizium": 0.355239147442983,
+          "Wasser": 0.249152121361209
+        }
+      }
+    ],
+    "belts": [
+      {
+        "density": 0.00232160129543482,
+        "id": "8864c612-b69a-490a-a606-4931318a5cfe",
+        "name": "Belt1",
+        "object_type": "asteroid_belt",
+        "outer_radius_km": 488700001.059562,
+        "inner_radius_km": 369021705.059562,
+        "star_distance_km": 428860853.059562,
+        "radius_km": 225000000.0
+      }
+    ]
+  },
+  "method": "init"
+}

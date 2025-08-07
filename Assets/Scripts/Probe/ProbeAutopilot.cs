@@ -63,6 +63,7 @@ public class ProbeAutopilot : MonoBehaviour
     /*──────────────────────────── Events */
     public event Action AutoPilotStarted;
     public event Action AutoPilotStopped;
+    public event Action<string> StatusUpdated;
 
     /* helper */
     float OrbitDegPerSec => 360f / Mathf.Max(orbitPeriod, 1e-4f);
@@ -85,12 +86,13 @@ public class ProbeAutopilot : MonoBehaviour
         Vector3 before = transform.position;
 
         /* Target changed while AP active ⇒ abort */
-        if (navTarget != lastTarget)
+        if (lastTarget != null && navTarget != lastTarget)
         {
+            Debug.LogWarning($"Autopilot: Target changed from {lastTarget.name} to {navTarget?.name}. Aborting.");
             AbortAutopilot(keepMomentum: true);
             return;
         }
-        lastTarget = navTarget;
+
 
         switch (autoState)
         {
@@ -107,17 +109,22 @@ public class ProbeAutopilot : MonoBehaviour
 
     /*====================================================================*/
     #region Public API
-    public void SetNavTarget(Transform tgt) => navTarget = tgt;
+    public void SetNavTarget(Transform tgt)
+    {
+        navTarget = tgt;
+        AbortAutopilot(keepMomentum: true);
+    }
 
     public void StartAutopilot()
     {
         if (navTarget == null || autoState != AutoState.None) return;
-
         rb.linearVelocity = rb.angularVelocity = Vector3.zero;
         rb.isKinematic = true; // Physics off during autopilot phases
 
         autoState = AutoState.Align;
         radialSpeed = 0f;
+
+        lastTarget = navTarget; // remember the target to detect changes
 
         AutoPilotStarted?.Invoke();
     }
@@ -132,7 +139,7 @@ public class ProbeAutopilot : MonoBehaviour
     void AlignTick()
     {
         if (navTarget == null) { AbortAutopilot(true); return; }
-
+        StatusUpdated?.Invoke("Aligning");
         Vector3 dirWorld = (navTarget.position - transform.position).normalized;
         Quaternion targetRot = Quaternion.LookRotation(dirWorld, Vector3.up);
         transform.rotation = Quaternion.RotateTowards(
@@ -141,7 +148,10 @@ public class ProbeAutopilot : MonoBehaviour
             alignDegPerSec * Time.fixedDeltaTime);
 
         if (Quaternion.Angle(transform.rotation, targetRot) <= alignToleranceDeg)
+        {
+            StatusUpdated?.Invoke("Stopped");
             StartSpiralApproach();
+        }
     }
     #endregion
 
@@ -150,7 +160,7 @@ public class ProbeAutopilot : MonoBehaviour
     void StartSpiralApproach()
     {
         if (navTarget == null) { AbortAutopilot(true); return; }
-
+        StatusUpdated?.Invoke($"Start Approaching");
         if (navTarget.CompareTag("AsteroidBelt"))
         {
             AsteroidBelt belt = navTarget.GetComponent<AsteroidBelt>();
@@ -170,7 +180,7 @@ public class ProbeAutopilot : MonoBehaviour
     void SpiralTick()
     {
         if (navTarget == null) { AbortAutopilot(true); return; }
-
+        StatusUpdated?.Invoke($"Approaching");
         Vector3 tgtPos = navTarget.position;
         Vector3 radial = transform.position - tgtPos;
         float dist = radial.magnitude;
@@ -220,7 +230,7 @@ public class ProbeAutopilot : MonoBehaviour
     void OrbitTick()
     {
         if (navTarget == null) { AbortAutopilot(true); return; }
-
+        StatusUpdated?.Invoke($"Orbiting");
         Vector3 tgtPos = navTarget.position;
         transform.RotateAround(tgtPos, orbitPlaneNormal, OrbitDegPerSec * Time.fixedDeltaTime);
 
@@ -235,8 +245,9 @@ public class ProbeAutopilot : MonoBehaviour
 
     /*====================================================================*/
     #region Abort / Helpers
-    void AbortAutopilot(bool keepMomentum)
+    public void AbortAutopilot(bool keepMomentum)
     {
+        StatusUpdated?.Invoke($"Stopping");
         Vector3 carriedVel = keepMomentum ? (_lastMove / Time.fixedDeltaTime) : Vector3.zero;
 
         rb.isKinematic = false;
@@ -246,16 +257,17 @@ public class ProbeAutopilot : MonoBehaviour
         autoState = AutoState.None;
         radialSpeed = 0f;
 
+        StatusUpdated?.Invoke($"Stopped");
         AutoPilotStopped?.Invoke();
     }
 
-    //static float GuessBodyRadius(Transform body)
-    //{
-    //    if (body.TryGetComponent<SphereCollider>(out var col))
-    //        return body.lossyScale.x * col.radius;
-    //    if (body.TryGetComponent<Renderer>(out var rend))
-    //        return rend.bounds.extents.magnitude;
-    //    return body.lossyScale.x * 0.5f; // fallback
-    //}
+    static float GuessBodyRadius(Transform body)
+    {
+        if (body.TryGetComponent<SphereCollider>(out var col))
+            return body.lossyScale.x * col.radius;
+        if (body.TryGetComponent<Renderer>(out var rend))
+            return rend.bounds.extents.magnitude;
+        return body.lossyScale.x * 0.5f; // fallback
+    }
     #endregion
 }

@@ -14,7 +14,7 @@ public class MiningController : MonoBehaviour
 
     void Awake()
     {
-        hud = FindObjectOfType<HUDControllerModular>();
+        hud = FindFirstObjectByType<HUDControllerModular>();
         cargo = GetComponent<ProbeInventory>();
     }
 

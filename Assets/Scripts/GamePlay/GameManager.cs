@@ -30,6 +30,8 @@ public class GameManager : MonoBehaviour
     /* ───────────────────────── Alte Liste rein für Planeten‑UI ──────────── */
     readonly List<PlanetDto> _planets = new();
     public IReadOnlyList<PlanetDto> Planets => _planets;
+    readonly List<AsteroidBeltDto> _belts = new();
+    public IReadOnlyList<AsteroidBeltDto> Belts => _belts;
 
     Transform _probeTf;
 
@@ -60,26 +62,27 @@ public class GameManager : MonoBehaviour
             GameObject = starGO
         });
 
-        /* --------------------------------------------------------------
-         * 1) Welt‑Payload filtern – Planeten & Gürtel trennen
-         * -------------------------------------------------------------- */
-        foreach (var body in payload.world)
-        {
-            //if (body.object_type == "planet")
-                _planets.Add(body);
-        }
-
-        /* 2) Planeten nach Abstand sortieren */
-        _planets.Sort((a, b) => SqrDist(a).CompareTo(SqrDist(b)));
-
-        /* 3) Planeten anzeigenamen vergeben, Objekte erzeugen, registrieren */
-
         // Pool vor Planeten-Erstellung initialisieren
         if (!AsteroidPool.Instance)
         {
             GameObject poolGO = new GameObject("AsteroidPool");
             poolGO.AddComponent<AsteroidPool>();
         }
+
+        /* --------------------------------------------------------------
+         * 1) Welt‑Payload filtern – Planeten & Gürtel trennen
+         * -------------------------------------------------------------- */
+        foreach (var body in payload.planets)
+        {
+            //if (body.object_type == "planet")
+                _planets.Add(body);
+        }
+
+        /* 2) Planeten nach Abstand sortieren */
+        
+        _planets.Sort((a, b) => a.star_distance_km.CompareTo(b.star_distance_km));
+
+        /* 3) Planeten anzeigenamen vergeben, Objekte erzeugen, registrieren */
 
         int roman = 1;
         foreach (var p in _planets)
@@ -98,16 +101,47 @@ public class GameManager : MonoBehaviour
             });
         }
 
-        /* 5) HUD‑ & Indicator‑Aufbau (verwendet weiterhin die Planetenliste) */
+        /* --------------------------------------------------------------
+         * 4) Welt‑Payload filtern – Planeten & Gürtel trennen
+         * -------------------------------------------------------------- */
+        foreach (var body in payload.belts)
+        {
+            //if (body.object_type == "planet")
+            _belts.Add(body);
+        }
+
+        /* 5) Planeten nach Abstand sortieren */
+
+        _belts.Sort((a, b) => a.star_distance_km.CompareTo(b.star_distance_km));
+
+        roman = 1;
+        /* 6) Gürtel anzeigenamen vergeben, Objekte erzeugen, registrieren */
+        foreach (var b in _belts)
+        {
+            b.displayName = $"{payload.star.name}-Belt {Roman(roman++)}";
+            GameObject beltGO = planetGenerator.CreateAsteroidBelt(b);
+            _systemObjects.Add(new SystemObject
+            {
+                Kind = SystemObject.ObjectKind.AsteroidBelt,
+                Id = b.id,
+                Name = b.displayName,
+                DisplayName = b.displayName,
+                Dto = b,
+                GameObject = beltGO
+            });
+        }
+
+
+        /* 6) HUD‑ & Indicator‑Aufbau (verwendet weiterhin die Planetenliste) */
         //indicatorManager.BuildIndicators(_planets);
         hud.HandleInit(payload);
         hud.SetSystemObjects(_systemObjects);
 
-        /* 6) Sonde spawnen, Kamera & HUD verbinden */
-        _probeTf = SpawnProbeNear(_planets[Random.Range(0, _planets.Count)]);
+        /* 7) Sonde spawnen, Kamera & HUD verbinden */
+        _probeTf = SpawnProbeNearPlanet(_planets[Random.Range(0, _planets.Count)]);
 
         cameraController.target = _probeTf;
-        cameraController.ResetCamera();
+        cameraController.ResetToDefaultView();
     }
 
     /*──────────────────────────── Helper */
@@ -122,7 +156,7 @@ public class GameManager : MonoBehaviour
         return r[(n - 1) % r.Length];
     }
 
-    Transform SpawnProbeNear(PlanetDto planet)
+    Transform SpawnProbeNearPlanet(PlanetDto planet)
     {
         float unitsPerKm = 1f / PlanetScale.KM_PER_UNIT;
         Vector3 planetPos = planet.position.ToVector3(unitsPerKm);

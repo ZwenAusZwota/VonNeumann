@@ -10,6 +10,7 @@ public class NavigationModule : UIModule
     public TextMeshProUGUI textCurrentTarget;
     public TextMeshProUGUI textSpeed;
     public TextMeshProUGUI textDistance;
+    public TextMeshProUGUI textSatus;
     public Button btnAutoPilot;
     
     [Header("Colors")]
@@ -34,13 +35,19 @@ public class NavigationModule : UIModule
         {
             probe.AutoPilotStarted -= OnAutoPilotStarted;
             probe.AutoPilotStopped -= OnAutoPilotStopped;
+            probe.StatusUpdated -= (status) => textSatus.text = status;
         }
-        
+
         probe = probeController;
         probeRb = probe.GetComponent<Rigidbody>();
-        
+
+        probe.AutoPilotStarted -= OnAutoPilotStarted;
+        probe.AutoPilotStopped -= OnAutoPilotStopped;
+        probe.StatusUpdated -= (status) => textSatus.text = status;
+
         probe.AutoPilotStarted += OnAutoPilotStarted;
         probe.AutoPilotStopped += OnAutoPilotStopped;
+        probe.StatusUpdated += (status) => textSatus.text = status;
     }
     
     public void SetNavigationTarget(SystemObject target)
@@ -55,8 +62,8 @@ public class NavigationModule : UIModule
         
         if (probe != null)
         {
-            probe.SetNavTarget(target.GameObject.transform);
             DeactivateAutopilot();
+            probe.SetNavTarget(target.GameObject.transform);
         }
     }
     
@@ -72,7 +79,6 @@ public class NavigationModule : UIModule
     void ToggleAutopilot()
     {
         if (probe == null) return;
-        
         if (autoPilotActive)
             probe.StopAutopilot();
         else
@@ -87,6 +93,7 @@ public class NavigationModule : UIModule
     
     void OnAutoPilotStarted()
     {
+        Debug.Log("Autopilot started");
         autoPilotActive = true;
         SetAutoPilotButtonColor(true);
         OnAutoPilotToggled?.Invoke(true);
@@ -94,6 +101,7 @@ public class NavigationModule : UIModule
     
     void OnAutoPilotStopped()
     {
+        Debug.Log("Autopilot stopped");
         autoPilotActive = false;
         SetAutoPilotButtonColor(false);
         OnAutoPilotToggled?.Invoke(false);

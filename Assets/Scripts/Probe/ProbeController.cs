@@ -64,6 +64,7 @@ public class ProbeController : MonoBehaviour
 
     public event Action AutoPilotStarted;
     public event Action AutoPilotStopped;
+    public event Action<string> StatusUpdated; // for HUD updates
 
     /*====================================================================*/
     #region Unity – initialisation
@@ -71,7 +72,7 @@ public class ProbeController : MonoBehaviour
     {
         rb = GetComponent<Rigidbody>();
         registry = PlanetRegistry.Instance;
-        hud = FindObjectOfType<HUDControllerModular>();
+        hud = FindFirstObjectByType<HUDControllerModular>();
         controls = new ProbeControls();
         autopilot = GetComponent<ProbeAutopilot>();
 
@@ -97,14 +98,27 @@ public class ProbeController : MonoBehaviour
 
         /* legacy ‚reset‘ ⇒ bleibt erhalten */
         map.Reset.performed += _ => HandleMinusKey();
+
+        autopilot.AutoPilotStarted += () => AutoPilotStarted?.Invoke();
+        autopilot.AutoPilotStopped += () => AutoPilotStopped?.Invoke();
+        autopilot.StatusUpdated += (status) => StatusUpdated?.Invoke(status);
+
     }
 
-    void OnDisable() => controls.Disable();
-    #endregion
+    void OnDisable()
+    {
+        controls.Disable();
 
-    /*====================================================================*/
-    #region Update – manual autopilot trigger & minus‑key
-    void Update()
+        autopilot.AutoPilotStarted -= () => AutoPilotStarted?.Invoke();
+        autopilot.AutoPilotStopped -= () => AutoPilotStopped?.Invoke();
+        autopilot.StatusUpdated -= (status) => StatusUpdated?.Invoke(status);
+
+    }
+        #endregion
+
+        /*====================================================================*/
+        #region Update – manual autopilot trigger & minus‑key
+        void Update()
     {
         var kbd = Keyboard.current;
         if (kbd == null) return;

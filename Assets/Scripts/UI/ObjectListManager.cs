@@ -36,7 +36,6 @@ public class ObjectListManager : MonoBehaviour, IPointerClickHandler
 
     public void AddStar(SystemObject star)
     {
-        //Debug.LogFormat("Adding star: {0}", star.name);
         var item = Instantiate(itemPrefab, objectListRect);
         item.Init(this, star);
         items.Add(item);
@@ -47,6 +46,7 @@ public class ObjectListManager : MonoBehaviour, IPointerClickHandler
     {
         foreach (SystemObject p in objects)
         {
+            Debug.Log($"Adding object: {p.DisplayName}");
             var item = Instantiate(itemPrefab, objectListRect);
 
             item.Init(this, p);

@@ -1,36 +1,29 @@
+// Assets/Scripts/World/AsteroidPool.cs
 using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// Verwaltet einen Pool von Asteroiden-GameObjects für bessere Performance.
-/// Reduziert Garbage Collection und Instantiate/Destroy-Aufrufe.
+/// Object Pool für Asteroiden zur Performance-Optimierung
 /// </summary>
 public class AsteroidPool : MonoBehaviour
 {
-    [Header("Pool Settings")]
-    [Tooltip("Anzahl der Asteroiden, die beim Start vorbereitet werden")]
+    public static AsteroidPool Instance { get; private set; }
+
+    [Header("Pool Configuration")]
     public int initialPoolSize = 100;
-
-    [Tooltip("Maximale Pool-Größe (verhindert unbegrenztes Wachstum)")]
     public int maxPoolSize = 1000;
+    public bool expandPool = true;
 
-    [Header("Prefabs")]
-    [Tooltip("Liste der Asteroiden-Prefabs (falls verwendet)")]
+    [Header("Prefab Settings")]
     public List<GameObject> asteroidPrefabs = new();
-
-    [Tooltip("Fallback-Materialien für Primitive")]
     public List<Material> asteroidMaterials = new();
-
-    [Tooltip("Wahrscheinlichkeit für Würfel statt Kugel (0-1)")]
     [Range(0f, 1f)]
     public float cubeChance = 0.2f;
 
-    // Pool-Verwaltung
-    private readonly Queue<PooledAsteroid> availableAsteroids = new();
-    private readonly HashSet<PooledAsteroid> activeAsteroids = new();
-
-    // Singleton für einfachen Zugriff
-    public static AsteroidPool Instance { get; private set; }
+    // Pool Management
+    private Queue<PooledAsteroid> availableAsteroids = new();
+    private HashSet<PooledAsteroid> activeAsteroids = new();
+    private Transform poolParent;
 
     void Awake()
     {
@@ -39,75 +32,91 @@ public class AsteroidPool : MonoBehaviour
             Destroy(gameObject);
             return;
         }
-        Instance = this;
 
-        // Pool initialisieren
+        Instance = this;
+        DontDestroyOnLoad(gameObject);
+
+        // Create pool parent object
+        poolParent = new GameObject("Asteroid Pool").transform;
+        poolParent.SetParent(transform);
+
         InitializePool();
     }
 
-    /// <summary>
-    /// Erstellt die anfängliche Anzahl von Asteroiden im Pool
-    /// </summary>
     void InitializePool()
     {
         for (int i = 0; i < initialPoolSize; i++)
         {
-            CreatePooledAsteroid();
+            CreateNewAsteroid();
         }
 
-        Debug.Log($"AsteroidPool initialisiert mit {initialPoolSize} Asteroiden");
+        Debug.Log($"AsteroidPool initialized with {initialPoolSize} asteroids");
     }
 
-    /// <summary>
-    /// Erstellt einen neuen Asteroiden für den Pool
-    /// </summary>
-    PooledAsteroid CreatePooledAsteroid()
+    PooledAsteroid CreateNewAsteroid()
     {
-        GameObject asteroidGO;
+        GameObject asteroidGO = CreateAsteroidGameObject();
 
-        // Prefab oder Primitive verwenden
-        if (asteroidPrefabs != null && asteroidPrefabs.Count > 0)
+        // Add pooled component
+        var pooledAsteroid = asteroidGO.AddComponent<PooledAsteroid>();
+        pooledAsteroid.Pool = this;
+
+        // Add mineable component
+        var mineableComponent = asteroidGO.GetComponent<MineableAsteroid>();
+        if (mineableComponent == null)
         {
-            int prefabIndex = Random.Range(0, asteroidPrefabs.Count);
-            asteroidGO = Instantiate(asteroidPrefabs[prefabIndex]);
-        }
-        else
-        {
-            // Fallback: Primitive erstellen
-            PrimitiveType primitiveType = Random.value < cubeChance ? PrimitiveType.Cube : PrimitiveType.Sphere;
-            asteroidGO = GameObject.CreatePrimitive(primitiveType);
+            mineableComponent = asteroidGO.AddComponent<MineableAsteroid>();
         }
 
-        // PooledAsteroid-Komponente hinzufügen
-        PooledAsteroid pooledAsteroid = asteroidGO.GetComponent<PooledAsteroid>();
-        if (pooledAsteroid == null)
-            pooledAsteroid = asteroidGO.AddComponent<PooledAsteroid>();
-
-        // MineableAsteroid-Komponente sicherstellen
-        MineableAsteroid mineableAsteroid = asteroidGO.GetComponent<MineableAsteroid>();
-        if (mineableAsteroid == null)
-            mineableAsteroid = asteroidGO.AddComponent<MineableAsteroid>();
-
-        // Collider sicherstellen
-        if (!asteroidGO.TryGetComponent<Collider>(out _))
-            asteroidGO.AddComponent<MeshCollider>();
-
-        // Tag setzen
-        asteroidGO.tag = "Asteroid";
-
-        // Pool-Referenz setzen
-        pooledAsteroid.SetPool(this);
-
-        // Deaktivieren und in Pool einreihen
+        // Initially inactive
         asteroidGO.SetActive(false);
-        availableAsteroids.Enqueue(pooledAsteroid);
+        asteroidGO.transform.SetParent(poolParent);
 
+        availableAsteroids.Enqueue(pooledAsteroid);
         return pooledAsteroid;
     }
 
-    /// <summary>
-    /// Holt einen Asteroiden aus dem Pool
-    /// </summary>
+    GameObject CreateAsteroidGameObject()
+    {
+        GameObject go;
+
+        // Use prefab or create primitive
+        if (asteroidPrefabs != null && asteroidPrefabs.Count > 0)
+        {
+            var prefab = asteroidPrefabs[Random.Range(0, asteroidPrefabs.Count)];
+            go = Instantiate(prefab);
+        }
+        else
+        {
+            // Fallback to primitive
+            PrimitiveType type = Random.value < cubeChance ? PrimitiveType.Cube : PrimitiveType.Sphere;
+            go = GameObject.CreatePrimitive(type);
+
+            // Apply material
+            var renderer = go.GetComponent<MeshRenderer>();
+            if (asteroidMaterials != null && asteroidMaterials.Count > 0)
+            {
+                renderer.material = asteroidMaterials[Random.Range(0, asteroidMaterials.Count)];
+            }
+            else
+            {
+                // Default gray material
+                var mat = new Material(Shader.Find("Standard"));
+                mat.color = new Color32(120, 120, 120, 255);
+                renderer.material = mat;
+            }
+        }
+
+        // Ensure collider
+        if (!go.GetComponent<Collider>())
+        {
+            go.AddComponent<MeshCollider>();
+        }
+
+        go.tag = "Asteroid";
+        return go;
+    }
+
     public PooledAsteroid GetAsteroid()
     {
         PooledAsteroid asteroid;
@@ -116,118 +125,83 @@ public class AsteroidPool : MonoBehaviour
         {
             asteroid = availableAsteroids.Dequeue();
         }
-        else if (activeAsteroids.Count + availableAsteroids.Count < maxPoolSize)
+        else if (expandPool && activeAsteroids.Count < maxPoolSize)
         {
-            // Pool erweitern falls nötig und unter Maximum
-            asteroid = CreatePooledAsteroid();
-            availableAsteroids.Dequeue(); // Wieder aus der Queue nehmen
+            asteroid = CreateNewAsteroid();
+            availableAsteroids.Dequeue(); // Remove from available since we're using it
         }
         else
         {
-            Debug.LogWarning("AsteroidPool: Maximale Pool-Größe erreicht!");
+            Debug.LogWarning("AsteroidPool: No asteroids available and pool at max capacity");
             return null;
         }
 
-        // Asteroid aktivieren
-        asteroid.gameObject.SetActive(true);
         activeAsteroids.Add(asteroid);
-
+        asteroid.gameObject.SetActive(true);
         return asteroid;
     }
 
-    /// <summary>
-    /// Gibt einen Asteroiden an den Pool zurück
-    /// </summary>
     public void ReturnAsteroid(PooledAsteroid asteroid)
     {
         if (asteroid == null) return;
 
-        if (activeAsteroids.Contains(asteroid))
+        if (activeAsteroids.Remove(asteroid))
         {
-            activeAsteroids.Remove(asteroid);
-            asteroid.ResetAsteroid();
             asteroid.gameObject.SetActive(false);
+            asteroid.transform.SetParent(poolParent);
+            asteroid.ResetAsteroid();
             availableAsteroids.Enqueue(asteroid);
         }
     }
 
-    /// <summary>
-    /// Konfiguriert einen Asteroiden mit zufälligen Eigenschaften
-    /// </summary>
-    public void ConfigureAsteroid(PooledAsteroid asteroid, Vector3 position, Vector2 sizeRange, Transform parent = null)
+    public void ConfigureAsteroid(PooledAsteroid asteroid, Vector3 position, Vector2 sizeRange, Transform parent)
     {
         if (asteroid == null) return;
 
-        var go = asteroid.gameObject;
-        var mineableComponent = go.GetComponent<MineableAsteroid>();
+        // Position and scale
+        asteroid.transform.position = position;
+        asteroid.transform.rotation = Random.rotation;
 
-        // Position und Rotation
-        go.transform.position = position;
-        go.transform.rotation = Random.rotation;
-
-        // Parent setzen
-        if (parent != null)
-            go.transform.SetParent(parent, true);
-
-        // Größe
         float size = Random.Range(sizeRange.x, sizeRange.y);
-        go.transform.localScale = Vector3.one * size;
+        asteroid.transform.localScale = Vector3.one * size;
 
-        // Material zuweisen
-        if (asteroidMaterials != null && asteroidMaterials.Count > 0)
+        // Configure mineable component
+        var mineable = asteroid.GetComponent<MineableAsteroid>();
+        if (mineable != null)
         {
-            var renderer = go.GetComponent<MeshRenderer>();
-            if (renderer != null)
-            {
-                Material chosenMaterial = asteroidMaterials[Random.Range(0, asteroidMaterials.Count)];
-                renderer.material = chosenMaterial;
-            }
+            string materialId = MaterialRegistry.GetRandomId();
+            float startUnits = Random.Range(800f, 2000f);
+            mineable.Configure(materialId, startUnits);
         }
 
-        // MineableAsteroid konfigurieren
-        if (mineableComponent != null)
-        {
-            mineableComponent.materialId = MaterialRegistry.GetRandomId();
-            mineableComponent.startUnits = Random.Range(800, 2000);
-            mineableComponent.ResetToStartValues(); // Neue Methode (siehe unten)
-        }
-
-        // Collider aktivieren
-        var collider = go.GetComponent<Collider>();
-        if (collider != null)
-            collider.isTrigger = false;
+        // Set parent (but keep world position)
+        asteroid.transform.SetParent(parent, true);
     }
 
-    /// <summary>
-    /// Räumt alle aktiven Asteroiden auf (z.B. beim Szenenwechsel)
-    /// </summary>
-    public void ClearAllAsteroids()
-    {
-        // Alle aktiven Asteroiden zurückgeben
-        var activeList = new List<PooledAsteroid>(activeAsteroids);
-        foreach (var asteroid in activeList)
-        {
-            ReturnAsteroid(asteroid);
-        }
-    }
-
-    /// <summary>
-    /// Debug-Informationen
-    /// </summary>
-    void OnGUI()
-    {
-        if (!Debug.isDebugBuild) return;
-
-        //GUILayout.BeginArea(new Rect(10, 100, 200, 100));
-        //GUILayout.Label($"Pool Verfügbar: {availableAsteroids.Count}");
-        //GUILayout.Label($"Pool Aktiv: {activeAsteroids.Count}");
-        //GUILayout.Label($"Pool Gesamt: {availableAsteroids.Count + activeAsteroids.Count}");
-        //GUILayout.EndArea();
-    }
+    // Pool statistics
+    public int AvailableCount => availableAsteroids.Count;
+    public int ActiveCount => activeAsteroids.Count;
+    public int TotalCount => AvailableCount + ActiveCount;
 
     void OnDestroy()
     {
         if (Instance == this)
             Instance = null;
     }
+
+#if UNITY_EDITOR
+    //void OnGUI()
+    //{
+    //    if (!Debug.isDebugBuild) return;
+        
+    //    GUILayout.BeginArea(new Rect(Screen.width - 200, 10, 190, 100));
+    //    GUILayout.BeginVertical("box");
+    //    GUILayout.Label("Asteroid Pool");
+    //    GUILayout.Label($"Available: {AvailableCount}");
+    //    GUILayout.Label($"Active: {ActiveCount}");
+    //    GUILayout.Label($"Total: {TotalCount}");
+    //    GUILayout.EndVertical();
+    //    GUILayout.EndArea();
+    //}
+#endif
 }

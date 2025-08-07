@@ -1,5 +1,6 @@
 ﻿// ServerConnector.cs
 using System;
+using System.IO;
 using System.Collections.Generic;
 using System.Net.WebSockets;
 using System.Threading;
@@ -65,7 +66,6 @@ public class ServerConnector : MonoBehaviour
 
     void HandleMessage(string json)
     {
-
         var root = JObject.Parse(json);
         string method = root["method"]?.Value<string>();
 
@@ -101,11 +101,17 @@ public class ServerConnector : MonoBehaviour
             return;
         }
 
-        foreach (var line in System.IO.File.ReadLines(path))
-        {
-            if (string.IsNullOrWhiteSpace(line)) continue;
-            HandleMessage(line);
-        }
+        //foreach (var line in System.IO.File.ReadLines(path))
+        //{
+        //    if (string.IsNullOrWhiteSpace(line)) continue;
+        //    HandleMessage(line);
+        //}
+
+        var sr = new StreamReader(path);
+        var json = sr.ReadToEnd();
+        sr.Close();
+        HandleMessage(json);
+        
 
         Debug.Log($"Offline-Daten aus '{path}' geladen.");
     }

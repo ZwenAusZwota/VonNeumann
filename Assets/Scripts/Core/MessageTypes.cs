@@ -35,9 +35,9 @@ public class ObjectDto
 {
     public string id;
     public string name;
-    public Vec3Dto position;
     public string object_type;                 // "planet" | "asteroid_belt"
     public string displayName;
+    public Vec3Dto position;
 }
 
 [Serializable]
@@ -55,6 +55,7 @@ public class PlanetDto: ObjectDto
     public float orbital_period_days;
     public string atmosphere;
     public float gravity_g;
+    public float star_distance_km;
     public Dictionary<string, float> resources;
     /* Belt-spezifisch */
     /*public float inner_radius_km;
@@ -65,6 +66,7 @@ public class PlanetDto: ObjectDto
 [Serializable]
     public class AsteroidBeltDto: ObjectDto
     {
+        public float star_distance_km;
         public float radius_km;
         public float inner_radius_km;
         public float outer_radius_km;
@@ -75,7 +77,8 @@ public class PlanetDto: ObjectDto
     public class InitPayload
     {
         public PlayerDto player;
-        public List<PlanetDto> world;      // Planeten und Gürtel; Typsicherheit via Polymorphie später möglich
+        public List<PlanetDto> planets;      // Planeten und Gürtel; Typsicherheit via Polymorphie später möglich
+        public List<AsteroidBeltDto> belts; // Gürtel
         public StarDto star;          // ← neu
     }
 

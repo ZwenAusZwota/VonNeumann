@@ -7,7 +7,7 @@ public class PlanetRegistry : MonoBehaviour
     public static PlanetRegistry Instance { get; private set; }
 
     public Transform Star { get; private set; }
-    public readonly List<Transform> Planets = new();      // nach Entfernung sortiert
+    public readonly List<Transform> Objects = new();      // nach Entfernung sortiert
     public Transform AsteroidBelt { get; private set; }
 
     /* ✨ NEU: komplette Navigations-Reihenfolge ----------------------- */
@@ -17,7 +17,7 @@ public class PlanetRegistry : MonoBehaviour
         {
             var list = new List<Transform>();
             if (Star) list.Add(Star);    // Index 0  → Numpad 0
-            list.AddRange(Planets);               // Index 1-…→ Numpad 1-…
+            list.AddRange(Objects);               // Index 1-…→ Numpad 1-…
             if (AsteroidBelt) list.Add(AsteroidBelt);
             return list;
         }
@@ -35,20 +35,25 @@ public class PlanetRegistry : MonoBehaviour
     public void RegisterStar(Transform star)
     {
         Star = star;
-        if (Planets.Count > 0) SortPlanets();
+        if (Objects.Count > 0) SortObjects();
     }
 
     public void RegisterPlanet(Transform planet)
     {
-        Planets.Add(planet);
-        if (Star != null) SortPlanets();
+        Objects.Add(planet);
+        if (Star != null) SortObjects();
     }
 
-    public void RegisterAsteroidBelt(Transform belt) => AsteroidBelt = belt;
+    // public void RegisterAsteroidBelt(Transform belt) => AsteroidBelt = belt;
+    public void RegisterAsteroidBelt(Transform belt)
+    {
+        Objects.Add( belt);
+        if (Star != null) SortObjects();
+    }
 
     /* ---------- Hilfs-Sortierung ---------- */
-    void SortPlanets() =>
-        Planets.Sort((a, b) =>
+    void SortObjects() =>
+        Objects.Sort((a, b) =>
             (a.position - Star.position).sqrMagnitude
             .CompareTo((b.position - Star.position).sqrMagnitude));
 }

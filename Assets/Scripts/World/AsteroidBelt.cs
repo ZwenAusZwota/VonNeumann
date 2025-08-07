@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿// Assets/Scripts/World/AsteroidBelt.cs
+using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
@@ -12,6 +13,24 @@ public class AsteroidBelt : MonoBehaviour
 
     [Tooltip("Outer radius of the belt.")]
     public float outerRadius = 150f;
+
+    [Header("Orbital Parameters")]
+    [Tooltip("Asteroiden bewegen sich in Umlaufbahnen um das Zentrum")]
+    public bool enableOrbitalMotion = true;
+
+    [Tooltip("Orbital speed multiplier (higher = faster orbits)")]
+    public float orbitalSpeedMultiplier = 1f;
+
+    [Tooltip("Variation in orbital speeds (0 = uniform, 1 = high variation)")]
+    [Range(0f, 1f)]
+    public float speedVariation = 0.3f;
+
+    [Header("Belt Structure")]
+    [Tooltip("Vertical thickness of the belt (Y-axis spread)")]
+    public float beltThickness = 0.1f;
+
+    [Tooltip("Density variation across the belt (inner vs outer)")]
+    public AnimationCurve densityDistribution = AnimationCurve.EaseInOut(0f, 1f, 1f, 0.5f);
 
     [Header("Asteroid Population")]
     [Tooltip("Total number of asteroids to spawn.")]
@@ -35,7 +54,7 @@ public class AsteroidBelt : MonoBehaviour
     [Tooltip("Min & max uniform scale applied to spawned asteroids.")]
     public Vector2 sizeRange = new(0.4f, 2f);
 
-    [Header("Visibility")]
+    [Header("Visibility & Performance")]
     [Tooltip("Asteroids render only when the main camera is within this distance from the belt center.")]
     public float visibilityDistance = 500f;
 
@@ -56,20 +75,42 @@ public class AsteroidBelt : MonoBehaviour
 
     /*──────────────────────── Internals */
     readonly List<PooledAsteroid> spawnedAsteroids = new();
-    readonly List<Renderer> asteroidRenderers = new();  // Fallback für non-pooled
+    readonly List<AsteroidOrbitData> asteroidOrbits = new(); // Für orbital motion
+    readonly List<Renderer> asteroidRenderers = new();
     bool spawned;
     AsteroidPool pool;
     Camera mainCamera;
 
+    // Struct für Orbital-Daten
+    [System.Serializable]
+    public struct AsteroidOrbitData
+    {
+        public float radius;          // Entfernung vom Zentrum
+        public float currentAngle;    // Aktuelle Position im Orbit (Grad)
+        public float orbitalSpeed;    // Grad pro Sekunde
+        public float verticalOffset;  // Y-Offset für 3D-Struktur
+        public Transform asteroidTransform;
+
+        public AsteroidOrbitData(float r, float angle, float speed, float yOffset, Transform t)
+        {
+            radius = r;
+            currentAngle = angle;
+            orbitalSpeed = speed;
+            verticalOffset = yOffset;
+            asteroidTransform = t;
+        }
+    }
+
     /*──────────────────────── Public API */
-    /// <summary>
-    /// Allows run‑time configuration before first Update.
-    /// </summary>
     public void Init(float innerUnits, float outerUnits, int count = -1)
     {
         innerRadius = innerUnits;
         outerRadius = outerUnits;
         if (count > 0) asteroidCount = count;
+
+        // Sicherstellen dass outer > inner
+        if (outerRadius <= innerRadius)
+            outerRadius = innerRadius + 0.1f;
 
         if (!spawned)
         {
@@ -83,7 +124,6 @@ public class AsteroidBelt : MonoBehaviour
     {
         mainCamera = Camera.main;
 
-        // Object Pool setup
         if (useObjectPooling)
         {
             SetupObjectPool();
@@ -94,29 +134,32 @@ public class AsteroidBelt : MonoBehaviour
             SpawnAsteroids();
             spawned = true;
         }
+        PlanetRegistry.Instance?.RegisterAsteroidBelt(transform);
     }
 
     void Update()
     {
-        UpdateVisibility();
+        // Reduziere Update-Frequenz
+        if (Time.fixedTime % 0.1f < Time.fixedDeltaTime) // Alle 0.1s
+        {
+            UpdateVisibility();
+            if (enableLOD) UpdateLOD();
+        }
 
-        if (enableLOD)
-            UpdateLOD();
+        if (enableOrbitalMotion)
+            UpdateOrbitalMotion(); // Jedes Frame für smooth movement
     }
 
     /*──────────────────────── Object Pool Setup */
     void SetupObjectPool()
     {
-        // Pool suchen oder erstellen
         pool = AsteroidPool.Instance;
 
         if (pool == null)
         {
-            // Pool erstellen falls nicht vorhanden
             GameObject poolGO = new GameObject("AsteroidPool");
             pool = poolGO.AddComponent<AsteroidPool>();
 
-            // Pool-Einstellungen übertragen
             pool.initialPoolSize = preSpawnCount;
             pool.asteroidPrefabs = asteroidPrefabs;
             pool.asteroidMaterials = asteroidMaterials;
@@ -124,71 +167,156 @@ public class AsteroidBelt : MonoBehaviour
         }
     }
 
-    /*──────────────────────── Implementation */
+    /*──────────────────────── Improved Spawning */
     void SpawnAsteroids()
     {
         if (outerRadius <= innerRadius)
             outerRadius = innerRadius + 1f;
 
-        // LOD-Anpassung der Asteroid-Anzahl
-        int actualAsteroidCount = asteroidCount;
-        if (enableLOD && mainCamera != null)
-        {
-            float distance = Vector3.Distance(mainCamera.transform.position, transform.position);
-            float densityMultiplier = GetLODDensityMultiplier(distance);
-            actualAsteroidCount = Mathf.RoundToInt(asteroidCount * densityMultiplier);
-        }
+        // LOD-angepasste Asteroid-Anzahl
+        int actualAsteroidCount = GetLODAdjustedCount();
+
+        // Clear existing data
+        asteroidOrbits.Clear();
 
         for (int i = 0; i < actualAsteroidCount; i++)
         {
-            // Position in ring (XZ plane) with slight vertical spread
-            float angleDeg = Random.Range(0f, 360f);
-            float radius = Random.Range(innerRadius, outerRadius);
-            Vector3 localPos = new Vector3(
-                Mathf.Cos(angleDeg * Mathf.Deg2Rad),
-                Random.Range(-2f, 2f),
-                Mathf.Sin(angleDeg * Mathf.Deg2Rad)
-            ) * radius;
+            // Realistische Ring-Verteilung
+            var orbitData = GenerateRealisticOrbitPosition();
 
             if (useObjectPooling && pool != null)
             {
-                SpawnPooledAsteroid(localPos);
+                SpawnPooledAsteroid(orbitData);
             }
             else
             {
-                SpawnTraditionalAsteroid(localPos);
+                SpawnTraditionalAsteroid(orbitData);
             }
         }
 
-        Debug.Log($"AsteroidBelt spawned {actualAsteroidCount} asteroids (Pool: {useObjectPooling})");
+        Debug.Log($"AsteroidBelt '{name}' spawned {actualAsteroidCount} asteroids in ring " +
+                 $"(Inner: {innerRadius:F1}, Outer: {outerRadius:F1} Units, Pool: {useObjectPooling})");
+    }
+
+    AsteroidOrbitData GenerateRealisticOrbitPosition()
+    {
+        // Radius basierend auf Dichteverteilung
+        float normalizedRadius = SampleFromDensityDistribution();
+        float radius = Mathf.Lerp(innerRadius, outerRadius, normalizedRadius);
+
+        // Zufälliger Winkel für gleichmäßige Verteilung
+        float angle = Random.Range(0f, 360f);
+
+        // Orbital-Geschwindigkeit (Kepler: v ∝ 1/√r)
+        float baseSpeed = CalculateOrbitalSpeed(radius);
+        float speedVar = Random.Range(1f - speedVariation, 1f + speedVariation);
+        float orbitalSpeed = baseSpeed * speedVar * orbitalSpeedMultiplier;
+
+        // Vertikale Streuung für 3D-Struktur
+        float yOffset = Random.Range(-beltThickness, beltThickness);
+
+        return new AsteroidOrbitData(radius, angle, orbitalSpeed, yOffset, null);
+    }
+
+    float SampleFromDensityDistribution()
+    {
+        // Verwende Rejection Sampling für realistische Verteilung
+        float maxDensity = 1f;
+
+        for (int attempts = 0; attempts < 20; attempts++)
+        {
+            float r = Random.Range(0f, 1f);
+            float density = densityDistribution.Evaluate(r);
+
+            if (Random.Range(0f, maxDensity) <= density)
+                return r;
+        }
+
+        return Random.Range(0f, 1f); // Fallback
+    }
+
+    float CalculateOrbitalSpeed(float radius)
+    {
+        // Vereinfachte Kepler-Geschwindigkeit: v ∝ 1/√r
+        // Normalisiert für sinnvolle Geschwindigkeiten in Unity
+        float baseRadius = (innerRadius + outerRadius) * 0.5f;
+        return 10f / Mathf.Sqrt(radius / baseRadius); // Grad pro Sekunde
+    }
+
+    int GetLODAdjustedCount()
+    {
+        if (!enableLOD || mainCamera == null)
+            return asteroidCount;
+
+        float distance = Vector3.Distance(mainCamera.transform.position, transform.position);
+        float densityMultiplier = GetLODDensityMultiplier(distance);
+        return Mathf.RoundToInt(asteroidCount * densityMultiplier);
+    }
+
+    /*──────────────────────── Orbital Motion */
+    void UpdateOrbitalMotion()
+    {
+        for (int i = 0; i < asteroidOrbits.Count; i++)
+        {
+            var orbit = asteroidOrbits[i];
+            if (orbit.asteroidTransform == null) continue;
+
+            // Update angle
+            orbit.currentAngle += orbit.orbitalSpeed * Time.deltaTime;
+            if (orbit.currentAngle >= 360f) orbit.currentAngle -= 360f;
+
+            // Calculate new position
+            float rad = orbit.currentAngle * Mathf.Deg2Rad;
+            Vector3 newPos = new Vector3(
+                Mathf.Cos(rad) * orbit.radius,
+                orbit.verticalOffset,
+                Mathf.Sin(rad) * orbit.radius
+            );
+
+            orbit.asteroidTransform.position = transform.position + newPos;
+
+            // Update orbit data
+            asteroidOrbits[i] = orbit;
+        }
     }
 
     /*──────────────────────── Spawning Methods */
-    void SpawnPooledAsteroid(Vector3 localPos)
+    void SpawnPooledAsteroid(AsteroidOrbitData orbitData)
     {
         PooledAsteroid pooledAsteroid = pool.GetAsteroid();
         if (pooledAsteroid == null)
         {
             Debug.LogWarning("Could not get asteroid from pool, falling back to traditional spawn");
-            SpawnTraditionalAsteroid(localPos);
+            SpawnTraditionalAsteroid(orbitData);
             return;
         }
 
-        // Position setzen
-        Vector3 worldPos = transform.TransformPoint(localPos);
+        // Calculate initial world position
+        float rad = orbitData.currentAngle * Mathf.Deg2Rad;
+        Vector3 localPos = new Vector3(
+            Mathf.Cos(rad) * orbitData.radius,
+            orbitData.verticalOffset,
+            Mathf.Sin(rad) * orbitData.radius
+        );
+        Vector3 worldPos = transform.position + localPos;
 
-        // Pool-Asteroid konfigurieren
+        // Configure asteroid
         pool.ConfigureAsteroid(pooledAsteroid, worldPos, sizeRange, transform);
 
-        // Zur Liste hinzufügen
+        // Store orbit data
+        var orbitWithTransform = new AsteroidOrbitData(
+            orbitData.radius, orbitData.currentAngle, orbitData.orbitalSpeed,
+            orbitData.verticalOffset, pooledAsteroid.transform
+        );
+        asteroidOrbits.Add(orbitWithTransform);
+
         spawnedAsteroids.Add(pooledAsteroid);
 
-        // Renderer für Visibility-Management
         var renderers = pooledAsteroid.GetComponentsInChildren<Renderer>();
         asteroidRenderers.AddRange(renderers);
     }
 
-    void SpawnTraditionalAsteroid(Vector3 localPos)
+    void SpawnTraditionalAsteroid(AsteroidOrbitData orbitData)
     {
         Material chosenMat = asteroidMaterials != null && asteroidMaterials.Count > 0
             ? asteroidMaterials[Random.Range(0, asteroidMaterials.Count)]
@@ -216,9 +344,17 @@ public class AsteroidBelt : MonoBehaviour
             }
         }
 
+        // Calculate initial position
+        float rad = orbitData.currentAngle * Mathf.Deg2Rad;
+        Vector3 localPos = new Vector3(
+            Mathf.Cos(rad) * orbitData.radius,
+            orbitData.verticalOffset,
+            Mathf.Sin(rad) * orbitData.radius
+        );
+
         // Parent & transform
-        go.transform.SetParent(transform, false);
-        go.transform.localPosition = localPos;
+        go.transform.SetParent(transform, true);
+        go.transform.position = transform.position + localPos;
         go.transform.localRotation = Random.rotation;
         float size = Random.Range(sizeRange.x, sizeRange.y);
         go.transform.localScale = Vector3.one * size;
@@ -236,6 +372,13 @@ public class AsteroidBelt : MonoBehaviour
         mine.materialId = MaterialRegistry.GetRandomId();
         mine.startUnits = Random.Range(800, 2000);
 
+        // Store orbit data
+        var orbitWithTransform = new AsteroidOrbitData(
+            orbitData.radius, orbitData.currentAngle, orbitData.orbitalSpeed,
+            orbitData.verticalOffset, go.transform
+        );
+        asteroidOrbits.Add(orbitWithTransform);
+
         // Cache renderers for visibility toggling
         foreach (var rend in go.GetComponentsInChildren<Renderer>())
             asteroidRenderers.Add(rend);
@@ -252,7 +395,6 @@ public class AsteroidBelt : MonoBehaviour
             }
         }
 
-        // Fallback für sehr große Distanzen
         return lodDensityMultipliers.Length > 0 ? lodDensityMultipliers[lodDensityMultipliers.Length - 1] : 0.1f;
     }
 
@@ -264,12 +406,10 @@ public class AsteroidBelt : MonoBehaviour
         float targetDensity = GetLODDensityMultiplier(distance);
         int targetCount = Mathf.RoundToInt(asteroidCount * targetDensity);
 
-        // Asteroids hinzufügen oder entfernen basierend auf LOD
         if (useObjectPooling)
         {
             AdjustPooledAsteroidCount(targetCount);
         }
-        // Für traditional spawning würde hier eine ähnliche Logik stehen
     }
 
     void AdjustPooledAsteroidCount(int targetCount)
@@ -278,38 +418,30 @@ public class AsteroidBelt : MonoBehaviour
 
         if (currentCount < targetCount)
         {
-            // Mehr Asteroiden spawnen
-            int toSpawn = targetCount - currentCount;
+            int toSpawn = Mathf.Min(targetCount - currentCount, 50); // Limit spawns per frame
             for (int i = 0; i < toSpawn; i++)
             {
-                float angleDeg = Random.Range(0f, 360f);
-                float radius = Random.Range(innerRadius, outerRadius);
-                Vector3 localPos = new Vector3(
-                    Mathf.Cos(angleDeg * Mathf.Deg2Rad),
-                    Random.Range(-2f, 2f),
-                    Mathf.Sin(angleDeg * Mathf.Deg2Rad)
-                ) * radius;
-
-                SpawnPooledAsteroid(localPos);
+                var orbitData = GenerateRealisticOrbitPosition();
+                SpawnPooledAsteroid(orbitData);
             }
         }
         else if (currentCount > targetCount)
         {
-            // Überschüssige Asteroiden entfernen
-            int toRemove = currentCount - targetCount;
+            int toRemove = Mathf.Min(currentCount - targetCount, 20); // Limit removals per frame
             for (int i = 0; i < toRemove && spawnedAsteroids.Count > 0; i++)
             {
                 var asteroid = spawnedAsteroids[spawnedAsteroids.Count - 1];
                 spawnedAsteroids.RemoveAt(spawnedAsteroids.Count - 1);
 
-                // Renderer aus Liste entfernen
+                // Remove from orbit data
+                asteroidOrbits.RemoveAll(orbit => orbit.asteroidTransform == asteroid.transform);
+
                 var renderers = asteroid.GetComponentsInChildren<Renderer>();
                 foreach (var renderer in renderers)
                 {
                     asteroidRenderers.Remove(renderer);
                 }
 
-                // Zum Pool zurückgeben
                 pool.ReturnAsteroid(asteroid);
             }
         }
@@ -323,14 +455,12 @@ public class AsteroidBelt : MonoBehaviour
         float dist = Vector3.Distance(mainCamera.transform.position, transform.position);
         bool shouldRender = dist <= visibilityDistance;
 
-        // Für gepoolte Asteroiden
         foreach (var asteroid in spawnedAsteroids)
         {
             if (asteroid != null)
                 asteroid.SetVisible(shouldRender);
         }
 
-        // Für traditionelle Asteroiden (Fallback)
         foreach (var rend in asteroidRenderers)
         {
             if (rend && rend.enabled != shouldRender)
@@ -343,7 +473,6 @@ public class AsteroidBelt : MonoBehaviour
     {
         if (useObjectPooling && pool != null)
         {
-            // Alle gepoolten Asteroiden zurückgeben
             foreach (var asteroid in spawnedAsteroids)
             {
                 if (asteroid != null)
@@ -353,7 +482,6 @@ public class AsteroidBelt : MonoBehaviour
         }
         else
         {
-            // Traditionelle Asteroiden zerstören
             for (int i = transform.childCount - 1; i >= 0; i--)
             {
                 var child = transform.GetChild(i);
@@ -363,6 +491,7 @@ public class AsteroidBelt : MonoBehaviour
         }
 
         asteroidRenderers.Clear();
+        asteroidOrbits.Clear();
         spawned = false;
     }
 
@@ -371,7 +500,7 @@ public class AsteroidBelt : MonoBehaviour
         ClearAllAsteroids();
     }
 
-    /*──────────────────────── Debug & Editor */
+    /*──────────────────────── Debug & Stats */
     public int GetActiveAsteroidCount()
     {
         return useObjectPooling ? spawnedAsteroids.Count : asteroidRenderers.Count;
@@ -379,23 +508,84 @@ public class AsteroidBelt : MonoBehaviour
 
     public AsteroidBeltStats GetStats()
     {
-        return new AsteroidBeltStats
+        var stats = new AsteroidBeltStats(
+            GetActiveAsteroidCount(),
+            GetVisibleAsteroidCount(), // Verwende die neue Methode
+            useObjectPooling,
+            innerRadius,
+            outerRadius,
+            visibilityDistance,
+            enableOrbitalMotion
+        );
+
+        // Erweiterte Ressourcen-Stats für Von-Neumann-Sonden-Gameplay
+        var mineableAsteroids = GetAllMineableAsteroids();
+        stats.CalculateResourceStats(mineableAsteroids);
+
+        return stats;
+    }
+
+    public int GetVisibleAsteroidCount()
+    {
+        if (useObjectPooling)
         {
-            TotalAsteroids = GetActiveAsteroidCount(),
-            VisibleAsteroids = asteroidRenderers.Count(r => r != null && r.enabled),
-            UsePooling = useObjectPooling,
-            InnerRadius = innerRadius,
-            OuterRadius = outerRadius,
-            VisibilityDistance = visibilityDistance
-        };
+            return spawnedAsteroids.Count(asteroid =>
+                asteroid != null && asteroid.IsVisible);
+        }
+        else
+        {
+            return asteroidRenderers.Count(renderer =>
+                renderer != null && renderer.enabled);
+        }
+    }
+
+    public List<MineableAsteroid> GetAllMineableAsteroids()
+    {
+        var mineableAsteroids = new List<MineableAsteroid>();
+
+        if (useObjectPooling)
+        {
+            foreach (var pooledAsteroid in spawnedAsteroids)
+            {
+                if (pooledAsteroid != null)
+                {
+                    var mineable = pooledAsteroid.GetComponent<MineableAsteroid>();
+                    if (mineable != null)
+                    {
+                        mineableAsteroids.Add(mineable);
+                    }
+                }
+            }
+        }
+        else
+        {
+            // Für traditionelle Asteroiden
+            foreach (var mineable in GetComponentsInChildren<MineableAsteroid>())
+            {
+                if (mineable != null)
+                {
+                    mineableAsteroids.Add(mineable);
+                }
+            }
+        }
+
+        return mineableAsteroids;
     }
 
 #if UNITY_EDITOR
     void OnDrawGizmosSelected()
     {
+        // Gürtel-Grenzen zeichnen
         Gizmos.color = Color.yellow;
-        Gizmos.DrawWireSphere(transform.position, innerRadius);
-        Gizmos.DrawWireSphere(transform.position, outerRadius);
+        DrawCircle(transform.position, innerRadius, Vector3.up);
+        DrawCircle(transform.position, outerRadius, Vector3.up);
+        
+        // Gürtel-Dicke visualisieren
+        Gizmos.color = new Color(1f, 1f, 0f, 0.3f);
+        DrawCircle(transform.position + Vector3.up * beltThickness, innerRadius, Vector3.up);
+        DrawCircle(transform.position + Vector3.up * beltThickness, outerRadius, Vector3.up);
+        DrawCircle(transform.position - Vector3.up * beltThickness, innerRadius, Vector3.up);
+        DrawCircle(transform.position - Vector3.up * beltThickness, outerRadius, Vector3.up);
         
         // LOD-Distanzen anzeigen
         if (enableLOD)
@@ -403,36 +593,48 @@ public class AsteroidBelt : MonoBehaviour
             Gizmos.color = Color.green;
             foreach (float distance in lodDistances)
             {
-                Gizmos.DrawWireSphere(transform.position, distance);
+                DrawCircle(transform.position, distance, Vector3.up);
             }
+        }
+        
+        // Sichtbarkeits-Distanz
+        Gizmos.color = Color.cyan;
+        DrawCircle(transform.position, visibilityDistance, Vector3.up);
+    }
+    
+    void DrawCircle(Vector3 center, float radius, Vector3 normal, int segments = 64)
+    {
+        Vector3 prevPoint = center + Vector3.Cross(normal, Vector3.forward).normalized * radius;
+        
+        for (int i = 1; i <= segments; i++)
+        {
+            float angle = (float)i / segments * 2f * Mathf.PI;
+            Vector3 newPoint = center + new Vector3(Mathf.Cos(angle), 0, Mathf.Sin(angle)) * radius;
+            Gizmos.DrawLine(prevPoint, newPoint);
+            prevPoint = newPoint;
         }
     }
 
-    void OnGUI()
-    {
-        if (!Debug.isDebugBuild) return;
+    //void OnGUI()
+    //{
+    //    if (!Debug.isDebugBuild || !Application.isPlaying) return;
         
-        //var stats = GetStats();
-        //GUILayout.BeginArea(new Rect(220, 100, 200, 120));
-        //GUILayout.Label($"Belt: {name}");
-        //GUILayout.Label($"Total: {stats.TotalAsteroids}");
-        //GUILayout.Label($"Visible: {stats.VisibleAsteroids}");
-        //GUILayout.Label($"Pooling: {stats.UsePooling}");
-        //GUILayout.EndArea();
-    }
+    //    var stats = GetStats();
+    //    GUILayout.BeginArea(new Rect(10, 200, 300, 150));
+    //    GUILayout.BeginVertical("box");
+    //    GUILayout.Label($"Asteroid Belt: {name}");
+    //    GUILayout.Label($"Total Asteroids: {stats.TotalAsteroids}");
+    //    GUILayout.Label($"Visible: {stats.VisibleAsteroids}");
+    //    GUILayout.Label($"Pooling: {stats.UsePooling}");
+    //    GUILayout.Label($"Orbital Motion: {stats.OrbitalMotion}");
+    //    GUILayout.Label($"Ring: {stats.InnerRadius:F1} - {stats.OuterRadius:F1} Units");
+    //    if (mainCamera != null)
+    //    {
+    //        float dist = Vector3.Distance(mainCamera.transform.position, transform.position);
+    //        GUILayout.Label($"Camera Distance: {dist:F1}");
+    //    }
+    //    GUILayout.EndVertical();
+    //    GUILayout.EndArea();
+    //}
 #endif
-}
-
-/// <summary>
-/// Statistik-Struktur für das AsteroidBelt
-/// </summary>
-[System.Serializable]
-public struct AsteroidBeltStats
-{
-    public int TotalAsteroids;
-    public int VisibleAsteroids;
-    public bool UsePooling;
-    public float InnerRadius;
-    public float OuterRadius;
-    public float VisibilityDistance;
 }
