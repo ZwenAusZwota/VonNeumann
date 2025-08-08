@@ -31,10 +31,7 @@ public class ProbeController : MonoBehaviour
     public float spawnScale = 0.05f;
 
     /*────────────────────────────────────────── Runtime fields */
-    //enum AutoState { None, Align, SpiralApproach, Orbit }
-
-    Transform navTarget;
-    Transform lastTarget;
+    private Transform navTarget;
 
     Vector2 rotateInput;
     float rollInput;
@@ -46,11 +43,9 @@ public class ProbeController : MonoBehaviour
     float desiredOrbitRadius;
     Vector3 orbitPlaneNormal;
 
-    /* ───────────── New runtime helpers */
-    Vector3 _prevPos;
-    Vector3 _lastMove;              // delta from previous FixedUpdate
     public float CurrentSpeed { get; private set; }
     public int Distance { get; private set; }
+    private float _lastDistanceRaw = -1f;        // for speed calculation
 
     float radialSpeed;            // Units / s (for spiral‑approach)
     bool isBraking;              // true while emergency brake active
@@ -139,46 +134,43 @@ public class ProbeController : MonoBehaviour
     #region FixedUpdate – master state machine
     void FixedUpdate()
     {
-        Vector3 before = transform.position;
-
-        /* Target changed while AP active ⇒ abort */
-        //if (autoState != AutoState.None && navTarget != lastTarget)
-        //{
-        //    AbortAutopilot(keepMomentum: true);
-        //    return;
-        //}
-        lastTarget = navTarget;
-
-        //switch (autoState)
-        //{
-        //    case AutoState.Align: AlignTick(); break;
-        //    case AutoState.SpiralApproach: SpiralTick(); break;
-        //    case AutoState.Orbit: OrbitTick(); break;
-        //    default: ManualFlightTick(); break;
-        //}
-
-        /* ----- Geschwindigkeit errechnen ----- */
-        Vector3 delta =  transform.position - before;
-        CurrentSpeed = delta.magnitude / Time.fixedDeltaTime;
-        _lastMove = delta;
-
-
-        /* ----- Entfernung zum Ziel befüllen ----- */
-        if (navTarget != null)
-            Distance = Mathf.RoundToInt((navTarget.position - transform.position).magnitude);
-        else
+        if (navTarget == null)
+        {
             Distance = 0;
+            CurrentSpeed = 0f;
+            _lastDistanceRaw = -1f;
+            return;
+        }
 
-        /* PhysX‑Velocity nur aktualisieren, wenn Body dynamisch */
-        if (!rb.isKinematic)
-            rb.linearVelocity = delta / Time.fixedDeltaTime;
+        // 1) Rohdistanz als float (ohne Runden)
+        float distanceRaw = Vector3.Distance(navTarget.position, transform.position);
 
-        _prevPos = before;
+        // 2) Für HUD/Anzeige weiterhin gerundet (optional)
+        Distance = Mathf.RoundToInt(distanceRaw);
+
+        float delta = Mathf.Abs(distanceRaw - _lastDistanceRaw);
+
+        // 3) Geschwindigkeit nur berechnen, wenn sich die Distanz merklich ändert
+        if (delta > 0f)
+        {
+             CurrentSpeed = delta / Time.fixedDeltaTime; // Vorzeichen gibt Richtung an (annähern/entfernen)
+        }
+        else
+        {
+            // Erste Initialisierung – noch keine Geschwindigkeit ableitbar
+            CurrentSpeed = 0f;
+        }
+
+        _lastDistanceRaw = distanceRaw;
     }
     #endregion
 
     #region Autopilot
-    public void SetNavTarget(Transform tgt) => autopilot.SetNavTarget(tgt);
+    public void SetNavTarget(Transform tgt)
+    {
+        navTarget = tgt;
+        autopilot.SetNavTarget(tgt);
+    }
     public void StartAutopilot() => autopilot.StartAutopilot();
     public void StopAutopilot() => autopilot.StopAutopilot();
     public bool IsAutopilotActive => autopilot.IsAutopilotActive;
@@ -236,148 +228,14 @@ public class ProbeController : MonoBehaviour
     }
     #endregion
 
-    ///*====================================================================*/
-    //#region Autopilot – public API
-    //public void SetNavTarget(Transform tgt)
-    //{
-    //    navTarget = tgt;
-    //}
-
-    //public void StartAutopilot()
-    //{
-    //    if (navTarget == null) return;
-
-    //    /* Geschwindigkeit nullen solange noch dynamisch */
-    //    rb.linearVelocity = rb.angularVelocity = Vector3.zero;
-    //    rb.isKinematic = true;          // PhysX aus
-
-    //    autoState = AutoState.Align;
-    //    isDampingReset = true;
-    //    isBraking = false;
-
-    //    AutoPilotStarted?.Invoke();
-    //}
-
-    //public void StopAutopilot() => AbortAutopilot(keepMomentum: false);
-    //public bool IsAutopilotActive => autoState != AutoState.None;
-    //#endregion
-
-    ///*====================================================================*/
-    //#region Autopilot – alignment (unchanged)
-    //void AlignTick()
-    //{
-    //    if (navTarget == null) { AbortAutopilot(true); return; }
-
-    //    Vector3 dirWorld = (navTarget.position - transform.position).normalized;
-    //    Quaternion targetRot = Quaternion.LookRotation(dirWorld, Vector3.up);
-    //    transform.rotation = Quaternion.RotateTowards(
-    //        transform.rotation,
-    //        targetRot,
-    //        alignDegPerSec * Time.fixedDeltaTime);
-
-    //    if (Quaternion.Angle(transform.rotation, targetRot) <= alignToleranceDeg)
-    //        StartSpiralApproach();
-    //}
-    //#endregion
-
-    ///*====================================================================*/
-    //#region Autopilot – spiral-in approach (unchanged except radialSpeed reset)
-    //void StartSpiralApproach()
-    //{
-    //    if (navTarget == null) { AbortAutopilot(true); return; }
-
-    //    if (navTarget.CompareTag("AsteroidBelt"))
-    //    {
-    //        AsteroidBelt targetBelt = navTarget.GetComponent<AsteroidBelt>();
-    //        desiredOrbitRadius = targetBelt.outerRadius;      // stop at belt edge
-    //    }
-    //    else
-    //    {
-    //        float bodyRadiusUnits = GuessBodyRadius(navTarget);
-    //        desiredOrbitRadius = Mathf.Max(bodyRadiusUnits * orbitAltitudeFactor,
-    //                                       minOrbitAltitudeUnits);
-    //    }
-
-    //    radialSpeed = 0f;
-    //    autoState = AutoState.SpiralApproach;
-    //}
-
-    //void SpiralTick()
-    //{
-    //    if (navTarget == null) { AbortAutopilot(true); return; }
-
-    //    Vector3 tgtPos = navTarget.position;
-    //    Vector3 radial = transform.position - tgtPos;
-    //    float dist = radial.magnitude;
-    //    float dt = Time.fixedDeltaTime;
-
-    //    /* 1) tangentiale Drehung */
-    //    Vector3 planeNormal = Vector3.up;
-    //    transform.RotateAround(tgtPos, planeNormal, OrbitDegPerSec * dt);
-
-    //    /* 2) radiales Dreiecksprofil */
-    //    float remaining = dist - desiredOrbitRadius;
-    //    float stopDist = (radialSpeed * radialSpeed) / (2f * radialAccel);
-
-    //    radialSpeed += (stopDist >= remaining ? -radialAccel : radialAccel) * dt;
-    //    radialSpeed = Mathf.Max(radialSpeed, 0f);
-
-    //    float move = radialSpeed * dt;
-    //    float newDist = Mathf.Max(dist - move, desiredOrbitRadius);
-
-    //    /* 3) neue Position & Ausrichtung */
-    //    Vector3 newRadial = (transform.position - tgtPos).normalized;
-    //    transform.position = tgtPos + newRadial * newDist;
-    //    transform.rotation = Quaternion.LookRotation(-newRadial, Vector3.up);
-
-    //    /* 4) Stop / Orbit transition */
-    //    if (!navTarget.CompareTag("Planet") && newDist <= desiredOrbitRadius + 0.5f)
-    //    {
-    //        AbortAutopilot(true);          // Gürtel‑Rand erreicht
-    //        return;
-    //    }
-
-    //    if (navTarget.CompareTag("Planet") && newDist <= desiredOrbitRadius + 1e-3f)
-    //    {
-    //        Vector3 tangent = Vector3.Cross(planeNormal, newRadial).normalized;
-    //        orbitPlaneNormal = Vector3.Cross(newRadial, tangent).normalized;
-    //        if (orbitPlaneNormal.sqrMagnitude < 1e-6f) orbitPlaneNormal = Vector3.up;
-
-    //        autoState = AutoState.Orbit;
-    //        transform.rotation = Quaternion.LookRotation(tangent, orbitPlaneNormal);
-    //        radialSpeed = 0f;
-    //    }
-    //}
-    //#endregion
-
-    ///*====================================================================*/
-    //#region Autopilot – orbit (unchanged)
-    //void OrbitTick()
-    //{
-    //    if (navTarget == null) { AbortAutopilot(true); return; }
-
-    //    Vector3 tgtPos = navTarget.position;
-    //    transform.RotateAround(tgtPos, orbitPlaneNormal, OrbitDegPerSec * Time.fixedDeltaTime);
-
-    //    Vector3 radial = (transform.position - tgtPos).normalized;
-    //    transform.position = tgtPos + radial * desiredOrbitRadius;
-
-    //    Vector3 dirTangent = Vector3.Cross(orbitPlaneNormal, radial).normalized;
-    //    if (dirTangent.sqrMagnitude > 1e-6f)
-    //        transform.rotation = Quaternion.LookRotation(dirTangent, orbitPlaneNormal);
-    //}
-    //#endregion
-
-    /*====================================================================*/
+   
     #region Helpers & reset / abort
 
     void ResetProbe()
     {
-        //hud?.SetActiveBody("");
         rb.isKinematic = false;
         rb.linearVelocity = rb.angularVelocity = Vector3.zero;
 
-        //autoState = AutoState.None;
         isDampingReset = true;
 
         AutoPilotStopped?.Invoke();
@@ -385,38 +243,9 @@ public class ProbeController : MonoBehaviour
 
     void HandleMinusKey()
     {
-        /* Autopilot aktiv? ⇒ mit Schwung verlassen & bremsen */
-        //if (autoState != AutoState.None)
-        //{
-        //    AbortAutopilot(keepMomentum: true);
-        //    isBraking = true;       // sofort Bremsmodus aktivieren
-        //}
-        //else if (!isBraking)        // manuelles Not‑Bremsen
-        //{
-        //    isBraking = true;
-        //}
-
         ResetProbe();
         autopilot.AbortAutopilot(keepMomentum: true);
     }
-
-    //void AbortAutopilot(bool keepMomentum)
-    //{
-    //    /* 1) aktuelle Transl.-Geschwindigkeit aus letztem Frame berechnen */
-    //    Vector3 carriedVel = keepMomentum ? (_lastMove / Time.fixedDeltaTime) : Vector3.zero;
-
-    //    /* 2) PhysX wieder einschalten */
-    //    rb.isKinematic = false;
-    //    rb.linearVelocity = carriedVel;
-    //    rb.angularVelocity = Vector3.zero;
-
-    //    /* 3) Zustand zurücksetzen */
-    //    autoState = AutoState.None;
-    //    radialSpeed = 0f;
-    //    isDampingReset = true;
-
-    //    AutoPilotStopped?.Invoke();
-    //}
 
     static float GuessBodyRadius(Transform body)
     {
