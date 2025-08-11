@@ -36,15 +36,9 @@ public class StatusModule : UIModule
         textCargo.text = $"Cargo: {used:N0}/{max:N0} m³";
     }
     
-    public void UpdateCargoFromInventory(ProbeInventory inventory)
+    public void UpdateCargoStatus(string cargo)
     {
-        if (inventory != null && player != null)
-        {
-            float sum = 0;
-            foreach (var kv in player.cargo) 
-                sum += kv.Value;
-            textCargo.text = $"Cargo: {sum:N0} t";
-        }
+        textCargo.text = $"Cargo: {cargo} t";
     }
     
     public void SetSystemInfo(string systemName)

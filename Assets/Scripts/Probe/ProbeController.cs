@@ -31,7 +31,7 @@ public class ProbeController : MonoBehaviour
     public float spawnScale = 0.05f;
 
     /*────────────────────────────────────────── Runtime fields */
-    private Transform navTarget;
+    public Transform navTarget;
 
     Vector2 rotateInput;
     float rollInput;
@@ -56,6 +56,9 @@ public class ProbeController : MonoBehaviour
     PlanetRegistry registry;
     HUDControllerModular hud;
     ProbeAutopilot autopilot;
+    ProbeScanner scanner;
+    ProbeMiner miner;
+    ProbeInventory inventory;
 
     public event Action AutoPilotStarted;
     public event Action AutoPilotStopped;
@@ -70,6 +73,9 @@ public class ProbeController : MonoBehaviour
         hud = FindFirstObjectByType<HUDControllerModular>();
         controls = new ProbeControls();
         autopilot = GetComponent<ProbeAutopilot>();
+        scanner = GetComponent<ProbeScanner>();
+        miner = GetComponent<ProbeMiner>();
+        inventory = GetComponent<ProbeInventory>();
 
         hud.SetProbe(this);
 
@@ -97,6 +103,26 @@ public class ProbeController : MonoBehaviour
         autopilot.AutoPilotStarted += () => AutoPilotStarted?.Invoke();
         autopilot.AutoPilotStopped += () => AutoPilotStopped?.Invoke();
         autopilot.StatusUpdated += (status) => StatusUpdated?.Invoke(status);
+
+        scanner.ScanUpdated += (scanObjects) =>
+        {
+            if (hud != null)
+                hud.UpdateNearScan(scanObjects);
+        };
+
+        miner.StatusUpdated += () => 
+        {
+            if (hud != null) {
+                hud.UpdateMiningStatus(miner.StatusText);
+                //hud.UpdateCargoStatus(inventory.Cargo);
+            }
+        };
+
+        inventory.CargoChanged += (used, max) =>
+        {
+            if (hud != null)
+                hud.UpdateCargoStatus(used, max);
+        };
 
     }
 

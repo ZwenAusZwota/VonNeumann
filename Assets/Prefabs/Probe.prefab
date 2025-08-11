@@ -237,6 +237,7 @@ GameObject:
   - component: {fileID: 5032952614951569857}
   - component: {fileID: 1903883377686821233}
   - component: {fileID: 7440666688485284584}
+  - component: {fileID: 6123169082172775244}
   m_Layer: 0
   m_Name: Probe
   m_TagString: Player
@@ -424,10 +425,27 @@ MonoBehaviour:
   alignDegPerSec: 60
   alignToleranceDeg: 1
   radialAccel: 1
+  radialApproachFraction: 0.2
   orbitAltitudeFactor: 1.3
   minOrbitAltitudeUnits: 5
-  radialApproachFraction: 0.2
   orbitPeriod: 60
+  asteroidApproachDistance: 2
+  asteroidStopTolerance: 0.5
+  beltAimRecalcEvery: 10
+--- !u!114 &6123169082172775244
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1336562065826069938}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 382b0252d8dc4f94b8e472fa01effe2a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  scanRadiusKm: 75000000
+  mainRangeKm: 1000000
 --- !u!1 &2351539471288224827
 GameObject:
   m_ObjectHideFlags: 0

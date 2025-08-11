@@ -71,6 +71,7 @@ public class AsteroidPool : MonoBehaviour
         // Initially inactive
         asteroidGO.SetActive(false);
         asteroidGO.transform.SetParent(poolParent);
+        asteroidGO.tag = "Asteroid";
 
         availableAsteroids.Enqueue(pooledAsteroid);
         return pooledAsteroid;

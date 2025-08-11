@@ -109,20 +109,34 @@ public class HUDControllerModular : MonoBehaviour
     void PerformNearScan()
     {
         // Implement near scan logic
-        //GameManager.Instance?.PerformNearScan(probe.transform.position);
-        GameManager.Instance?.PerformNearScan();
-        scanningModule?.UpdateScanStatus("Scanning...");
-        scanningModule?.StartScanCooldown(5f); // Example cooldown
+        var scannController = probe?.GetComponent<ProbeScanner>();
+        if(scannController != null)
+        {
+            scannController.PerformNearScan();
+            scanningModule?.UpdateScanStatus("Scanning...");
+        }
+        
+        //scanningModule?.StartScanCooldown(5f); // Example cooldown
     }
     
     void PerformMining()
     {
         // Implement mining logic
-        var miningController = probe?.GetComponent<MiningController>();
+        var miningController = probe?.GetComponent<ProbeMiner>();
         if (miningController != null)
         {
+
             miningController.StartMining();
-            miningModule?.UpdateMiningStatus("Mining...");
         }
+    }
+
+    public void UpdateMiningStatus(string status)
+    {
+        miningModule?.UpdateMiningStatus(status);
+    }
+
+    public void UpdateCargoStatus(float used, float max)
+    {
+        statusModule?.UpdateCargoStatus($"{used:N0}/{max:N0}");
     }
 }

@@ -13,27 +13,35 @@ public class MiningModule : UIModule
     public TextMeshProUGUI textMiningYield;
     
     private DateTime? miningReadyAt;
-    private MiningController miningController;
+    //private MiningController miningController;
     
     public event Action OnMiningRequested;
     
     protected override void OnInitialize()
     {
         if (btnStartMining != null)
-            btnStartMining.onClick.AddListener(() => OnMiningRequested?.Invoke());
+            btnStartMining.onClick.AddListener( () => OnMiningRequested?.Invoke()); //OnMiningRequested?.Invoke());
         
         UpdateMiningStatus("Ready");
     }
     
-    public void SetMiningController(MiningController controller)
+    void MiningRequested()
     {
-        miningController = controller;
+        //if (miningController != null && miningController.CanMine())
+        //{
+        //    OnMiningRequested?.Invoke();
+        //    UpdateMiningStatus("Mining in progress...");
+        //}
+        //else
+        //{
+        //    UpdateMiningStatus("Cannot mine now");
+        //}
     }
-    
+
     public void UpdateMiningStatus(string status)
     {
         if (textMiningStatus != null)
-            textMiningStatus.text = $"Mining: {status}";
+            textMiningStatus.text = $"{status}";
     }
     
     public void HandleMiningResult(MineResult result)

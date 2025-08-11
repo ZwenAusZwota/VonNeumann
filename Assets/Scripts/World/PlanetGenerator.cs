@@ -192,7 +192,7 @@ public class PlanetGenerator : MonoBehaviour
     /// </summary>
     private float CalculateVisualSize(PlanetDto dto)
     {
-        float radiusUnits = dto.radius_km / PlanetScale.KM_PER_UNIT;
+        float radiusUnits = dto.radius_km / PlanetScale.KM_PER_UNIT *10;
         float visualDiameter = radiusUnits * 2f * sizeMultiplier;
         return Mathf.Max(visualDiameter, 0.01f);
     }

@@ -95,7 +95,7 @@ public class AsteroidBelt : MonoBehaviour
         {
             radius = r;
             currentAngle = angle;
-            orbitalSpeed = speed;
+            orbitalSpeed = 0; // speed;
             verticalOffset = yOffset;
             asteroidTransform = t;
         }
@@ -256,6 +256,7 @@ public class AsteroidBelt : MonoBehaviour
     /*──────────────────────── Orbital Motion */
     void UpdateOrbitalMotion()
     {
+        if (!enableOrbitalMotion) return;
         for (int i = 0; i < asteroidOrbits.Count; i++)
         {
             var orbit = asteroidOrbits[i];
