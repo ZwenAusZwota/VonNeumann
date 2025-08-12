@@ -7,7 +7,6 @@ using System;
 public class ScanningModule : UIModule
 {
     [Header("Scanning UI")]
-    public Button btnNearScan;
     public Button btnDeepScan;
     public TextMeshProUGUI textScanStatus;
     public ObjectListManager scanResultsList;
@@ -22,7 +21,6 @@ public class ScanningModule : UIModule
     
     protected override void OnInitialize()
     {
-        btnNearScan.onClick.AddListener(() => OnNearScanRequested?.Invoke());
         
         if (btnDeepScan != null)
             btnDeepScan.onClick.AddListener(() => OnDeepScanRequested?.Invoke());
@@ -49,7 +47,6 @@ public class ScanningModule : UIModule
     public void StartScanCooldown(float seconds)
     {
         scanReadyAt = DateTime.UtcNow.AddSeconds(seconds);
-        btnNearScan.interactable = false;
         
         if (btnDeepScan != null)
             btnDeepScan.interactable = false;
@@ -76,7 +73,6 @@ public class ScanningModule : UIModule
                     textScanCooldown.text = "Scan CD: Ready";
                 
                 scanReadyAt = null;
-                btnNearScan.interactable = true;
                 
                 if (btnDeepScan != null)
                     btnDeepScan.interactable = true;

@@ -167,5 +167,12 @@ public class GameManager : MonoBehaviour
         var probe = Instantiate(probePrefab, spawnPos, Quaternion.identity);
         return probe.transform;
     }
-    
+
+    public void ExitGame()
+    {
+        // Hier können Sie Logik hinzufügen, um das Spiel zu beenden
+        //Debug.Log("Exiting game...");
+        Application.Quit();
+    }
+
 }

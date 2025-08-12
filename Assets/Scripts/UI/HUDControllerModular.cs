@@ -106,7 +106,7 @@ public class HUDControllerModular : MonoBehaviour
         miningModule?.HandleMiningResult(result);
     }
     
-    void PerformNearScan()
+    public void PerformNearScan()
     {
         // Implement near scan logic
         var scannController = probe?.GetComponent<ProbeScanner>();
@@ -119,13 +119,13 @@ public class HUDControllerModular : MonoBehaviour
         //scanningModule?.StartScanCooldown(5f); // Example cooldown
     }
     
-    void PerformMining()
+    public void PerformMining()
     {
         // Implement mining logic
         var miningController = probe?.GetComponent<ProbeMiner>();
         if (miningController != null)
         {
-
+            Debug.Log("Starting mining operation...");
             miningController.StartMining();
         }
     }
