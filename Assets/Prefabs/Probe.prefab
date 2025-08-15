@@ -384,6 +384,7 @@ MonoBehaviour:
   resetDecelDeg2: 360
   brakeAccel: 50
   spawnScale: 0.05
+  navTarget: {fileID: 0}
 --- !u!114 &5032952614951569857
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -397,6 +398,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   mineKey: 27
+  StatusText: 
 --- !u!114 &1903883377686821233
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -410,6 +412,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   maxVolume: 500
+  X_START: -100
+  Y_START: 180
+  X_SPACE_BETWEEN_ITEMS: 55
+  Y_SPACE_BETWEEN_ITEMS: 55
+  NUMBER_OF_COLUMNS: 5
+  itemPrefab: {fileID: 6847562688498794263, guid: 3e64c1b74a04e2b46846fdf44bc869f1, type: 3}
 --- !u!114 &7440666688485284584
 MonoBehaviour:
   m_ObjectHideFlags: 0

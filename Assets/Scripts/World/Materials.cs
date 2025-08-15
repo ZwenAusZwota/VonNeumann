@@ -34,6 +34,7 @@ public static class MaterialRegistry
     // ---------- Rohstoffe eintragen ----------
     // Gewicht (letzter Parameter) bestimmt die relative Häufigkeit
     // Id, Name, Volumen, Abbaurate, Gewicht
+    // man könnte diese Materialien alle als scriptableObjects anlegen und dann die ganzen Attribute im Inspector setzen,
     static readonly Dictionary<string, MaterialDef> table = new()
     {  // Id, Name, Volumen, Abbaurate, Gewicht
         { "Iron",   new MaterialDef("Iron",   0.50f, 10f,  7) },
