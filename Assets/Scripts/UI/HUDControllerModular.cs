@@ -1,12 +1,17 @@
 // Assets/Scripts/UI/HUDControllerModular.cs
 using UnityEngine;
 using System.Collections.Generic;
+using UnityEngine.InputSystem;
 
 public class HUDControllerModular : MonoBehaviour
 {
+
+    [Header("HUD-Bereiche")]
+    public GameObject inventoryPanel;
+
     [Header("Server Connection")]
     public ServerConnector connector;
-    
+
     /*[Header("Game References")]*/
     private ProbeController probe;
     
@@ -16,12 +21,27 @@ public class HUDControllerModular : MonoBehaviour
     private ScanningModule scanningModule;
     private MiningModule miningModule;
     private ObjectSelectionModule objectSelectionModule;
-    
+
+    // Player Input
+    private InputController inputController;
+    private InputAction _toggleInventory;
+
     void Awake()
     {
-        // Modules will be automatically initialized by UIModuleManager
+        inputController = new InputController();
     }
-    
+
+    private void OnEnable()
+    {
+        inputController.HUD.Enable();
+        inputController.HUD.ToggleInventory.performed += OnToggleInventoryPanel;
+    }
+
+    private void OnDestroy()
+    {
+        inputController?.Dispose();
+    }
+
     void Start()
     {
         // Get module references
@@ -32,6 +52,8 @@ public class HUDControllerModular : MonoBehaviour
         objectSelectionModule = UIModuleManager.Instance.GetModule<ObjectSelectionModule>();
         
         SetupEventConnections();
+
+        ToggleInventoryPanel(false); // Hide inventory panel by default
     }
     
     void SetupEventConnections()
@@ -138,5 +160,23 @@ public class HUDControllerModular : MonoBehaviour
     public void UpdateCargoStatus(float used, float max)
     {
         statusModule?.UpdateCargoStatus($"{used:N0}/{max:N0}");
+    }
+
+    public void ToggleInventoryPanel(bool show)
+    {
+        if (inventoryPanel != null)
+        {
+            inventoryPanel.gameObject.SetActive(show);
+        }
+    }
+
+    private void OnToggleInventoryPanel(InputAction.CallbackContext ctx)
+    {
+        if (inventoryPanel == null)
+        {
+            Debug.LogWarning("[HUD] InventoryPanel ist nicht zugewiesen.");
+            return;
+        }
+        inventoryPanel.SetActive(!inventoryPanel.activeSelf);
     }
 }

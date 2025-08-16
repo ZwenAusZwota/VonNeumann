@@ -138,7 +138,8 @@ public class GameManager : MonoBehaviour
         hud.SetSystemObjects(_systemObjects);
 
         /* 7) Sonde spawnen, Kamera & HUD verbinden */
-        _probeTf = SpawnProbeNearPlanet(_planets[Random.Range(0, _planets.Count)]);
+        //_probeTf = SpawnProbeNearPlanet(_planets[Random.Range(0, _planets.Count)]);
+        _probeTf = SpawnProbeNearObject(_belts[_belts.Count-1]);
 
         cameraController.target = _probeTf;
         cameraController.ResetToDefaultView();
@@ -156,14 +157,14 @@ public class GameManager : MonoBehaviour
         return r[(n - 1) % r.Length];
     }
 
-    Transform SpawnProbeNearPlanet(PlanetDto planet)
+    Transform SpawnProbeNearObject(ObjectDto _object)
     {
         float unitsPerKm = 1f / PlanetScale.KM_PER_UNIT;
-        Vector3 planetPos = planet.position.ToVector3(unitsPerKm);
-        float radiusUnits = planet.radius_km * unitsPerKm;
+        Vector3 objectPos = _object.position.ToVector3(unitsPerKm);
+        float radiusUnits = _object.radius_km * unitsPerKm;
         float safeDist = radiusUnits * spawnRadiusFactor;
 
-        Vector3 spawnPos = planetPos + Random.onUnitSphere * safeDist;
+        Vector3 spawnPos = objectPos + Random.onUnitSphere * safeDist;
         var probe = Instantiate(probePrefab, spawnPos, Quaternion.identity);
         return probe.transform;
     }

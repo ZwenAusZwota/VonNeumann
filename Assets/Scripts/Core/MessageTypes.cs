@@ -38,6 +38,7 @@ public class ObjectDto
     public string object_type;                 // "planet" | "asteroid_belt"
     public string displayName;
     public Vec3Dto position;
+    public float radius_km;
 }
 
 [Serializable]
@@ -50,8 +51,6 @@ public class StarDto : ObjectDto
 [Serializable]
 public class PlanetDto: ObjectDto
 {
-    
-    public float radius_km;
     public float orbital_period_days;
     public string atmosphere;
     public float gravity_g;
@@ -67,7 +66,6 @@ public class PlanetDto: ObjectDto
     public class AsteroidBeltDto: ObjectDto
     {
         public float star_distance_km;
-        public float radius_km;
         public float inner_radius_km;
         public float outer_radius_km;
         public float density;

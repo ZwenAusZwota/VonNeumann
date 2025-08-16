@@ -1,5 +1,5 @@
 {
-    "name": "ProbeControls",
+    "name": "InputController",
     "maps": [
         {
             "name": "Probe",
@@ -293,6 +293,34 @@
                     "processors": "",
                     "groups": "",
                     "action": "Zoom",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                }
+            ]
+        },
+        {
+            "name": "HUD",
+            "id": "1972519b-5a5b-459b-b6d3-da35acec68bd",
+            "actions": [
+                {
+                    "name": "ToggleInventory",
+                    "type": "Button",
+                    "id": "28042cb1-f85f-445a-88a8-8c80338991a7",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                }
+            ],
+            "bindings": [
+                {
+                    "name": "",
+                    "id": "e9703044-9103-49de-b411-e193c75437d1",
+                    "path": "<Keyboard>/#(I)",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "ToggleInventory",
                     "isComposite": false,
                     "isPartOfComposite": false
                 }
