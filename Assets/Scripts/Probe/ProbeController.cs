@@ -51,7 +51,8 @@ public class ProbeController : MonoBehaviour
     bool isBraking;              // true while emergency brake active
 
     /*────────────────────────────────────────── Cached references */
-    ProbeControls controls;
+    InputController controls;
+    //ProbeControls controls;
     Rigidbody rb;
     PlanetRegistry registry;
     HUDControllerModular hud;
@@ -71,7 +72,7 @@ public class ProbeController : MonoBehaviour
         rb = GetComponent<Rigidbody>();
         registry = PlanetRegistry.Instance;
         hud = FindFirstObjectByType<HUDControllerModular>();
-        controls = new ProbeControls();
+        controls = new InputController();
         autopilot = GetComponent<ProbeAutopilot>();
         scanner = GetComponent<ProbeScanner>();
         miner = GetComponent<ProbeMiner>();

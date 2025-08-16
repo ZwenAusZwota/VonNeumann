@@ -68,7 +68,7 @@ public class CameraController : MonoBehaviour
     public float collisionRadius = 0.5f;
 
     // Interne Variablen
-    ProbeControls controls;
+    InputController controls;
     Camera cam;
     bool followTarget = true;
     float yaw, pitch;
@@ -97,7 +97,7 @@ public class CameraController : MonoBehaviour
 
     void InitializeInputSystem()
     {
-        controls = new ProbeControls();
+        controls = new InputController();
         controls.Camera.Enable();
 
         // Freilook mit rechter Maustaste
