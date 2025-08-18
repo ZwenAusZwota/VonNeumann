@@ -370,7 +370,7 @@ public class AsteroidBelt : MonoBehaviour
         var mine = go.GetComponent<MineableAsteroid>();
         if (mine == null)
             mine = go.AddComponent<MineableAsteroid>();
-        mine.materialId = MaterialRegistry.GetRandomId();
+        mine.materialId = MaterialDatabase.GetRandomId();
         mine.startUnits = Random.Range(800, 2000);
 
         // Store orbit data

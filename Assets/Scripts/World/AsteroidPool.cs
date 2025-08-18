@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// Object Pool für Asteroiden zur Performance-Optimierung
+/// Object Pool fï¿½r Asteroiden zur Performance-Optimierung
 /// </summary>
 public class AsteroidPool : MonoBehaviour
 {
@@ -170,7 +170,7 @@ public class AsteroidPool : MonoBehaviour
         var mineable = asteroid.GetComponent<MineableAsteroid>();
         if (mineable != null)
         {
-            string materialId = MaterialRegistry.GetRandomId();
+            string materialId = MaterialDatabase.GetRandomId();
             float startUnits = Random.Range(800f, 2000f);
             mineable.Configure(materialId, startUnits);
         }

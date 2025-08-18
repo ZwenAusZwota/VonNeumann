@@ -238,6 +238,7 @@ GameObject:
   - component: {fileID: 1903883377686821233}
   - component: {fileID: 7440666688485284584}
   - component: {fileID: 6123169082172775244}
+  - component: {fileID: 8489181273570653767}
   m_Layer: 0
   m_Name: Probe
   m_TagString: Player
@@ -454,6 +455,22 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   scanRadiusKm: 75000000
   mainRangeKm: 1000000
+--- !u!114 &8489181273570653767
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1336562065826069938}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f11d94d4fdb6f7140823f157063d8508, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  fabricatorType: 0
+  currentProduct: {fileID: 0}
+  timeRemaining: 0
+  _queueDebugView: []
 --- !u!1 &2351539471288224827
 GameObject:
   m_ObjectHideFlags: 0

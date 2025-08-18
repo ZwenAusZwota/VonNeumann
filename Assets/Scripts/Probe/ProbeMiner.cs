@@ -2,13 +2,13 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-[RequireComponent(typeof(ProbeInventory))]
+[RequireComponent(typeof(InventoryController))]
 public class ProbeMiner : MonoBehaviour
 {
     public Key mineKey = Key.M;
 
     //HUDControllerModular hud;          // liefert Item der Scan-Liste
-    ProbeInventory cargo;
+    InventoryController cargo;
 
     MineableAsteroid target;
     bool isMining;
@@ -19,7 +19,7 @@ public class ProbeMiner : MonoBehaviour
     void Awake()
     {
         //hud = FindFirstObjectByType<HUDControllerModular>();
-        cargo = GetComponent<ProbeInventory>();
+        cargo = GetComponent<InventoryController>();
     }
 
     void Update()
@@ -66,7 +66,7 @@ public class ProbeMiner : MonoBehaviour
     {
         if (target == null) { StopMining(); return; }
         StatusText = "Mining in progress";
-        var def = MaterialRegistry.Get(target.materialId);
+        var def = MaterialDatabase.Get(target.materialId);
         // a) max. was Material hergibt
         float uMat = def.mineRate * Time.deltaTime;
 

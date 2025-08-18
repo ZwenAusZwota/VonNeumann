@@ -3,31 +3,45 @@ using System.Collections.Generic;
 using UnityEngine;
 
 [CreateAssetMenu(fileName = "ProductBlueprint",
-                 menuName = "SpaceGame/Product Blueprint")]
+                 menuName = "SpaceGame/Fabrication/Product Blueprint")]
 public class ProductBlueprint : ScriptableObject
 {
     /* ---------- Basis-Infos ---------- */
     [Header("Basis-Infos")]
-    public string id;
+    public string productId;
     public string displayName;
+    public Sprite icon;
     public GameObject prefab;
     public float buildTime = 15f;
 
     /* ---------- Hilfsstruktur ---------- */
-    [Serializable]
-    public struct Cost
+    [System.Serializable]
+    public class ResourceCost
     {
-        public string res;
-        public int amt;
+        public MaterialSO resource;
+        public int amount;
+    }
+    [System.Serializable]
+    public class ComponentCost
+    {
+        public ProductBlueprint product;
+        public int amount;
     }
 
     /* ---------- Baukosten ---------- */
     [Header("Baukosten")]
-    public List<Cost> buildCost = new();
+    public List<ResourceCost> resourceCosts;
+    public List<ComponentCost> componentCosts;
+
+    /* ---------- Fabricator-Infos ---------- */
+    public enum FabricatorType { Probe, Station, LargeFactory }
+    [Header("Herstellort")]
+    public List<FabricatorType> allowedFabricators;
 
     /* ---------- Upgrade-Infos ---------- */
     [Header("Upgrade-Infos (optional)")]
     public bool upgradeable;
-    public List<Cost> upgradeCost = new();
+    public List<ResourceCost> upgradeResourceCost = new();
+    public List<ComponentCost> upgradeComponentCosts;
     public ProductBlueprint successor;
 }

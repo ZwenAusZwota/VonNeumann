@@ -8,6 +8,7 @@ public class HUDControllerModular : MonoBehaviour
 
     [Header("HUD-Bereiche")]
     public GameObject inventoryPanel;
+    public GameObject buildPanel;
 
     [Header("Server Connection")]
     public ServerConnector connector;
@@ -34,7 +35,8 @@ public class HUDControllerModular : MonoBehaviour
     private void OnEnable()
     {
         inputController.HUD.Enable();
-        inputController.HUD.ToggleInventory.performed += OnToggleInventoryPanel;
+        inputController.HUD.ToggleInventory.performed += ctx => inventoryPanel.SetActive(!inventoryPanel.activeSelf);
+        inputController.HUD.ToggleFabricator.performed += ctx => buildPanel.SetActive(!buildPanel.activeSelf);
     }
 
     private void OnDestroy()
@@ -53,7 +55,8 @@ public class HUDControllerModular : MonoBehaviour
         
         SetupEventConnections();
 
-        ToggleInventoryPanel(false); // Hide inventory panel by default
+        inventoryPanel.gameObject.SetActive(false); // Hide inventory panel by default
+        buildPanel.gameObject.SetActive(false); // Hide build panel by default
     }
     
     void SetupEventConnections()
@@ -162,21 +165,4 @@ public class HUDControllerModular : MonoBehaviour
         statusModule?.UpdateCargoStatus($"{used:N0}/{max:N0}");
     }
 
-    public void ToggleInventoryPanel(bool show)
-    {
-        if (inventoryPanel != null)
-        {
-            inventoryPanel.gameObject.SetActive(show);
-        }
-    }
-
-    private void OnToggleInventoryPanel(InputAction.CallbackContext ctx)
-    {
-        if (inventoryPanel == null)
-        {
-            Debug.LogWarning("[HUD] InventoryPanel ist nicht zugewiesen.");
-            return;
-        }
-        inventoryPanel.SetActive(!inventoryPanel.activeSelf);
-    }
 }

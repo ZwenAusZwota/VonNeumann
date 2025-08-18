@@ -4,10 +4,8 @@ using System.Collections.Generic;
 
 public enum ItemType
 {
-    Food,
-    Equipment,
-    Default,
-    Material
+    Material,
+    Product
 }
 
 

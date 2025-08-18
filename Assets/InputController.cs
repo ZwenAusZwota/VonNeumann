@@ -389,9 +389,18 @@ public partial class @InputController: IInputActionCollection2, IDisposable
             ""id"": ""1972519b-5a5b-459b-b6d3-da35acec68bd"",
             ""actions"": [
                 {
-                    ""name"": ""Toggle Inventory"",
+                    ""name"": ""ToggleInventory"",
                     ""type"": ""Button"",
                     ""id"": ""28042cb1-f85f-445a-88a8-8c80338991a7"",
+                    ""expectedControlType"": """",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""ToggleFabricator"",
+                    ""type"": ""Button"",
+                    ""id"": ""1e962fbb-8a81-4be5-854d-c22f24f57f9f"",
                     ""expectedControlType"": """",
                     ""processors"": """",
                     ""interactions"": """",
@@ -406,7 +415,18 @@ public partial class @InputController: IInputActionCollection2, IDisposable
                     ""interactions"": """",
                     ""processors"": """",
                     ""groups"": """",
-                    ""action"": ""Toggle Inventory"",
+                    ""action"": ""ToggleInventory"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""0489450a-4db8-4c53-a2ea-3aec8c938393"",
+                    ""path"": ""<Keyboard>/#(B)"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""ToggleFabricator"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
                 }
@@ -429,7 +449,8 @@ public partial class @InputController: IInputActionCollection2, IDisposable
         m_Camera_Zoom = m_Camera.FindAction("Zoom", throwIfNotFound: true);
         // HUD
         m_HUD = asset.FindActionMap("HUD", throwIfNotFound: true);
-        m_HUD_ToggleInventory = m_HUD.FindAction("Toggle Inventory", throwIfNotFound: true);
+        m_HUD_ToggleInventory = m_HUD.FindAction("ToggleInventory", throwIfNotFound: true);
+        m_HUD_ToggleFabricator = m_HUD.FindAction("ToggleFabricator", throwIfNotFound: true);
     }
 
     ~@InputController()
@@ -771,6 +792,7 @@ public partial class @InputController: IInputActionCollection2, IDisposable
     private readonly InputActionMap m_HUD;
     private List<IHUDActions> m_HUDActionsCallbackInterfaces = new List<IHUDActions>();
     private readonly InputAction m_HUD_ToggleInventory;
+    private readonly InputAction m_HUD_ToggleFabricator;
     /// <summary>
     /// Provides access to input actions defined in input action map "HUD".
     /// </summary>
@@ -786,6 +808,10 @@ public partial class @InputController: IInputActionCollection2, IDisposable
         /// Provides access to the underlying input action "HUD/ToggleInventory".
         /// </summary>
         public InputAction @ToggleInventory => m_Wrapper.m_HUD_ToggleInventory;
+        /// <summary>
+        /// Provides access to the underlying input action "HUD/ToggleFabricator".
+        /// </summary>
+        public InputAction @ToggleFabricator => m_Wrapper.m_HUD_ToggleFabricator;
         /// <summary>
         /// Provides access to the underlying input action map instance.
         /// </summary>
@@ -815,6 +841,9 @@ public partial class @InputController: IInputActionCollection2, IDisposable
             @ToggleInventory.started += instance.OnToggleInventory;
             @ToggleInventory.performed += instance.OnToggleInventory;
             @ToggleInventory.canceled += instance.OnToggleInventory;
+            @ToggleFabricator.started += instance.OnToggleFabricator;
+            @ToggleFabricator.performed += instance.OnToggleFabricator;
+            @ToggleFabricator.canceled += instance.OnToggleFabricator;
         }
 
         /// <summary>
@@ -829,6 +858,9 @@ public partial class @InputController: IInputActionCollection2, IDisposable
             @ToggleInventory.started -= instance.OnToggleInventory;
             @ToggleInventory.performed -= instance.OnToggleInventory;
             @ToggleInventory.canceled -= instance.OnToggleInventory;
+            @ToggleFabricator.started -= instance.OnToggleFabricator;
+            @ToggleFabricator.performed -= instance.OnToggleFabricator;
+            @ToggleFabricator.canceled -= instance.OnToggleFabricator;
         }
 
         /// <summary>
@@ -942,11 +974,18 @@ public partial class @InputController: IInputActionCollection2, IDisposable
     public interface IHUDActions
     {
         /// <summary>
-        /// Method invoked when associated input action "Toggle Inventory" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+        /// Method invoked when associated input action "ToggleInventory" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
         /// </summary>
         /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
         /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
         /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
         void OnToggleInventory(InputAction.CallbackContext context);
+        /// <summary>
+        /// Method invoked when associated input action "ToggleFabricator" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+        /// </summary>
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+        void OnToggleFabricator(InputAction.CallbackContext context);
     }
 }

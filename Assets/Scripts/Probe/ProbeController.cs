@@ -59,7 +59,7 @@ public class ProbeController : MonoBehaviour
     ProbeAutopilot autopilot;
     ProbeScanner scanner;
     ProbeMiner miner;
-    ProbeInventory inventory;
+    InventoryController inventory;
 
     public event Action AutoPilotStarted;
     public event Action AutoPilotStopped;
@@ -76,7 +76,7 @@ public class ProbeController : MonoBehaviour
         autopilot = GetComponent<ProbeAutopilot>();
         scanner = GetComponent<ProbeScanner>();
         miner = GetComponent<ProbeMiner>();
-        inventory = GetComponent<ProbeInventory>();
+        inventory = GetComponent<InventoryController>();
 
         hud.SetProbe(this);
 

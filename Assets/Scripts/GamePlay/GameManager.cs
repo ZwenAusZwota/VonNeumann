@@ -138,8 +138,9 @@ public class GameManager : MonoBehaviour
         hud.SetSystemObjects(_systemObjects);
 
         /* 7) Sonde spawnen, Kamera & HUD verbinden */
-        //_probeTf = SpawnProbeNearPlanet(_planets[Random.Range(0, _planets.Count)]);
-        _probeTf = SpawnProbeNearObject(_belts[_belts.Count-1]);
+        _probeTf = SpawnProbeNearObject(_planets[3]);
+        //_probeTf = SpawnProbeNearObject(_planets[Random.Range(0, _planets.Count)]);
+        //_probeTf = SpawnProbeNearObject((ObjectDto)_systemObjects[_systemObjects.Count-1].Dto);
 
         cameraController.target = _probeTf;
         cameraController.ResetToDefaultView();
