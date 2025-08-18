@@ -413,6 +413,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   maxVolume: 500
+  panelName: InventoryPanel
   X_START: -100
   Y_START: 180
   X_SPACE_BETWEEN_ITEMS: 55
@@ -471,6 +472,7 @@ MonoBehaviour:
   currentProduct: {fileID: 0}
   timeRemaining: 0
   _queueDebugView: []
+  catalog: {fileID: 11400000, guid: d46e14e2d2217ff4fb9cd3213bf4a933, type: 2}
 --- !u!1 &2351539471288224827
 GameObject:
   m_ObjectHideFlags: 0

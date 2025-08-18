@@ -1,5 +1,6 @@
-﻿using UnityEngine;
+﻿using System;
 using System.Collections.Generic;
+using UnityEngine;
 
 [RequireComponent(typeof(InventoryController))]
 public class FabricatorController : MonoBehaviour
@@ -7,36 +8,66 @@ public class FabricatorController : MonoBehaviour
     [Header("Fabricator")]
     public ProductBlueprint.FabricatorType fabricatorType;
 
-    [Header("State (read-only)")]
+    [Header("Katalog (optional, ersetzt Templates)")]
+    [SerializeField] private FabricatorCatalog catalog;
+
+    // Queue & Laufzustand
     [SerializeField] private ProductBlueprint currentProduct;
     [SerializeField] private float timeRemaining;
-    [SerializeField] private List<ProductBlueprint> _queueDebugView = new(); // nur zur Inspektor-Ansicht
 
     private readonly Queue<ProductBlueprint> productionQueue = new();
-    private InventoryController inventory; // Muss am selben GameObject hängen!
+    private readonly List<ProductBlueprint> queueMirror = new(); // nur für Events/Snapshots
+    private InventoryController inventory;
 
-    /* ─────────────────────────────────────────────── Lifecycle ─────────────────────────────────────────────── */
+    // ───────────────────────── Events ─────────────────────────
+    /// <summary>Alle verfügbaren Templates (aus Katalog, gefiltert nach Fabrikator-Typ).</summary>
+    public event Action<IReadOnlyList<ProductBlueprint>> TemplatesUpdated;
+
+    /// <summary>Änderungen an der Fertigungs-Warteschlange (inkl. aktuellem Auftrag & Restzeit).</summary>
+    public event Action<ProductBlueprint, float, IReadOnlyList<ProductBlueprint>> QueueUpdated;
+
+    /// <summary>Wird ausgelöst, wenn ein Auftrag fertig ist (true=erfolgreich eingelagert / false=blockiert mangels Platz).</summary>
+    public event Action<ProductBlueprint, bool> ProductionCompleted;
+
+    /// <summary>Wird ausgelöst, wenn eine Produktion startet.</summary>
+    public event Action<ProductBlueprint> ProductionStarted;
+
+    /// <summary>Wird ausgelöst, wenn das Starten einer Produktion an Ressourcen scheitert.</summary>
+    public event Action<ProductBlueprint> ProductionWaitingForResources;
+
+    // Öffentliche Sicht auf Templates (Katalog kann fehlen)
+    public IReadOnlyList<ProductBlueprint> TemplatesOrCatalog
+    {
+        get
+        {
+            if (catalog == null) return Array.Empty<ProductBlueprint>();
+            return catalog.GetFor(fabricatorType);
+        }
+    }
+
 
     private void Awake()
     {
         inventory = GetComponent<InventoryController>();
         if (inventory == null)
         {
-            Debug.LogError($"[{nameof(FabricatorController)}] Kein {nameof(InventoryController)} am selben GameObject gefunden. " +
-                           $"Bitte einen {nameof(InventoryController)} auf '{gameObject.name}' hinzufügen.");
-            enabled = false; // Hart stoppen, weil ohne Inventar das Konzept nicht funktioniert
+            Debug.LogError($"[{nameof(FabricatorController)}] Kein {nameof(InventoryController)} am selben GameObject.");
+            enabled = false;
             return;
         }
+    }
+
+    private void Start()
+    {
+        // Beim Start sofort den aktuellen Template-Katalog publizieren
+        RaiseTemplatesUpdated();
+        RaiseQueueUpdated();
     }
 
 #if UNITY_EDITOR
     private void OnValidate()
     {
-        // Editor-Hilfe: sicherstellen, dass im Editor beim Hinzufügen alles korrekt ist
-        if (inventory == null)
-        {
-            inventory = GetComponent<InventoryController>();
-        }
+        if (inventory == null) inventory = GetComponent<InventoryController>();
     }
 #endif
 
@@ -44,6 +75,7 @@ public class FabricatorController : MonoBehaviour
     {
         if (!enabled) return;
 
+        // Laufende Produktion fortschreiben
         if (currentProduct == null && productionQueue.Count > 0)
         {
             TryStartNextProduct();
@@ -56,10 +88,15 @@ public class FabricatorController : MonoBehaviour
             {
                 TryCompleteProduct();
             }
+            else
+            {
+                // periodisch Fortschritt pushen (leichtes Throttling optional)
+                RaiseQueueUpdated();
+            }
         }
     }
 
-    /* ─────────────────────────────────────────────── Public API ─────────────────────────────────────────────── */
+    // ───────────────────────── Public API ─────────────────────────
 
     /// <summary>Fügt ein Produkt der Produktions-Queue hinzu (nur wenn dieser Fabrikator-Typ es bauen darf).</summary>
     public bool EnqueueProduct(ProductBlueprint product)
@@ -69,7 +106,6 @@ public class FabricatorController : MonoBehaviour
             Debug.LogWarning($"[{nameof(FabricatorController)}] EnqueueProduct: product == null");
             return false;
         }
-
         if (!product.allowedFabricators.Contains(fabricatorType))
         {
             Debug.LogWarning($"[{nameof(FabricatorController)}] {fabricatorType} darf '{product.displayName}' nicht produzieren.");
@@ -77,22 +113,9 @@ public class FabricatorController : MonoBehaviour
         }
 
         productionQueue.Enqueue(product);
-        SyncDebugList();
+        MirrorQueue();
+        RaiseQueueUpdated();
         return true;
-    }
-
-    /// <summary>Bricht die aktuelle Produktion ab und gibt zuvor reservierte Ressourcen optional zurück (wenn du das so willst).</summary>
-    public void AbortCurrent(bool refundResources = false)
-    {
-        if (currentProduct == null) return;
-
-        if (refundResources)
-        {
-            RefundCosts(currentProduct);
-        }
-
-        currentProduct = null;
-        timeRemaining = 0f;
     }
 
     /// <summary>Entfernt das erste Element aus der Queue (nicht die laufende Produktion).</summary>
@@ -100,14 +123,31 @@ public class FabricatorController : MonoBehaviour
     {
         if (productionQueue.Count == 0) return null;
         var p = productionQueue.Dequeue();
-        SyncDebugList();
+        MirrorQueue();
+        RaiseQueueUpdated();
         return p;
     }
 
-    /// <summary>Gibt eine Kopie der aktuellen Queue (nur lesend) zurück.</summary>
-    public IReadOnlyCollection<ProductBlueprint> GetQueueSnapshot() => _queueDebugView.AsReadOnly();
+    /// <summary>Bricht die aktuelle Produktion ab. Optional: Ressourcen zurückerstatten.</summary>
+    public void AbortCurrent(bool refundResources = false)
+    {
+        if (currentProduct == null) return;
 
-    /* ─────────────────────────────────────────────── Internals ─────────────────────────────────────────────── */
+        if (refundResources) inventory.RefundResources(currentProduct);
+
+        currentProduct = null;
+        timeRemaining = 0f;
+        RaiseQueueUpdated();
+    }
+
+    /// <summary>Erzwingt das erneute Senden der Events (z. B. wenn UI neu verbunden wird).</summary>
+    public void ForceRefreshUI()
+    {
+        RaiseTemplatesUpdated();
+        RaiseQueueUpdated();
+    }
+
+    // ───────────────────────── Internals ─────────────────────────
 
     private void TryStartNextProduct()
     {
@@ -115,60 +155,66 @@ public class FabricatorController : MonoBehaviour
 
         var next = productionQueue.Peek();
 
-        // 1) Ressourcenprüfung
+        // Ressourcenprüfung
         if (!inventory.HasResourcesFor(next))
         {
-            // Kein Start: Queue bleibt stehen bis Spieler Ressourcen bringt.
-            // Optional: Event/Tooltip/UI-Hinweis auslösen
+            ProductionWaitingForResources?.Invoke(next);
             return;
         }
 
-        // 2) Ressourcen abziehen (Reservierung)
+        // Ressourcen abziehen (Reservierung)
         if (!inventory.ConsumeResources(next))
         {
-            // Sollte wegen HasResourcesFor eigentlich nicht passieren – Fail-safe
             Debug.LogWarning($"[{nameof(FabricatorController)}] ConsumeResources fehlgeschlagen für '{next.displayName}'.");
             return;
         }
 
         currentProduct = next;
         timeRemaining = Mathf.Max(0f, next.buildTime);
+        ProductionStarted?.Invoke(currentProduct);
+        RaiseQueueUpdated();
     }
 
     private void TryCompleteProduct()
     {
         if (currentProduct == null) return;
 
-        // Hier legst du fest, was "ins Inventar legen" bedeutet.
-        // Variante A: Das Inventar verwaltet Produkte direkt (Stack/Slots auf Blueprint-Basis).
-        // Variante B: Es wird eine deploybare Instanz in der Welt benötigt (Prefab).
         bool added = inventory.TryAddProduct(currentProduct);
-
         if (added)
         {
+            // Erfolg: vom Queue-Kopf entfernen
             productionQueue.Dequeue();
             currentProduct = null;
             timeRemaining = 0f;
-            SyncDebugList();
+
+            MirrorQueue();
+            RaiseQueueUpdated();
+            ProductionCompleted?.Invoke(currentProduct, true);
         }
         else
         {
-            // Kein Platz: blockiert – Spieler muss händisch Platz schaffen oder deployen.
-            // currentProduct bleibt gesetzt, timeRemaining bleibt bei 0 => keine weitere Produktion.
-            Debug.Log($"[{nameof(FabricatorController)}] Kein Platz im Inventar – '{currentProduct.displayName}' blockiert die Queue.");
+            // Kein Platz: Job bleibt „fertig“ liegen und blockiert
+            timeRemaining = 0f; // bleibt 0 – blockiert weitere Starts
+            RaiseQueueUpdated();
+            ProductionCompleted?.Invoke(currentProduct, false);
         }
     }
 
-    private void RefundCosts(ProductBlueprint product)
+    private void MirrorQueue()
     {
-        if (product == null) return;
-        // Implementiere hier deine Rückerstattungslogik (ganz/teilweise, je nach Design).
-        // z. B.: inventory.RefundResources(product);
+        queueMirror.Clear();
+        foreach (var p in productionQueue) queueMirror.Add(p);
     }
 
-    private void SyncDebugList()
+    private void RaiseTemplatesUpdated()
     {
-        _queueDebugView.Clear();
-        _queueDebugView.AddRange(productionQueue);
+        TemplatesUpdated?.Invoke(TemplatesOrCatalog);
+    }
+
+    private void RaiseQueueUpdated()
+    {
+        TemplatesUpdated?.Invoke(TemplatesOrCatalog); // optional: Templates bei jedem Tick aktualisieren (falls Katalog dynamisch)
+        TemplatesUpdated?.Invoke(TemplatesOrCatalog);
+        QueueUpdated?.Invoke(currentProduct, timeRemaining, queueMirror);
     }
 }

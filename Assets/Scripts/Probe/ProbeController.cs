@@ -82,6 +82,8 @@ public class ProbeController : MonoBehaviour
 
         transform.localScale = Vector3.one * spawnScale;
         rb.maxAngularVelocity = maxDegPerSec * Mathf.Deg2Rad * 1.5f;
+
+        
     }
 
     void OnEnable()
@@ -136,11 +138,20 @@ public class ProbeController : MonoBehaviour
         autopilot.StatusUpdated -= (status) => StatusUpdated?.Invoke(status);
 
     }
-        #endregion
+    #endregion
 
-        /*====================================================================*/
-        #region Update – manual autopilot trigger & minus‑key
-        void Update()
+    private void Start()
+    {
+        FabricatorBindingService.Select(this.gameObject);
+    }
+
+    public void OnSelectedByPlayer()
+    {
+        FabricatorBindingService.Select(this.gameObject);
+    }
+    /*====================================================================*/
+    #region Update – manual autopilot trigger & minus‑key
+    void Update()
     {
         var kbd = Keyboard.current;
         if (kbd == null) return;

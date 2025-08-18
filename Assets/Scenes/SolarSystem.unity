@@ -1227,7 +1227,7 @@ GameObject:
   m_Component:
   - component: {fileID: 276389404}
   m_Layer: 5
-  m_Name: rightPanel
+  m_Name: QueuePanel
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2688,7 +2688,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1022509662}
   m_Layer: 5
-  m_Name: leftPanel
+  m_Name: BlueprintPanel
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -4823,6 +4823,7 @@ GameObject:
   - component: {fileID: 2028081109}
   - component: {fileID: 2028081111}
   - component: {fileID: 2028081110}
+  - component: {fileID: 2028081112}
   m_Layer: 5
   m_Name: FabricatorPanel
   m_TagString: Untagged
@@ -4890,6 +4891,22 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2028081108}
   m_CullTransparentMesh: 1
+--- !u!114 &2028081112
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2028081108}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2d5ed5b75b0864e43bed451ac4599e60, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  blueprintPanel: {fileID: 1022509662}
+  queuePanel: {fileID: 276389404}
+  templateButtonPrefab: {fileID: 3223686638653460804, guid: ee087c6f730b1ef4899a5dd6d4530704, type: 3}
+  queueItemPrefab: {fileID: 0}
 --- !u!1 &2049324728
 GameObject:
   m_ObjectHideFlags: 0
