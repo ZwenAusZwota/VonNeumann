@@ -13,6 +13,9 @@ public class ProductBlueprint : ScriptableObject
     public Sprite icon;
     public GameObject prefab;
     public float buildTime = 15f;
+    [TextAreaAttribute]
+    public string description; 
+    
 
     /* ---------- Hilfsstruktur ---------- */
     [System.Serializable]

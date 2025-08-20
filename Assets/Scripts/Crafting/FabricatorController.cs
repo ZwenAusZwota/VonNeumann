@@ -208,6 +208,7 @@ public class FabricatorController : MonoBehaviour
 
     private void RaiseTemplatesUpdated()
     {
+        ProductIndex.Register(TemplatesOrCatalog);
         TemplatesUpdated?.Invoke(TemplatesOrCatalog);
     }
 

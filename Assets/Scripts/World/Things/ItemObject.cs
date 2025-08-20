@@ -18,4 +18,6 @@ public abstract class ItemObject
     //[TextArea(15, 20)]
     public string description;
 
+    public Sprite icon;
+
 }

@@ -172,9 +172,13 @@ public class GameManager : MonoBehaviour
 
     public void ExitGame()
     {
-        // Hier können Sie Logik hinzufügen, um das Spiel zu beenden
-        //Debug.Log("Exiting game...");
+#if UNITY_EDITOR
+        // Wenn im Unity Editor: Play-Mode beenden
+        UnityEditor.EditorApplication.isPlaying = false;
+#else
+        // Wenn als Build ausgeführt: Anwendung beenden
         Application.Quit();
+#endif
     }
 
 }

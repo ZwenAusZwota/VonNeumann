@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿// Assets/Scripts/UI/FabricatorPanelController.cs
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
@@ -6,21 +7,26 @@ using TMPro;
 public class FabricatorPanelController : MonoBehaviour
 {
     [Header("UI Targets")]
-    [SerializeField] private Transform blueprintPanel;             // FabricatorPanel/leftPanel
-    [SerializeField] private Transform queuePanel;            // optional: eigener Container für die Queue
-    [SerializeField] private GameObject templateButtonPrefab; // Button mit Text/Icon
-    [SerializeField] private GameObject queueItemPrefab;      // Element mit Name + Slider
+    [SerializeField] private Transform blueprintPanel;
+    [SerializeField] private Transform descriptionPanel;
+    [SerializeField] private Transform queuePanel;
+    [SerializeField] private GameObject templateButtonPrefab;
+    [SerializeField] private GameObject queueItemPrefab;
 
-    // aktueller Fabricator
+    [Header("HUD Layout")]
+    public int X_START = 0;
+    public int Y_START = 0;
+    public int X_SPACE_BETWEEN_ITEMS = 55;
+    public int Y_SPACE_BETWEEN_ITEMS = 55;
+    public int NUMBER_OF_COLUMNS = 4;
+
     private FabricatorController boundFab;
 
-    // UI-Caches
     private readonly List<GameObject> templateItems = new();
     private readonly List<GameObject> queueItems = new();
 
     private void Awake()
     {
-        // Fallback-Suche, falls nicht gesetzt
         if (blueprintPanel == null)
         {
             var root = GameObject.Find("FabricatorPanel");
@@ -34,18 +40,15 @@ public class FabricatorPanelController : MonoBehaviour
 
     private void OnEnable()
     {
-        FabricatorBindingService.ActiveFabricatorChanged += OnActiveFabricatorChanged;
-        // Falls schon eine Auswahl existiert:
-        FabricatorBindingService.Reannounce();
+        HUDBindingService.ActiveFabricatorChanged += OnActiveFabricatorChanged;
+        HUDBindingService.Reannounce();
     }
 
-private void OnDisable()
+    private void OnDisable()
     {
-        FabricatorBindingService.ActiveFabricatorChanged -= OnActiveFabricatorChanged;
+        HUDBindingService.ActiveFabricatorChanged -= OnActiveFabricatorChanged;
         UnbindCurrent();
     }
-
-    // ───────────────────────── Binding ─────────────────────────
 
     private void OnActiveFabricatorChanged(FabricatorController fab)
     {
@@ -64,14 +67,12 @@ private void OnDisable()
             return;
         }
 
-        // Events anhängen
         boundFab.TemplatesUpdated += OnTemplatesUpdated;
         boundFab.QueueUpdated += OnQueueUpdated;
         boundFab.ProductionStarted += OnProductionStarted;
         boundFab.ProductionCompleted += OnProductionCompleted;
         boundFab.ProductionWaitingForResources += OnWaitingForResources;
 
-        // initialen Stand ziehen
         boundFab.ForceRefreshUI();
     }
 
@@ -79,7 +80,6 @@ private void OnDisable()
     {
         if (boundFab == null) return;
 
-        // Events lösen
         boundFab.TemplatesUpdated -= OnTemplatesUpdated;
         boundFab.QueueUpdated -= OnQueueUpdated;
         boundFab.ProductionStarted -= OnProductionStarted;
@@ -88,12 +88,9 @@ private void OnDisable()
 
         boundFab = null;
 
-        // UI leeren
         ClearTemplates();
         ClearQueue();
     }
-
-    // ───────────────────────── Event-Handler ─────────────────────────
 
     private void OnTemplatesUpdated(IReadOnlyList<ProductBlueprint> templates)
     {
@@ -101,10 +98,15 @@ private void OnDisable()
 
         ClearTemplates();
 
-        foreach (var bp in templates)
+        for (int i = 0; i < templates.Count; i++)
         {
+            var bp = templates[i];
+
             var go = Instantiate(templateButtonPrefab, blueprintPanel);
             templateItems.Add(go);
+
+            var rect = go.GetComponent<RectTransform>();
+            if (rect != null) rect.localPosition = GetPosition(i);
 
             var txt = go.GetComponentInChildren<TextMeshProUGUI>(true);
             if (txt) txt.text = bp.displayName;
@@ -113,15 +115,21 @@ private void OnDisable()
             if (img && bp.icon) img.sprite = bp.icon;
 
             var btn = go.GetComponent<Button>();
-            if (btn)
-            {
-                btn.onClick.AddListener(() =>
-                {
-                    // In Queue übernehmen (nur wenn noch gebunden)
-                    if (boundFab != null) boundFab.EnqueueProduct(bp);
-                });
-            }
+            if (btn) btn.onClick.AddListener(() => showDescription(bp));
         }
+    }
+
+    private void showDescription(ProductBlueprint bp)
+    {
+        if (descriptionPanel == null) return;
+
+        var t = descriptionPanel.Find("txtDescr");
+        if (t == null) return;
+
+        var txt = t.GetComponent<TextMeshProUGUI>();
+        if (txt == null) return;
+
+        txt.text = bp.description;
     }
 
     private void OnQueueUpdated(ProductBlueprint current, float timeRemaining, IReadOnlyList<ProductBlueprint> queue)
@@ -130,7 +138,6 @@ private void OnDisable()
 
         ClearQueue();
 
-        // 1) Aktueller Auftrag
         if (current != null)
         {
             var go = Instantiate(queueItemPrefab, queuePanel);
@@ -149,7 +156,6 @@ private void OnDisable()
             }
         }
 
-        // 2) Rest der Queue
         if (queue != null)
         {
             foreach (var bp in queue)
@@ -171,22 +177,10 @@ private void OnDisable()
         }
     }
 
-    private void OnProductionStarted(ProductBlueprint bp)
-    {
-        // Optional: FX/Audio/Toast
-    }
+    private void OnProductionStarted(ProductBlueprint bp) { }
+    private void OnProductionCompleted(ProductBlueprint bp, bool stored) { }
+    private void OnWaitingForResources(ProductBlueprint bp) { }
 
-    private void OnProductionCompleted(ProductBlueprint bp, bool stored)
-    {
-        // Optional: Hinweis "eingelagert" oder "kein Platz – blockiert"
-    }
-
-    private void OnWaitingForResources(ProductBlueprint bp)
-    {
-        // Optional: Hinweis "fehlende Ressourcen"
-    }
-
-    // ───────────────────────── UI Helpers ─────────────────────────
     private void ClearTemplates()
     {
         foreach (var go in templateItems) if (go) Destroy(go);
@@ -197,5 +191,14 @@ private void OnDisable()
     {
         foreach (var go in queueItems) if (go) Destroy(go);
         queueItems.Clear();
+    }
+
+    private Vector3 GetPosition(int i)
+    {
+        return new Vector3(
+            X_START + (X_SPACE_BETWEEN_ITEMS * (i % NUMBER_OF_COLUMNS)),
+            Y_START + (-(Y_SPACE_BETWEEN_ITEMS * (i / NUMBER_OF_COLUMNS))),
+            0f
+        );
     }
 }

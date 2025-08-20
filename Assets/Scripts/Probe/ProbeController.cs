@@ -29,6 +29,7 @@ public class ProbeController : MonoBehaviour
     /*─────────────────────────────── Misc */
     [Header("Spawn & HUD")]
     public float spawnScale = 0.05f;
+    public GameObject prefab;
 
     /*────────────────────────────────────────── Runtime fields */
     public Transform navTarget;
@@ -51,7 +52,7 @@ public class ProbeController : MonoBehaviour
     bool isBraking;              // true while emergency brake active
 
     /*────────────────────────────────────────── Cached references */
-    InputController controls;
+    InputController inputController;
     //ProbeControls controls;
     Rigidbody rb;
     PlanetRegistry registry;
@@ -66,13 +67,12 @@ public class ProbeController : MonoBehaviour
     public event Action<string> StatusUpdated; // for HUD updates
 
     /*====================================================================*/
-    #region Unity – initialisation
     void Awake()
     {
         rb = GetComponent<Rigidbody>();
         registry = PlanetRegistry.Instance;
         hud = FindFirstObjectByType<HUDControllerModular>();
-        controls = new InputController();
+        inputController = new InputController();
         autopilot = GetComponent<ProbeAutopilot>();
         scanner = GetComponent<ProbeScanner>();
         miner = GetComponent<ProbeMiner>();
@@ -88,8 +88,9 @@ public class ProbeController : MonoBehaviour
 
     void OnEnable()
     {
-        var map = controls.Probe;
-        map.Enable();
+
+        inputController.Probe.Enable();
+        var map = inputController.Probe;
 
         map.Rotate.performed += ctx => rotateInput = ctx.ReadValue<Vector2>();
         map.Rotate.canceled += _ => rotateInput = Vector2.zero;
@@ -103,9 +104,17 @@ public class ProbeController : MonoBehaviour
         /* legacy ‚reset‘ ⇒ bleibt erhalten */
         map.Reset.performed += _ => HandleMinusKey();
 
+        //map.Select.performed += ctx => OnSelectedByPlayer();
+        //map.Select.canceled += ctx => FabricatorBindingService.Deselect();
+        map.SpawnPrefab.performed += ctx => spawnPrefab();
+
         autopilot.AutoPilotStarted += () => AutoPilotStarted?.Invoke();
         autopilot.AutoPilotStopped += () => AutoPilotStopped?.Invoke();
         autopilot.StatusUpdated += (status) => StatusUpdated?.Invoke(status);
+
+
+        
+       
 
         scanner.ScanUpdated += (scanObjects) =>
         {
@@ -131,26 +140,30 @@ public class ProbeController : MonoBehaviour
 
     void OnDisable()
     {
-        controls.Disable();
+        inputController.Disable();
 
         autopilot.AutoPilotStarted -= () => AutoPilotStarted?.Invoke();
         autopilot.AutoPilotStopped -= () => AutoPilotStopped?.Invoke();
         autopilot.StatusUpdated -= (status) => StatusUpdated?.Invoke(status);
 
     }
-    #endregion
+
+    private void OnDestroy()
+    {
+        inputController?.Dispose();
+    }
 
     private void Start()
     {
-        FabricatorBindingService.Select(this.gameObject);
+        HUDBindingService.Select(this.gameObject);
     }
 
     public void OnSelectedByPlayer()
     {
-        FabricatorBindingService.Select(this.gameObject);
+        HUDBindingService.Select(this.gameObject);
     }
     /*====================================================================*/
-    #region Update – manual autopilot trigger & minus‑key
+
     void Update()
     {
         var kbd = Keyboard.current;
@@ -165,8 +178,33 @@ public class ProbeController : MonoBehaviour
         if ((kbd.numpadMinusKey != null && kbd.numpadMinusKey.wasPressedThisFrame) ||
             (kbd[Key.NumpadMinus] != null && kbd[Key.NumpadMinus].wasPressedThisFrame))
             HandleMinusKey();
+
     }
-    #endregion
+
+
+    void spawnPrefab()
+    {
+            // --- Prefab laden ---
+            string prefabName = "Miner_MK1"; // Pfad zum Prefab
+        //GameObject prefab = Resources.Load<GameObject>("Prefabs/"+prefabName);
+            if (prefab == null)
+            {
+                Debug.LogError($"Prefab '{prefabName}' konnte nicht geladen werden!");
+                return;
+            }
+
+            // --- Position bestimmen (z.B. 5 Einheiten vor der Sonde) ---
+            Vector3 spawnPos = transform.position + transform.forward * 5f;
+
+            // --- Objekt instanziieren ---
+            GameObject instance = Instantiate(prefab, spawnPos, Quaternion.identity);
+        instance.transform.localScale = new Vector3(0.1f, 0.1f, 0.1f);
+
+        // Sicherstellen, dass es kein Parent hat
+        instance.transform.SetParent(null);
+
+            Debug.Log($"Prefab '{prefabName}' gespawnt bei " + spawnPos);
+    }
 
     /*====================================================================*/
     #region FixedUpdate – master state machine

@@ -126,6 +126,15 @@ public partial class @InputController: IInputActionCollection2, IDisposable
                     ""processors"": """",
                     ""interactions"": """",
                     ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""SpawnPrefab"",
+                    ""type"": ""Button"",
+                    ""id"": ""c1a78517-a7f0-452d-812e-5371ab295853"",
+                    ""expectedControlType"": """",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
                 }
             ],
             ""bindings"": [
@@ -293,6 +302,17 @@ public partial class @InputController: IInputActionCollection2, IDisposable
                     ""action"": ""Reset"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""bed8d8ba-cd00-4259-b8f7-f3d163a86f32"",
+                    ""path"": ""<Keyboard>/period"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""SpawnPrefab"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
                 }
             ]
         },
@@ -405,6 +425,24 @@ public partial class @InputController: IInputActionCollection2, IDisposable
                     ""processors"": """",
                     ""interactions"": """",
                     ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""Escape"",
+                    ""type"": ""Button"",
+                    ""id"": ""130d92c9-10f6-4560-a8e2-b6efa75dfe82"",
+                    ""expectedControlType"": """",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""ToggleScanner"",
+                    ""type"": ""Button"",
+                    ""id"": ""635374ac-0b46-409b-9312-23f855a81228"",
+                    ""expectedControlType"": """",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
                 }
             ],
             ""bindings"": [
@@ -429,6 +467,28 @@ public partial class @InputController: IInputActionCollection2, IDisposable
                     ""action"": ""ToggleFabricator"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""1493a8eb-715e-419c-93a9-00ef2e236e74"",
+                    ""path"": ""<Keyboard>/escape"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""Escape"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""95223cbd-42a1-41f9-b847-d08f790015ae"",
+                    ""path"": ""<Keyboard>/s"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""ToggleScanner"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
                 }
             ]
         }
@@ -441,6 +501,7 @@ public partial class @InputController: IInputActionCollection2, IDisposable
         m_Probe_Roll = m_Probe.FindAction("Roll", throwIfNotFound: true);
         m_Probe_Thrust = m_Probe.FindAction("Thrust", throwIfNotFound: true);
         m_Probe_Reset = m_Probe.FindAction("Reset", throwIfNotFound: true);
+        m_Probe_SpawnPrefab = m_Probe.FindAction("SpawnPrefab", throwIfNotFound: true);
         // Camera
         m_Camera = asset.FindActionMap("Camera", throwIfNotFound: true);
         m_Camera_Look = m_Camera.FindAction("Look", throwIfNotFound: true);
@@ -451,6 +512,8 @@ public partial class @InputController: IInputActionCollection2, IDisposable
         m_HUD = asset.FindActionMap("HUD", throwIfNotFound: true);
         m_HUD_ToggleInventory = m_HUD.FindAction("ToggleInventory", throwIfNotFound: true);
         m_HUD_ToggleFabricator = m_HUD.FindAction("ToggleFabricator", throwIfNotFound: true);
+        m_HUD_Escape = m_HUD.FindAction("Escape", throwIfNotFound: true);
+        m_HUD_ToggleScanner = m_HUD.FindAction("ToggleScanner", throwIfNotFound: true);
     }
 
     ~@InputController()
@@ -537,6 +600,7 @@ public partial class @InputController: IInputActionCollection2, IDisposable
     private readonly InputAction m_Probe_Roll;
     private readonly InputAction m_Probe_Thrust;
     private readonly InputAction m_Probe_Reset;
+    private readonly InputAction m_Probe_SpawnPrefab;
     /// <summary>
     /// Provides access to input actions defined in input action map "Probe".
     /// </summary>
@@ -564,6 +628,10 @@ public partial class @InputController: IInputActionCollection2, IDisposable
         /// Provides access to the underlying input action "Probe/Reset".
         /// </summary>
         public InputAction @Reset => m_Wrapper.m_Probe_Reset;
+        /// <summary>
+        /// Provides access to the underlying input action "Probe/SpawnPrefab".
+        /// </summary>
+        public InputAction @SpawnPrefab => m_Wrapper.m_Probe_SpawnPrefab;
         /// <summary>
         /// Provides access to the underlying input action map instance.
         /// </summary>
@@ -602,6 +670,9 @@ public partial class @InputController: IInputActionCollection2, IDisposable
             @Reset.started += instance.OnReset;
             @Reset.performed += instance.OnReset;
             @Reset.canceled += instance.OnReset;
+            @SpawnPrefab.started += instance.OnSpawnPrefab;
+            @SpawnPrefab.performed += instance.OnSpawnPrefab;
+            @SpawnPrefab.canceled += instance.OnSpawnPrefab;
         }
 
         /// <summary>
@@ -625,6 +696,9 @@ public partial class @InputController: IInputActionCollection2, IDisposable
             @Reset.started -= instance.OnReset;
             @Reset.performed -= instance.OnReset;
             @Reset.canceled -= instance.OnReset;
+            @SpawnPrefab.started -= instance.OnSpawnPrefab;
+            @SpawnPrefab.performed -= instance.OnSpawnPrefab;
+            @SpawnPrefab.canceled -= instance.OnSpawnPrefab;
         }
 
         /// <summary>
@@ -793,6 +867,8 @@ public partial class @InputController: IInputActionCollection2, IDisposable
     private List<IHUDActions> m_HUDActionsCallbackInterfaces = new List<IHUDActions>();
     private readonly InputAction m_HUD_ToggleInventory;
     private readonly InputAction m_HUD_ToggleFabricator;
+    private readonly InputAction m_HUD_Escape;
+    private readonly InputAction m_HUD_ToggleScanner;
     /// <summary>
     /// Provides access to input actions defined in input action map "HUD".
     /// </summary>
@@ -812,6 +888,14 @@ public partial class @InputController: IInputActionCollection2, IDisposable
         /// Provides access to the underlying input action "HUD/ToggleFabricator".
         /// </summary>
         public InputAction @ToggleFabricator => m_Wrapper.m_HUD_ToggleFabricator;
+        /// <summary>
+        /// Provides access to the underlying input action "HUD/Escape".
+        /// </summary>
+        public InputAction @Escape => m_Wrapper.m_HUD_Escape;
+        /// <summary>
+        /// Provides access to the underlying input action "HUD/ToggleScanner".
+        /// </summary>
+        public InputAction @ToggleScanner => m_Wrapper.m_HUD_ToggleScanner;
         /// <summary>
         /// Provides access to the underlying input action map instance.
         /// </summary>
@@ -844,6 +928,12 @@ public partial class @InputController: IInputActionCollection2, IDisposable
             @ToggleFabricator.started += instance.OnToggleFabricator;
             @ToggleFabricator.performed += instance.OnToggleFabricator;
             @ToggleFabricator.canceled += instance.OnToggleFabricator;
+            @Escape.started += instance.OnEscape;
+            @Escape.performed += instance.OnEscape;
+            @Escape.canceled += instance.OnEscape;
+            @ToggleScanner.started += instance.OnToggleScanner;
+            @ToggleScanner.performed += instance.OnToggleScanner;
+            @ToggleScanner.canceled += instance.OnToggleScanner;
         }
 
         /// <summary>
@@ -861,6 +951,12 @@ public partial class @InputController: IInputActionCollection2, IDisposable
             @ToggleFabricator.started -= instance.OnToggleFabricator;
             @ToggleFabricator.performed -= instance.OnToggleFabricator;
             @ToggleFabricator.canceled -= instance.OnToggleFabricator;
+            @Escape.started -= instance.OnEscape;
+            @Escape.performed -= instance.OnEscape;
+            @Escape.canceled -= instance.OnEscape;
+            @ToggleScanner.started -= instance.OnToggleScanner;
+            @ToggleScanner.performed -= instance.OnToggleScanner;
+            @ToggleScanner.canceled -= instance.OnToggleScanner;
         }
 
         /// <summary>
@@ -929,6 +1025,13 @@ public partial class @InputController: IInputActionCollection2, IDisposable
         /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
         /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
         void OnReset(InputAction.CallbackContext context);
+        /// <summary>
+        /// Method invoked when associated input action "SpawnPrefab" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+        /// </summary>
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+        void OnSpawnPrefab(InputAction.CallbackContext context);
     }
     /// <summary>
     /// Interface to implement callback methods for all input action callbacks associated with input actions defined by "Camera" which allows adding and removing callbacks.
@@ -987,5 +1090,19 @@ public partial class @InputController: IInputActionCollection2, IDisposable
         /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
         /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
         void OnToggleFabricator(InputAction.CallbackContext context);
+        /// <summary>
+        /// Method invoked when associated input action "Escape" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+        /// </summary>
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+        void OnEscape(InputAction.CallbackContext context);
+        /// <summary>
+        /// Method invoked when associated input action "ToggleScanner" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+        /// </summary>
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+        void OnToggleScanner(InputAction.CallbackContext context);
     }
 }

@@ -385,6 +385,7 @@ MonoBehaviour:
   resetDecelDeg2: 360
   brakeAccel: 50
   spawnScale: 0.05
+  prefab: {fileID: 919132149155446097, guid: ef010ede9b7f57342a2a27a574ce20e2, type: 3}
   navTarget: {fileID: 0}
 --- !u!114 &5032952614951569857
 MonoBehaviour:
@@ -469,10 +470,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   fabricatorType: 0
+  catalog: {fileID: 11400000, guid: d46e14e2d2217ff4fb9cd3213bf4a933, type: 2}
   currentProduct: {fileID: 0}
   timeRemaining: 0
-  _queueDebugView: []
-  catalog: {fileID: 11400000, guid: d46e14e2d2217ff4fb9cd3213bf4a933, type: 2}
 --- !u!1 &2351539471288224827
 GameObject:
   m_ObjectHideFlags: 0

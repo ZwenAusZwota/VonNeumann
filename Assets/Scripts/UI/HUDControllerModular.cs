@@ -1,5 +1,6 @@
 // Assets/Scripts/UI/HUDControllerModular.cs
 using UnityEngine;
+using System;
 using System.Collections.Generic;
 using UnityEngine.InputSystem;
 
@@ -9,6 +10,8 @@ public class HUDControllerModular : MonoBehaviour
     [Header("HUD-Bereiche")]
     public GameObject inventoryPanel;
     public GameObject buildPanel;
+    public GameObject escapePanel;
+    public GameObject scanPanel;
 
     [Header("Server Connection")]
     public ServerConnector connector;
@@ -27,6 +30,8 @@ public class HUDControllerModular : MonoBehaviour
     private InputController inputController;
     private InputAction _toggleInventory;
 
+    public Action evtQuitGame;
+
     void Awake()
     {
         inputController = new InputController();
@@ -37,6 +42,8 @@ public class HUDControllerModular : MonoBehaviour
         inputController.HUD.Enable();
         inputController.HUD.ToggleInventory.performed += ctx => inventoryPanel.SetActive(!inventoryPanel.activeSelf);
         inputController.HUD.ToggleFabricator.performed += ctx => buildPanel.SetActive(!buildPanel.activeSelf);
+        inputController.HUD.Escape.performed += ctx => escapePanel.SetActive(!escapePanel.activeSelf);
+        inputController.HUD.ToggleScanner.performed += ctx => scanPanel.SetActive(!scanPanel.activeSelf);
     }
 
     private void OnDestroy()
@@ -57,6 +64,8 @@ public class HUDControllerModular : MonoBehaviour
 
         inventoryPanel.gameObject.SetActive(false); // Hide inventory panel by default
         buildPanel.gameObject.SetActive(false); // Hide build panel by default
+        escapePanel.gameObject.SetActive(false);
+        scanPanel.gameObject.SetActive(false);
     }
     
     void SetupEventConnections()
@@ -97,11 +106,17 @@ public class HUDControllerModular : MonoBehaviour
         statusModule?.SetPlayer(payload.player);
     }
 
+    public void OnExitClicked()
+    {
+        evtQuitGame?.Invoke();
+    }
+
     //public void SetProbe(Rigidbody rb)
     public void SetProbe(ProbeController _probe)
     {
         probe = _probe;
         navigationModule.SetProbe(probe);
+        HUDBindingService.Select(probe != null ? probe.gameObject : null); // <— hinzufügen
     }
 
     public void UpdateProbePosition(Vector3 position, float speed)
