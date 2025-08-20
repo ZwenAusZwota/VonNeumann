@@ -4883,11 +4883,6 @@ MonoBehaviour:
   listItemPrefabFar: {fileID: 8955938793014825670, guid: 96edf159d41278649ae5c4653af0286f, type: 3}
   txtNearScan: {fileID: 473796637}
   txtFarScan: {fileID: 1719561294}
-  X_START: 0
-  Y_START: 0
-  X_SPACE_BETWEEN_ITEMS: 55
-  Y_SPACE_BETWEEN_ITEMS: 55
-  NUMBER_OF_COLUMNS: 4
 --- !u!1 &1473410036
 GameObject:
   m_ObjectHideFlags: 0
@@ -5074,12 +5069,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_Padding:
-    m_Left: 0
-    m_Right: 0
-    m_Top: 0
-    m_Bottom: 0
+    m_Left: 5
+    m_Right: 5
+    m_Top: 5
+    m_Bottom: 5
   m_ChildAlignment: 0
-  m_Spacing: 6
+  m_Spacing: 2
   m_ChildForceExpandWidth: 1
   m_ChildForceExpandHeight: 0
   m_ChildControlWidth: 0
@@ -5964,12 +5959,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_Padding:
-    m_Left: 0
-    m_Right: 0
-    m_Top: 0
-    m_Bottom: 0
+    m_Left: 5
+    m_Right: 5
+    m_Top: 5
+    m_Bottom: 5
   m_ChildAlignment: 0
-  m_Spacing: 6
+  m_Spacing: 2
   m_ChildForceExpandWidth: 1
   m_ChildForceExpandHeight: 0
   m_ChildControlWidth: 0

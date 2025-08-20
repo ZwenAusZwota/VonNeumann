@@ -71,20 +71,30 @@ public static class HUDBindingService
     /* ───────────── Triggers vom HUD (Buttons) ───────────── */
     public static void RequestNearScan()
     {
-        var sc = CurrentObject ?
-            (CurrentObject.GetComponent<ScannerController>()
-             ?? CurrentObject.GetComponentInChildren<ScannerController>(true))
-            : null;
-        if (sc) sc.PerformNearScan();
+        if (!CurrentObject) return;
+
+        // 1) Neuer Near-Scanner?
+        var near = CurrentObject.GetComponent<NearScannerController>()
+               ?? CurrentObject.GetComponentInChildren<NearScannerController>(true);
+        if (near) { near.PerformScan(); return; }
+
+        //// 2) (Optional) Legacy: alter ScannerController mit PerformNearScan()
+        //var legacy = CurrentObject.GetComponent<ScannerController>()
+        //         ?? CurrentObject.GetComponentInChildren<ScannerController>(true);
+        //if (legacy) legacy.PerformNearScan(); // Legacy-Pfad, falls vorhanden. 
     }
 
     public static void RequestFarScan()
     {
-        var sc = CurrentObject ?
-            (CurrentObject.GetComponent<ScannerController>()
-             ?? CurrentObject.GetComponentInChildren<ScannerController>(true))
-            : null;
-        if (sc) sc.PerformFarScan();
+        if (!CurrentObject) return;
+
+        var far = CurrentObject.GetComponent<FarScannerController>()
+              ?? CurrentObject.GetComponentInChildren<FarScannerController>(true);
+        if (far) { far.PerformScan(); return; }
+
+        //var legacy = CurrentObject.GetComponent<ScannerController>()
+        //         ?? CurrentObject.GetComponentInChildren<ScannerController>(true);
+        //if (legacy) legacy.PerformFarScan(); // Legacy-Pfad, falls vorhanden. 
     }
 
     /* ───────────── Zielauswahl aus dem HUD ───────────── */

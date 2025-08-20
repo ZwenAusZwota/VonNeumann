@@ -238,7 +238,8 @@ GameObject:
   - component: {fileID: 1903883377686821233}
   - component: {fileID: 7440666688485284584}
   - component: {fileID: 8489181273570653767}
-  - component: {fileID: 3417522150616293473}
+  - component: {fileID: 1018420495907089618}
+  - component: {fileID: 2091974327098159234}
   m_Layer: 0
   m_Name: Probe
   m_TagString: Player
@@ -452,7 +453,7 @@ MonoBehaviour:
   catalog: {fileID: 11400000, guid: d46e14e2d2217ff4fb9cd3213bf4a933, type: 2}
   currentProduct: {fileID: 0}
   timeRemaining: 0
---- !u!114 &3417522150616293473
+--- !u!114 &1018420495907089618
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -461,18 +462,38 @@ MonoBehaviour:
   m_GameObject: {fileID: 1336562065826069938}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 4924adfef748bd641ba3e3a2d2f8c543, type: 3}
+  m_Script: {fileID: 11500000, guid: a4cd3971adb889043ba7c548d24412fd, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  nearScanRadiusKm: 1000000
-  farScanRadiusKm: 75000000
+  scanRadiusAU: 0.2
   scanLayers:
     serializedVersion: 2
     m_Bits: 4294967295
   ignoreTags:
-  - Asteroid
-  - Miner
   - Player
+  defaultNearAU: 0.2
+--- !u!114 &2091974327098159234
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1336562065826069938}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 02ecbbd3127ddb84094b9e86def7599e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  scanRadiusAU: 100
+  scanLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  ignoreTags:
+  - Player
+  - Asteroid
+  defaultFarAU: 100
+  simulateLightDelay: 1
+  signalSpeedKmPerSec: 299792.47
 --- !u!1 &2351539471288224827
 GameObject:
   m_ObjectHideFlags: 0
