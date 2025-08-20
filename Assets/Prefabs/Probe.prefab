@@ -237,8 +237,8 @@ GameObject:
   - component: {fileID: 5032952614951569857}
   - component: {fileID: 1903883377686821233}
   - component: {fileID: 7440666688485284584}
-  - component: {fileID: 6123169082172775244}
   - component: {fileID: 8489181273570653767}
+  - component: {fileID: 3417522150616293473}
   m_Layer: 0
   m_Name: Probe
   m_TagString: Player
@@ -414,13 +414,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   maxVolume: 500
-  panelName: InventoryPanel
-  X_START: -100
-  Y_START: 180
-  X_SPACE_BETWEEN_ITEMS: 55
-  Y_SPACE_BETWEEN_ITEMS: 55
-  NUMBER_OF_COLUMNS: 5
-  itemPrefab: {fileID: 6847562688498794263, guid: 3e64c1b74a04e2b46846fdf44bc869f1, type: 3}
 --- !u!114 &7440666688485284584
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -443,20 +436,6 @@ MonoBehaviour:
   asteroidApproachDistance: 2
   asteroidStopTolerance: 0.5
   beltAimRecalcEvery: 10
---- !u!114 &6123169082172775244
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1336562065826069938}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 382b0252d8dc4f94b8e472fa01effe2a, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  scanRadiusKm: 75000000
-  mainRangeKm: 1000000
 --- !u!114 &8489181273570653767
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -473,6 +452,27 @@ MonoBehaviour:
   catalog: {fileID: 11400000, guid: d46e14e2d2217ff4fb9cd3213bf4a933, type: 2}
   currentProduct: {fileID: 0}
   timeRemaining: 0
+--- !u!114 &3417522150616293473
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1336562065826069938}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4924adfef748bd641ba3e3a2d2f8c543, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  nearScanRadiusKm: 1000000
+  farScanRadiusKm: 75000000
+  scanLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  ignoreTags:
+  - Asteroid
+  - Miner
+  - Player
 --- !u!1 &2351539471288224827
 GameObject:
   m_ObjectHideFlags: 0

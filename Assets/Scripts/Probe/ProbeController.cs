@@ -116,25 +116,25 @@ public class ProbeController : MonoBehaviour
         
        
 
-        scanner.ScanUpdated += (scanObjects) =>
+        /*scanner.ScanUpdated += (scanObjects) =>
         {
             if (hud != null)
                 hud.UpdateNearScan(scanObjects);
-        };
+        };*/
 
         miner.StatusUpdated += () => 
         {
             if (hud != null) {
-                hud.UpdateMiningStatus(miner.StatusText);
+                //hud.UpdateMiningStatus(miner.StatusText);
                 //hud.UpdateCargoStatus(inventory.Cargo);
             }
         };
 
-        inventory.CargoChanged += (used, max) =>
+        /*inventory.CargoChanged += (used, max) =>
         {
             if (hud != null)
                 hud.UpdateCargoStatus(used, max);
-        };
+        };*/
 
     }
 

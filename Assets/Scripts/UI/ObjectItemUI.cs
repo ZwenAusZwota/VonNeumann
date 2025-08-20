@@ -1,4 +1,4 @@
-// Assets/Scripts/UI/PlanetItemUI.cs
+// Assets/Scripts/UI/ObjectItemUI.cs
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
@@ -8,41 +8,65 @@ public class ObjectItemUI : MonoBehaviour,
     IPointerEnterHandler, IPointerExitHandler, IPointerClickHandler
 {
     [Header("Refs")]
-    public Image background;
-    public TextMeshProUGUI label;
+    [SerializeField] private Image background;
+    [SerializeField] private TextMeshProUGUI label;
 
     [Header("Colors")]
     public Color normalColor = new(0.12f, 0.55f, 1f, 0.35f);
     public Color hoverColor = new(0.12f, 0.55f, 1f, 0.55f);
     public Color selectedColor = new(1f, 1f, 1f, 0.55f);
 
-    public SystemObject sObject { get; private set; }
+    public SystemObject SObject { get; private set; }
     public bool Selected { get; private set; }
 
-    ObjectListManager owner;
+    // Einfache „radio selection“ pro Liste:
+    private static ObjectItemUI _currentlySelectedInListGroup;
 
-    public void Init(ObjectListManager owner, SystemObject so)
+    public void Init(SystemObject so)
     {
-        this.owner = owner;
-        sObject = so;
-        label.text = so.DisplayName;
-        if(so.GameObject.CompareTag("Asteroid"))
+        SObject = so;
+
+        if (label)
         {
-            var material = so.GameObject.GetComponent<MineableAsteroid>().materialId;
-            label.text = $"A - {material}";
+            // Falls vorhanden: Asteroid mit Material hübsch benennen
+            if (so.GameObject && so.GameObject.CompareTag("Asteroid"))
+            {
+                var mat = so.GameObject.GetComponent<MineableAsteroid>()?.materialId;
+                label.text = string.IsNullOrWhiteSpace(mat) ? (so.DisplayName ?? so.Name) : $"Asteroid – {mat}";
+            }
+            else
+            {
+                label.text = string.IsNullOrWhiteSpace(so.DisplayName) ? so.Name : so.DisplayName;
+            }
         }
-        
-        background.color = normalColor;
+
+        if (background) background.color = normalColor;
+        Selected = false;
     }
 
     public void SetSelected(bool sel)
     {
         Selected = sel;
-        background.color = sel ? selectedColor : normalColor;
+        if (background) background.color = sel ? selectedColor : normalColor;
     }
 
-    /* ---------- Events ---------- */
-    public void OnPointerEnter(PointerEventData _) { if (!Selected) background.color = hoverColor; }
-    public void OnPointerExit(PointerEventData _) { if (!Selected) background.color = normalColor; }
-    public void OnPointerClick(PointerEventData _) { owner.SelectItem(this); }
+    /* ---------- Pointer Events ---------- */
+    public void OnPointerEnter(PointerEventData _) { if (!Selected && background) background.color = hoverColor; }
+    public void OnPointerExit(PointerEventData _) { if (!Selected && background) background.color = normalColor; }
+
+    public void OnPointerClick(PointerEventData _)
+    {
+        // „Radio“-Auswahl in dieser Liste
+        if (_currentlySelectedInListGroup && _currentlySelectedInListGroup != this)
+            _currentlySelectedInListGroup.SetSelected(false);
+
+        _currentlySelectedInListGroup = this;
+        SetSelected(true);
+
+        // Ziel an HUDBindingService melden -> Autopilot reagiert via Subscription
+        if (SObject != null && SObject.GameObject)
+        {
+            HUDBindingService.SelectNavTarget(SObject.GameObject.transform);
+        }
+    }
 }

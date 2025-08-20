@@ -22,9 +22,7 @@ public class HUDControllerModular : MonoBehaviour
     // Module references (automatically found)
     private NavigationModule navigationModule;
     private StatusModule statusModule;
-    private ScanningModule scanningModule;
     private MiningModule miningModule;
-    private ObjectSelectionModule objectSelectionModule;
 
     // Player Input
     private InputController inputController;
@@ -56,9 +54,7 @@ public class HUDControllerModular : MonoBehaviour
         // Get module references
         navigationModule = UIModuleManager.Instance.GetModule<NavigationModule>();
         statusModule = UIModuleManager.Instance.GetModule<StatusModule>();
-        scanningModule = UIModuleManager.Instance.GetModule<ScanningModule>();
         miningModule = UIModuleManager.Instance.GetModule<MiningModule>();
-        objectSelectionModule = UIModuleManager.Instance.GetModule<ObjectSelectionModule>();
         
         SetupEventConnections();
 
@@ -76,20 +72,9 @@ public class HUDControllerModular : MonoBehaviour
             connector.OnMineResult += HandleMineResult;
         }
         
-        // Connect module events
-        if (scanningModule != null)
-        {
-            scanningModule.OnNearScanRequested += PerformNearScan;
-        }
-        
         if (miningModule != null)
         {
             miningModule.OnMiningRequested += PerformMining;
-        }
-        
-        if (objectSelectionModule != null)
-        {
-            objectSelectionModule.OnObjectSelected += HandleObjectSelection;
         }
 
         // Set up probe reference
@@ -126,13 +111,12 @@ public class HUDControllerModular : MonoBehaviour
 
     public void SetSystemObjects(List<SystemObject> objects)
     {
-        objectSelectionModule?.UpdateSystemObjects(objects);
     }
     
     public void UpdateNearScan(List<SystemObject> objects)
     {
         //objectSelectionModule?.UpdateNearbyObjects(objects);
-        scanningModule?.UpdateScanResults(objects);
+        //scanningModule?.UpdateScanResults(objects);
     }
     
     void HandleObjectSelection(SystemObject selectedObject)
@@ -148,15 +132,15 @@ public class HUDControllerModular : MonoBehaviour
     
     public void PerformNearScan()
     {
-        // Implement near scan logic
-        var scannController = probe?.GetComponent<ProbeScanner>();
-        if(scannController != null)
-        {
-            scannController.PerformNearScan();
-            scanningModule?.UpdateScanStatus("Scanning...");
-        }
+        //// Implement near scan logic
+        //var scannController = probe?.GetComponent<ProbeScanner>();
+        //if(scannController != null)
+        //{
+        //    scannController.PerformNearScan();
+        //    scanningModule?.UpdateScanStatus("Scanning...");
+        //}
         
-        //scanningModule?.StartScanCooldown(5f); // Example cooldown
+        ////scanningModule?.StartScanCooldown(5f); // Example cooldown
     }
     
     public void PerformMining()

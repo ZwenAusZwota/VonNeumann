@@ -91,13 +91,32 @@ public class ProbeAutopilot : MonoBehaviour
     float OrbitDegPerSec => 360f / Mathf.Max(orbitPeriod, 1e-4f);
 
     /*====================================================================*/
-    #region Unity – init
+
     void Awake()
     {
         rb = GetComponent<Rigidbody>();
         registry = PlanetRegistry.Instance;
     }
-    #endregion
+
+    void OnEnable()
+    {
+        HUDBindingService.NavTargetSelected += OnHudNavTargetSelected; // neu
+    }
+
+    void OnDisable()
+    {
+        HUDBindingService.NavTargetSelected -= OnHudNavTargetSelected; // neu
+    }
+
+    private void OnHudNavTargetSelected(GameObject contextObject, Transform target)
+    {
+        // Nur reagieren, wenn diese Sonde im HUD gebunden/aktiv ist
+        if (contextObject == this.gameObject && target != null)
+        {
+            SetNavTarget(target); // nur Ziel setzen; StartAutopilot bleibt weiter in deiner Kontrolle
+            StatusUpdated?.Invoke($"Nav target set to {target.name}");
+        }
+    }
 
     /*====================================================================*/
     #region FixedUpdate – State-Machine
