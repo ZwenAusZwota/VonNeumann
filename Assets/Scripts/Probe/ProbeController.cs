@@ -3,13 +3,6 @@ using System;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-/* -----------------------------------------------------------------------------
- * ProbeController – v2.4.0 (2025‑08‑04)
- * ---------------------------------------------------------------------------
- * + NEW: Autopilot abort keeps translational velocity (momentum‑handover).
- * + NEW: Emergency brake (Numpad [-]) – high deceleration until stand‑still.
- * ---------------------------------------------------------------------------*/
-
 [RequireComponent(typeof(Rigidbody))]
 public class ProbeController : MonoBehaviour
 {
@@ -46,17 +39,15 @@ public class ProbeController : MonoBehaviour
 
     public float CurrentSpeed { get; private set; }
     public int Distance { get; private set; }
-    private float _lastDistanceRaw = -1f;        // for speed calculation
+    private float _lastDistanceRaw = -1f;
 
-    float radialSpeed;            // Units / s (for spiral‑approach)
-    bool isBraking;              // true while emergency brake active
+    float radialSpeed;
+    bool isBraking;
 
     /*────────────────────────────────────────── Cached references */
     InputController inputController;
-    //ProbeControls controls;
     Rigidbody rb;
     PlanetRegistry registry;
-    HUDControllerModular hud;
     ProbeAutopilot autopilot;
     ProbeScanner scanner;
     ProbeMiner miner;
@@ -64,31 +55,33 @@ public class ProbeController : MonoBehaviour
 
     public event Action AutoPilotStarted;
     public event Action AutoPilotStopped;
-    public event Action<string> StatusUpdated; // for HUD updates
+    public event Action<string> StatusUpdated;
 
-    /*====================================================================*/
     void Awake()
     {
         rb = GetComponent<Rigidbody>();
         registry = PlanetRegistry.Instance;
-        hud = FindFirstObjectByType<HUDControllerModular>();
         inputController = new InputController();
         autopilot = GetComponent<ProbeAutopilot>();
         scanner = GetComponent<ProbeScanner>();
         miner = GetComponent<ProbeMiner>();
         inventory = GetComponent<InventoryController>();
 
-        hud.SetProbe(this);
-
         transform.localScale = Vector3.one * spawnScale;
         rb.maxAngularVelocity = maxDegPerSec * Mathf.Deg2Rad * 1.5f;
 
-        
+        var hubInfo = new HubRegistry.HubInfo
+        {
+            Id = "probe01",
+            DisplayName = "Bob 1",
+            Kind = "Probe",
+            LastKnownPos = transform.position
+        };
+        HubRegistry.Instance.RegisterOrUpdate(hubInfo);
     }
 
     void OnEnable()
     {
-
         inputController.Probe.Enable();
         var map = inputController.Probe;
 
@@ -101,109 +94,69 @@ public class ProbeController : MonoBehaviour
         map.Thrust.performed += ctx => thrustInput = ctx.ReadValue<float>();
         map.Thrust.canceled += _ => thrustInput = 0f;
 
-        /* legacy ‚reset‘ ⇒ bleibt erhalten */
         map.Reset.performed += _ => HandleMinusKey();
+        map.SpawnPrefab.performed += _ => spawnPrefab();
 
-        //map.Select.performed += ctx => OnSelectedByPlayer();
-        //map.Select.canceled += ctx => FabricatorBindingService.Deselect();
-        map.SpawnPrefab.performed += ctx => spawnPrefab();
+        // saubere Event-Handler (damit Unsubscribe funktioniert)
+        autopilot.AutoPilotStarted += HandleAutoPilotStarted;
+        autopilot.AutoPilotStopped += HandleAutoPilotStopped;
+        autopilot.StatusUpdated += HandleStatusUpdated;
 
-        autopilot.AutoPilotStarted += () => AutoPilotStarted?.Invoke();
-        autopilot.AutoPilotStopped += () => AutoPilotStopped?.Invoke();
-        autopilot.StatusUpdated += (status) => StatusUpdated?.Invoke(status);
-
-
-        
-       
-
-        /*scanner.ScanUpdated += (scanObjects) =>
-        {
-            if (hud != null)
-                hud.UpdateNearScan(scanObjects);
-        };*/
-
-        miner.StatusUpdated += () => 
-        {
-            if (hud != null) {
-                //hud.UpdateMiningStatus(miner.StatusText);
-                //hud.UpdateCargoStatus(inventory.Cargo);
-            }
-        };
-
-        /*inventory.CargoChanged += (used, max) =>
-        {
-            if (hud != null)
-                hud.UpdateCargoStatus(used, max);
-        };*/
-
+        miner.StatusUpdated += HandleMinerStatusUpdated;
     }
 
     void OnDisable()
     {
         inputController.Disable();
 
-        autopilot.AutoPilotStarted -= () => AutoPilotStarted?.Invoke();
-        autopilot.AutoPilotStopped -= () => AutoPilotStopped?.Invoke();
-        autopilot.StatusUpdated -= (status) => StatusUpdated?.Invoke(status);
+        autopilot.AutoPilotStarted -= HandleAutoPilotStarted;
+        autopilot.AutoPilotStopped -= HandleAutoPilotStopped;
+        autopilot.StatusUpdated -= HandleStatusUpdated;
 
+        miner.StatusUpdated -= HandleMinerStatusUpdated;
     }
 
-    private void OnDestroy()
-    {
-        inputController?.Dispose();
-    }
+    private void OnDestroy() => inputController?.Dispose();
 
     private void Start()
     {
-        HUDBindingService.Select(this.gameObject);
+        // ✨ Fix: HUDBindingService ist instanzbasiert
+        HUDBindingService.I?.Select(this.gameObject);
     }
 
     public void OnSelectedByPlayer()
     {
-        HUDBindingService.Select(this.gameObject);
+        // ✨ Fix: HUDBindingService ist instanzbasiert
+        HUDBindingService.I?.Select(this.gameObject);
     }
-    /*====================================================================*/
 
     void Update()
     {
         var kbd = Keyboard.current;
         if (kbd == null) return;
 
-        /* Autopilot start via [+] */
         if ((kbd.numpadPlusKey != null && kbd.numpadPlusKey.wasPressedThisFrame) ||
             (kbd[Key.NumpadPlus] != null && kbd[Key.NumpadPlus].wasPressedThisFrame))
             StartAutopilot();
 
-        /* Emergency brake / Autopilot abort via [–] */
         if ((kbd.numpadMinusKey != null && kbd.numpadMinusKey.wasPressedThisFrame) ||
             (kbd[Key.NumpadMinus] != null && kbd[Key.NumpadMinus].wasPressedThisFrame))
             HandleMinusKey();
-
     }
-
 
     void spawnPrefab()
     {
-            // --- Prefab laden ---
-            string prefabName = "Miner_MK1"; // Pfad zum Prefab
-        //GameObject prefab = Resources.Load<GameObject>("Prefabs/"+prefabName);
-            if (prefab == null)
-            {
-                Debug.LogError($"Prefab '{prefabName}' konnte nicht geladen werden!");
-                return;
-            }
-
-            // --- Position bestimmen (z.B. 5 Einheiten vor der Sonde) ---
-            Vector3 spawnPos = transform.position + transform.forward * 5f;
-
-            // --- Objekt instanziieren ---
-            GameObject instance = Instantiate(prefab, spawnPos, Quaternion.identity);
+        string prefabName = "Miner_MK1";
+        if (prefab == null)
+        {
+            Debug.LogError($"Prefab '{prefabName}' konnte nicht geladen werden!");
+            return;
+        }
+        Vector3 spawnPos = transform.position + transform.forward * 5f;
+        GameObject instance = Instantiate(prefab, spawnPos, Quaternion.identity);
         instance.transform.localScale = new Vector3(0.1f, 0.1f, 0.1f);
-
-        // Sicherstellen, dass es kein Parent hat
         instance.transform.SetParent(null);
-
-            Debug.Log($"Prefab '{prefabName}' gespawnt bei " + spawnPos);
+        Debug.Log($"Prefab '{prefabName}' gespawnt bei {spawnPos}");
     }
 
     /*====================================================================*/
@@ -218,24 +171,14 @@ public class ProbeController : MonoBehaviour
             return;
         }
 
-        // 1) Rohdistanz als float (ohne Runden)
         float distanceRaw = Vector3.Distance(navTarget.position, transform.position);
-
-        // 2) Für HUD/Anzeige weiterhin gerundet (optional)
         Distance = Mathf.RoundToInt(distanceRaw);
 
         float delta = Mathf.Abs(distanceRaw - _lastDistanceRaw);
-
-        // 3) Geschwindigkeit nur berechnen, wenn sich die Distanz merklich ändert
         if (delta > 0f)
-        {
-             CurrentSpeed = delta / Time.fixedDeltaTime; // Vorzeichen gibt Richtung an (annähern/entfernen)
-        }
+            CurrentSpeed = delta / Time.fixedDeltaTime;
         else
-        {
-            // Erste Initialisierung – noch keine Geschwindigkeit ableitbar
             CurrentSpeed = 0f;
-        }
 
         _lastDistanceRaw = distanceRaw;
     }
@@ -256,14 +199,12 @@ public class ProbeController : MonoBehaviour
     #region Manual flight & emergency brake
     void ManualFlightTick()
     {
-        /* --- Emergency brake overrides manual input --- */
         if (isBraking)
         {
             ApplyEmergencyBrake();
-            return;                       // keine weitere Steuerung während Bremse
+            return;
         }
 
-        /* --- regulärer manueller Flug --- */
         if (thrustInput > 0f)
             rb.AddForce(transform.forward * thrustPower * thrustInput, ForceMode.Acceleration);
 
@@ -291,26 +232,26 @@ public class ProbeController : MonoBehaviour
 
     void ApplyEmergencyBrake()
     {
+        // ✨ Fix: Rigidbody.velocity statt linearVelocity
         Vector3 v = rb.linearVelocity;
         if (v.sqrMagnitude < 0.01f)
         {
             rb.linearVelocity = Vector3.zero;
             isBraking = false;
-            isDampingReset = true;    // rotatorisch auslaufen lassen
+            isDampingReset = true;
             return;
         }
-
         rb.AddForce(-v.normalized * brakeAccel, ForceMode.Acceleration);
     }
     #endregion
 
-   
     #region Helpers & reset / abort
-
     void ResetProbe()
     {
         rb.isKinematic = false;
-        rb.linearVelocity = rb.angularVelocity = Vector3.zero;
+        // ✨ Fix: Rigidbody.velocity statt linearVelocity
+        rb.linearVelocity = Vector3.zero;
+        rb.angularVelocity = Vector3.zero;
 
         isDampingReset = true;
 
@@ -329,7 +270,16 @@ public class ProbeController : MonoBehaviour
             return body.lossyScale.x * col.radius;
         if (body.TryGetComponent<Renderer>(out var rend))
             return rend.bounds.extents.magnitude;
-        return body.lossyScale.x * 0.5f;   // fallback
+        return body.lossyScale.x * 0.5f;
     }
     #endregion
+
+    // ───────────────────── Event-Handler (benannt) ─────────────────────
+    void HandleAutoPilotStarted() => AutoPilotStarted?.Invoke();
+    void HandleAutoPilotStopped() => AutoPilotStopped?.Invoke();
+    void HandleStatusUpdated(string status) => StatusUpdated?.Invoke(status);
+    void HandleMinerStatusUpdated()
+    {
+        // Platzhalter für spätere HUD-Updates (Cargo etc.)
+    }
 }

@@ -31,7 +31,7 @@ public abstract class BaseScannerController : MonoBehaviour
         var results = new List<SystemObject>(128);
         var seen = new HashSet<int>();
 
-        /* ---------- 1) Collider-basierte Treffer (Planeten, Asteroiden, Stationen …) ---------- */
+        /* ---------- 1) Collider-basierte Treffer ---------- */
         var hits = Physics.OverlapSphere(origin, radiusUnits, scanLayers);
         Array.Sort(hits, (a, b) =>
         {
@@ -60,19 +60,16 @@ public abstract class BaseScannerController : MonoBehaviour
             });
         }
 
-        /* ---------- 2) Gürtel ohne Collider: geometrisch prüfen & hinzufügen ---------- */
-        var belts = FindObjectsByType<AsteroidBelt>( FindObjectsSortMode.None);  // keine Sortierung nötig → deutlich schneller
+        /* ---------- 2) Gürtel ohne Collider ---------- */
+        var belts = FindObjectsByType<AsteroidBelt>(FindObjectsSortMode.None);
 
         foreach (var belt in belts)
         {
             if (belt == null) continue;
 
-            // wenn es doch einen Collider gibt und bereits gesehen: überspringen
             int id = belt.gameObject.GetInstanceID();
-            if (seen.Contains(id))
-                continue;
+            if (seen.Contains(id)) continue;
 
-            // kürzeste Distanz von 'origin' zur Ringfläche (in Units)
             float distUnits = BeltNearestDistanceUnits(belt, origin, out Vector3 nearestPoint, out float targetRadius);
 
             if (distUnits <= radiusUnits)
@@ -83,7 +80,7 @@ public abstract class BaseScannerController : MonoBehaviour
                     Id = id.ToString(),
                     Name = "AsteroidBelt",
                     DisplayName = BuildDisplayNameForBelt(belt, origin, nearestPoint),
-                    Dto = null, // kein Collider nötig
+                    Dto = null,
                     GameObject = belt.gameObject
                 });
                 seen.Add(id);
@@ -104,13 +101,12 @@ public abstract class BaseScannerController : MonoBehaviour
         return $"{t.tag} — {(int)distKm:N0} km";
     }
 
-    /// <summary> Schöne Anzeige für Belts: Distanz zum nächsten Randpunkt. </summary>
+    /// <summary> Anzeige für Belts: Distanz zum nächsten Randpunkt. </summary>
     protected virtual string BuildDisplayNameForBelt(AsteroidBelt belt, Vector3 origin, Vector3 nearestPoint)
     {
         float distUnits = (nearestPoint - origin).magnitude;
         float distAu = UnitsToAu(distUnits);
         string range = $"[{belt.innerRadius:0.#}..{belt.outerRadius:0.#} u]";
-        // Hinweis: 'u' = Unity Units. Wenn du möchtest, rechne inner/outer ebenfalls in km/AU um.
         return $"AsteroidBelt — {distAu:0.###} AU (edge) {range}";
     }
 
@@ -120,20 +116,17 @@ public abstract class BaseScannerController : MonoBehaviour
     /// </summary>
     protected static float BeltNearestDistanceUnits(AsteroidBelt belt, Vector3 pos, out Vector3 nearestPoint, out float targetRadius)
     {
-        Vector3 C = belt.transform.position;   // Belt-Zentrum
-        Vector3 N = belt.transform.up;         // Normal der Belt-Ebene
+        Vector3 C = belt.transform.position;
+        Vector3 N = belt.transform.up;
 
-        // Projektion in die Belt-Ebene
         Vector3 toProbe = pos - C;
         Vector3 inPlane = Vector3.ProjectOnPlane(toProbe, N);
 
-        // Falls exakt auf der Normalen: ersatzweise eine Richtung in der Ebene wählen
         if (inPlane.sqrMagnitude < 1e-10f)
             inPlane = belt.transform.forward;
 
         float r = inPlane.magnitude;
 
-        // Zielradius = nächstgelegene Kante (inner oder outer)
         if (r < belt.innerRadius) targetRadius = belt.innerRadius;
         else if (r > belt.outerRadius) targetRadius = belt.outerRadius;
         else
@@ -146,10 +139,36 @@ public abstract class BaseScannerController : MonoBehaviour
         Vector3 radialDir = inPlane.normalized;
         nearestPoint = C + radialDir * targetRadius;
 
-        // Distanz von pos zum nächstgelegenen Punkt auf dem Ring
         return Vector3.Distance(pos, nearestPoint);
     }
 
     /// <summary> Von Near/Far-Spezialisierungen zu implementieren. </summary>
     protected abstract void Publish(List<SystemObject> entries);
+
+    // --------- Gemeinsamer Helper für Near/Far: ViewModel befüllen + HUD-Refresh ----------
+    /// <summary>
+    /// Schreibt die Scan-Ergebnisse in ein ViewModel-Component (wird bei Bedarf angelegt)
+    /// und triggert danach ein HUD-Update via WorldRegistry.
+    /// </summary>
+    protected void ApplyResultsToViewModelAndNotify<TViewModel>(List<SystemObject> entries)
+        where TViewModel : Component, IScanResultsReceiver
+    {
+        // ViewModel holen/erzeugen
+        var vm = GetComponent<TViewModel>();
+        if (vm == null) vm = gameObject.AddComponent<TViewModel>();
+        vm.SetResults(entries ?? new List<SystemObject>());
+
+        // HUD informieren
+        var reg = GetComponent<RegistrableEntity>();
+        if (reg != null && WorldRegistry.I != null)
+            WorldRegistry.I.NotifyChanged(reg.Guid);
+    }
+}
+
+/// <summary>
+/// Minimales Interface für Scanner-ViewModels, damit Base die Ergebnisse einfüllen kann.
+/// </summary>
+public interface IScanResultsReceiver
+{
+    void SetResults(List<SystemObject> entries);
 }

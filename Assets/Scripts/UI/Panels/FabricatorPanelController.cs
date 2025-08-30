@@ -27,12 +27,13 @@ public class FabricatorPanelController : MonoBehaviour
 
     private void Awake()
     {
+        // Fallback-Suche wie im Altcode
         if (blueprintPanel == null)
         {
             var root = GameObject.Find("FabricatorPanel");
             if (root != null)
             {
-                var t = root.transform.Find("BluprintPanel");
+                var t = root.transform.Find("BluprintPanel"); // (sic)
                 if (t != null) blueprintPanel = t;
             }
         }
@@ -40,19 +41,48 @@ public class FabricatorPanelController : MonoBehaviour
 
     private void OnEnable()
     {
-        HUDBindingService.ActiveFabricatorChanged += OnActiveFabricatorChanged;
-        HUDBindingService.Reannounce();
+        if (HUDBindingService.I != null)
+        {
+            HUDBindingService.I.OnSelectionChanged += HandleSelectionChanged;
+            HUDBindingService.I.OnItemChanged += HandleItemChanged;
+            HUDBindingService.I.OnListReset += HandleListReset;
+        }
+        RebindToSelected();
     }
 
     private void OnDisable()
     {
-        HUDBindingService.ActiveFabricatorChanged -= OnActiveFabricatorChanged;
+        if (HUDBindingService.I != null)
+        {
+            HUDBindingService.I.OnSelectionChanged -= HandleSelectionChanged;
+            HUDBindingService.I.OnItemChanged -= HandleItemChanged;
+            HUDBindingService.I.OnListReset -= HandleListReset;
+        }
         UnbindCurrent();
     }
 
-    private void OnActiveFabricatorChanged(FabricatorController fab)
+    // -------- Hub-Event-Handler --------
+    private void HandleSelectionChanged(HUDItem _) => RebindToSelected();
+
+    private void HandleItemChanged(HUDItem item)
     {
+        var sel = HUDBindingService.I?.SelectedItem;
+        if (sel != null && item != null && sel.Id == item.Id)
+            // Fabrik-Status könnte sich geändert haben → UI aktualisieren
+            boundFab?.ForceRefreshUI();
+    }
+
+    private void HandleListReset(IReadOnlyList<HUDItem> _) => RebindToSelected();
+
+    // -------- Binding-Logik --------
+    private void RebindToSelected()
+    {
+        var sel = HUDBindingService.I?.SelectedItem;
+        var tr = sel?.Transform;
+        var fab = tr ? tr.GetComponent<FabricatorController>() : null;
+
         if (fab == boundFab) return;
+
         UnbindCurrent();
         Bind(fab);
     }
@@ -64,6 +94,12 @@ public class FabricatorPanelController : MonoBehaviour
         {
             ClearTemplates();
             ClearQueue();
+            // Beschreibung leeren
+            if (descriptionPanel)
+            {
+                var t = descriptionPanel.Find("txtDescr");
+                if (t) { var txt = t.GetComponent<TextMeshProUGUI>(); if (txt) txt.text = ""; }
+            }
             return;
         }
 
@@ -73,6 +109,7 @@ public class FabricatorPanelController : MonoBehaviour
         boundFab.ProductionCompleted += OnProductionCompleted;
         boundFab.ProductionWaitingForResources += OnWaitingForResources;
 
+        // Initialen Zustand ins UI pushen
         boundFab.ForceRefreshUI();
     }
 
@@ -92,6 +129,7 @@ public class FabricatorPanelController : MonoBehaviour
         ClearQueue();
     }
 
+    // -------- Callbacks vom Fabricator --------
     private void OnTemplatesUpdated(IReadOnlyList<ProductBlueprint> templates)
     {
         if (blueprintPanel == null || templateButtonPrefab == null) return;
@@ -115,11 +153,11 @@ public class FabricatorPanelController : MonoBehaviour
             if (img && bp.icon) img.sprite = bp.icon;
 
             var btn = go.GetComponent<Button>();
-            if (btn) btn.onClick.AddListener(() => showDescription(bp));
+            if (btn) btn.onClick.AddListener(() => ShowDescription(bp));
         }
     }
 
-    private void showDescription(ProductBlueprint bp)
+    private void ShowDescription(ProductBlueprint bp)
     {
         if (descriptionPanel == null) return;
 
@@ -177,10 +215,11 @@ public class FabricatorPanelController : MonoBehaviour
         }
     }
 
-    private void OnProductionStarted(ProductBlueprint bp) { }
-    private void OnProductionCompleted(ProductBlueprint bp, bool stored) { }
-    private void OnWaitingForResources(ProductBlueprint bp) { }
+    private void OnProductionStarted(ProductBlueprint bp) { /* optional UI-State */ }
+    private void OnProductionCompleted(ProductBlueprint bp, bool stored) { /* optional */ }
+    private void OnWaitingForResources(ProductBlueprint bp) { /* optional */ }
 
+    // -------- UI Utilities --------
     private void ClearTemplates()
     {
         foreach (var go in templateItems) if (go) Destroy(go);

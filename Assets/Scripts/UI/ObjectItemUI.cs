@@ -28,7 +28,7 @@ public class ObjectItemUI : MonoBehaviour,
 
         if (label)
         {
-            // Falls vorhanden: Asteroid mit Material hübsch benennen
+            // Asteroiden hübsch beschriften (Material, falls vorhanden)
             if (so.GameObject && so.GameObject.CompareTag("Asteroid"))
             {
                 var mat = so.GameObject.GetComponent<MineableAsteroid>()?.materialId;
@@ -63,10 +63,12 @@ public class ObjectItemUI : MonoBehaviour,
         _currentlySelectedInListGroup = this;
         SetSelected(true);
 
-        // Ziel an HUDBindingService melden -> Autopilot reagiert via Subscription
+        // Neues Verhalten: Ziel direkt auf die aktuell im HUD selektierte Sonde setzen
         if (SObject != null && SObject.GameObject)
         {
-            HUDBindingService.SelectNavTarget(SObject.GameObject.transform);
+            var ok = ProbeAutopilot.TrySetNavTargetOnSelectedProbe(SObject.GameObject.transform);
+            if (!ok)
+                Debug.LogWarning("[ObjectItemUI] Konnte Nav-Ziel nicht setzen (keine Sonde im HUD selektiert?).");
         }
     }
 }

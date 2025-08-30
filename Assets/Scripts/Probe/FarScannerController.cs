@@ -1,12 +1,12 @@
-﻿// Assets/Scripts/Probe/FarScannerController.cs
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 
 [DisallowMultipleComponent]
+[RequireComponent(typeof(RegistrableEntity))]
 public class FarScannerController : BaseScannerController
 {
-    [Header("FarScan – Voreinstellung (AE)")]
-    [Tooltip("Sinnvoll für Systeme/weite Umgebung. Beispiel: 2 AE.")]
+    [Header("FarScan – Voreinstellung (AU)")]
+    [Tooltip("Sinnvoll für Systeme/weite Umgebung. Beispiel: 10 AU.")]
     public float defaultFarAU = 10.0f;
 
     [Header("Signalverzögerung (Radar / Lichtlaufzeit)")]
@@ -16,14 +16,18 @@ public class FarScannerController : BaseScannerController
     [Tooltip("Signalgeschwindigkeit in km/s (Licht ~ 299792.458).")]
     public float signalSpeedKmPerSec = 299_792.458f;
 
-    void Reset()
+    private void Reset()
     {
         scanRadiusAU = defaultFarAU;
     }
 
+    /// <summary>
+    /// Wird vom BaseScannerController aufgerufen, wenn neue Treffer vorliegen.
+    /// Berechnet optional t-Δ und übergibt die Liste an das ViewModel + HUD.
+    /// </summary>
     protected override void Publish(List<SystemObject> entries)
     {
-        if (simulateLightDelay && signalSpeedKmPerSec > 0f)
+        if (simulateLightDelay && signalSpeedKmPerSec > 0f && entries != null)
         {
             Vector3 origin = transform.position;
 
@@ -43,13 +47,16 @@ public class FarScannerController : BaseScannerController
                 string suffix = FormatDelay(delaySec); // z.B. "8.3 min" oder "2.1 h"
                 if (!string.IsNullOrWhiteSpace(suffix))
                 {
-                    string baseName = string.IsNullOrWhiteSpace(so.DisplayName) ? (so.Name ?? so.GameObject.tag) : so.DisplayName;
+                    string baseName = string.IsNullOrWhiteSpace(so.DisplayName)
+                        ? (so.Name ?? so.GameObject.tag)
+                        : so.DisplayName;
                     so.DisplayName = $"{baseName} — t-{suffix}";
                 }
             }
         }
 
-        HUDBindingService.PublishFarScan(gameObject, entries); // unverändert, UI & Autopilot arbeiten wie gehabt. 
+        // Einheitlich zum NearScan: ViewModel befüllen + HUD-Refresh aus Base
+        ApplyResultsToViewModelAndNotify<FarScanViewModel>(entries);
     }
 
     private static string FormatDelay(double seconds)

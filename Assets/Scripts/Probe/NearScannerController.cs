@@ -1,7 +1,9 @@
+// Assets/Scripts/Probe/NearScannerController.cs
 using System.Collections.Generic;
 using UnityEngine;
 
 [DisallowMultipleComponent]
+[RequireComponent(typeof(RegistrableEntity))]
 public class NearScannerController : BaseScannerController
 {
     [Header("NearScan – Voreinstellung (AE)")]
@@ -15,7 +17,7 @@ public class NearScannerController : BaseScannerController
 
     protected override void Publish(List<SystemObject> entries)
     {
-        // Nur weiterreichen, wenn dieses GameObject aktuell im HUD gebunden ist.
-        HUDBindingService.PublishNearScan(gameObject, entries); // nutzt bestehende HUDBindingService API. 
+        // Gemeinsame Helper-Methode aus Base nutzen:
+        ApplyResultsToViewModelAndNotify<NearScanViewModel>(entries);
     }
 }

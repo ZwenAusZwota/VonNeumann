@@ -443,6 +443,15 @@ public partial class @InputController: IInputActionCollection2, IDisposable
                     ""processors"": """",
                     ""interactions"": """",
                     ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""ToggleTasks"",
+                    ""type"": ""Button"",
+                    ""id"": ""0311acc4-c662-4679-bafe-0c36e8fec856"",
+                    ""expectedControlType"": """",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
                 }
             ],
             ""bindings"": [
@@ -489,6 +498,17 @@ public partial class @InputController: IInputActionCollection2, IDisposable
                     ""action"": ""ToggleScanner"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""0c455545-e57a-450e-9548-a400a429e579"",
+                    ""path"": ""<Keyboard>/t"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""ToggleTasks"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
                 }
             ]
         }
@@ -514,6 +534,7 @@ public partial class @InputController: IInputActionCollection2, IDisposable
         m_HUD_ToggleFabricator = m_HUD.FindAction("ToggleFabricator", throwIfNotFound: true);
         m_HUD_Escape = m_HUD.FindAction("Escape", throwIfNotFound: true);
         m_HUD_ToggleScanner = m_HUD.FindAction("ToggleScanner", throwIfNotFound: true);
+        m_HUD_ToggleTasks = m_HUD.FindAction("ToggleTasks", throwIfNotFound: true);
     }
 
     ~@InputController()
@@ -869,6 +890,7 @@ public partial class @InputController: IInputActionCollection2, IDisposable
     private readonly InputAction m_HUD_ToggleFabricator;
     private readonly InputAction m_HUD_Escape;
     private readonly InputAction m_HUD_ToggleScanner;
+    private readonly InputAction m_HUD_ToggleTasks;
     /// <summary>
     /// Provides access to input actions defined in input action map "HUD".
     /// </summary>
@@ -896,6 +918,10 @@ public partial class @InputController: IInputActionCollection2, IDisposable
         /// Provides access to the underlying input action "HUD/ToggleScanner".
         /// </summary>
         public InputAction @ToggleScanner => m_Wrapper.m_HUD_ToggleScanner;
+        /// <summary>
+        /// Provides access to the underlying input action "HUD/ToggleTasks".
+        /// </summary>
+        public InputAction @ToggleTasks => m_Wrapper.m_HUD_ToggleTasks;
         /// <summary>
         /// Provides access to the underlying input action map instance.
         /// </summary>
@@ -934,6 +960,9 @@ public partial class @InputController: IInputActionCollection2, IDisposable
             @ToggleScanner.started += instance.OnToggleScanner;
             @ToggleScanner.performed += instance.OnToggleScanner;
             @ToggleScanner.canceled += instance.OnToggleScanner;
+            @ToggleTasks.started += instance.OnToggleTasks;
+            @ToggleTasks.performed += instance.OnToggleTasks;
+            @ToggleTasks.canceled += instance.OnToggleTasks;
         }
 
         /// <summary>
@@ -957,6 +986,9 @@ public partial class @InputController: IInputActionCollection2, IDisposable
             @ToggleScanner.started -= instance.OnToggleScanner;
             @ToggleScanner.performed -= instance.OnToggleScanner;
             @ToggleScanner.canceled -= instance.OnToggleScanner;
+            @ToggleTasks.started -= instance.OnToggleTasks;
+            @ToggleTasks.performed -= instance.OnToggleTasks;
+            @ToggleTasks.canceled -= instance.OnToggleTasks;
         }
 
         /// <summary>
@@ -1104,5 +1136,12 @@ public partial class @InputController: IInputActionCollection2, IDisposable
         /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
         /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
         void OnToggleScanner(InputAction.CallbackContext context);
+        /// <summary>
+        /// Method invoked when associated input action "ToggleTasks" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+        /// </summary>
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+        void OnToggleTasks(InputAction.CallbackContext context);
     }
 }

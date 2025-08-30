@@ -357,6 +357,15 @@
                     "processors": "",
                     "interactions": "",
                     "initialStateCheck": false
+                },
+                {
+                    "name": "ToggleTasks",
+                    "type": "Button",
+                    "id": "0311acc4-c662-4679-bafe-0c36e8fec856",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
                 }
             ],
             "bindings": [
@@ -401,6 +410,17 @@
                     "processors": "",
                     "groups": "",
                     "action": "ToggleScanner",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "0c455545-e57a-450e-9548-a400a429e579",
+                    "path": "<Keyboard>/t",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "ToggleTasks",
                     "isComposite": false,
                     "isPartOfComposite": false
                 }

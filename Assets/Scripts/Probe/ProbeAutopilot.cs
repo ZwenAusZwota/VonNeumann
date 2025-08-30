@@ -2,15 +2,6 @@
 using System;
 using UnityEngine;
 
-/* -----------------------------------------------------------------------------
- * ProbeAutopilot – v1.3.0  (2025‑08‑09)
- * -----------------------------------------------------------------------------
- * - Kleinere Planeten-Orbitradien (reduzierter Altitude-Faktor & Min-Höhe).
- * - Separater Anflugmodus für einzelne Asteroiden (kein Orbit, definierte Nähe).
- * - Fix: Rigidbody.velocity statt linearVelocity.
- * - Belt: Ausrichtung & dynamisches Nachführen des nächstgelegenen Kantenpunkts.
- * ---------------------------------------------------------------------------*/
-
 [RequireComponent(typeof(Rigidbody))]
 public class ProbeAutopilot : MonoBehaviour
 {
@@ -24,7 +15,7 @@ public class ProbeAutopilot : MonoBehaviour
 
     /*─────────────────────────────── Autopilot – Approach */
     [Header("Autopilot – Approach")]
-    [Tooltip("Radiale Beschleunigung beim Spiral-Approach (Units/s²).")]
+    [Tooltip("Radiale Beschleunigung beim Spiral-/Direkt-Approach (Units/s²).")]
     public float radialAccel = 0.5f;
 
     [Tooltip("Unbenutzt (Reserviert für spätere Kurven-Profile).")]
@@ -33,10 +24,10 @@ public class ProbeAutopilot : MonoBehaviour
     /*─────────────────────────────── Autopilot – Orbit Capture (Planeten) */
     [Header("Autopilot – Orbit (Planeten)")]
     [Tooltip("Orbit-Höhe relativ zum Körperradius.")]
-    [Range(1.02f, 5f)] public float orbitAltitudeFactor = 1.1f;   // reduziert
+    [Range(1.02f, 5f)] public float orbitAltitudeFactor = 1.1f;
 
     [Tooltip("Absolute Mindest-Orbit-Höhe (Units).")]
-    public float minOrbitAltitudeUnits = 2f;                       // geringer
+    public float minOrbitAltitudeUnits = 2f;
 
     [Tooltip("Umlaufdauer im Orbit (Sekunden).")]
     public float orbitPeriod = 60f;
@@ -64,7 +55,7 @@ public class ProbeAutopilot : MonoBehaviour
     float radialSpeed;
 
     // Belt-bezogene Felder
-    private Vector3 _beltAimPoint;   // nächster Punkt auf inner/outer
+    private Vector3 _beltAimPoint;
     private bool _hasBeltAimPoint = false;
 
     private int _beltAimRecalcCounter = 0;
@@ -76,7 +67,6 @@ public class ProbeAutopilot : MonoBehaviour
     bool _directDecelPhase = false;
     float _directInitialBoundary = 0f;
     float _directHalfBoundary = 0f;
-
 
     /*──────────────────────────── Cached */
     Rigidbody rb;
@@ -90,32 +80,28 @@ public class ProbeAutopilot : MonoBehaviour
     /* helper */
     float OrbitDegPerSec => 360f / Mathf.Max(orbitPeriod, 1e-4f);
 
-    /*====================================================================*/
-
     void Awake()
     {
         rb = GetComponent<Rigidbody>();
         registry = PlanetRegistry.Instance;
     }
 
-    void OnEnable()
+    // ───────────────────── Öffentliche Helfer für UI ─────────────────────
+    /// <summary>
+    /// Setzt das Nav-Ziel auf die aktuell im HUD selektierte Sonde (falls vorhanden).
+    /// Rückgabe: true = Ziel gesetzt.
+    /// </summary>
+    public static bool TrySetNavTargetOnSelectedProbe(Transform target)
     {
-        HUDBindingService.NavTargetSelected += OnHudNavTargetSelected; // neu
-    }
+        var sel = HUDBindingService.I?.SelectedItem;
+        if (sel?.Transform == null || target == null) return false;
 
-    void OnDisable()
-    {
-        HUDBindingService.NavTargetSelected -= OnHudNavTargetSelected; // neu
-    }
+        var ap = sel.Transform.GetComponent<ProbeAutopilot>();
+        if (ap == null) return false;
 
-    private void OnHudNavTargetSelected(GameObject contextObject, Transform target)
-    {
-        // Nur reagieren, wenn diese Sonde im HUD gebunden/aktiv ist
-        if (contextObject == this.gameObject && target != null)
-        {
-            SetNavTarget(target); // nur Ziel setzen; StartAutopilot bleibt weiter in deiner Kontrolle
-            StatusUpdated?.Invoke($"Nav target set to {target.name}");
-        }
+        ap.SetNavTarget(target);
+        ap.StatusUpdated?.Invoke($"Nav target set to {target.name}");
+        return true;
     }
 
     /*====================================================================*/
@@ -160,8 +146,7 @@ public class ProbeAutopilot : MonoBehaviour
         if (navTarget == null || autoState != AutoState.None) return;
 
         // Physik anhalten, danach in kinematischen Modus wechseln
-        //rb.linearVelocity = Vector3.zero;
-        rb.linearVelocity = Vector3.zero;      // statt rb.linearVelocity
+        rb.linearVelocity = Vector3.zero;       // FIX: velocity statt linearVelocity
         rb.angularVelocity = Vector3.zero;
         rb.isKinematic = true;
 
@@ -170,7 +155,6 @@ public class ProbeAutopilot : MonoBehaviour
         lastTarget = navTarget;
 
         AutoPilotStarted?.Invoke();
-
     }
 
     public void StopAutopilot() => AbortAutopilot(false);
@@ -183,9 +167,6 @@ public class ProbeAutopilot : MonoBehaviour
     void AlignTick()
     {
         if (navTarget == null) { AbortAutopilot(true); return; }
-
-
-        Debug.Log($"Aligning to {navTarget.name}");
 
         Vector3 dirWorld;
 
@@ -234,36 +215,32 @@ public class ProbeAutopilot : MonoBehaviour
     {
         if (navTarget == null) { AbortAutopilot(true); return; }
         StatusUpdated?.Invoke("Approaching");
-        // Asteroid-Belt: Spiral-Approach
+
         if (navTarget.CompareTag("AsteroidBelt"))
         {
             autoState = AutoState.DirectApproach;
             _beltAimRecalcCounter = 0;
         }
-        // Einzel-Asteroid: Direkte Annäherung
         else if (navTarget.CompareTag("Asteroid"))
         {
             autoState = AutoState.DirectApproach;
             radialSpeed = 0f;
         }
-        // Planet / generisches Orbital-Ziel: Orbit Capture
         else
         {
             autoState = AutoState.Orbit;
             radialSpeed = 0f;
         }
 
-        if(autoState == AutoState.DirectApproach)
+        if (autoState == AutoState.DirectApproach)
         {
             _directInit = false;
             _directDecelPhase = false;
-
         }
     }
 
     /*====================================================================*/
     #region Approach (dynamisch für Belts, Nähe für Asteroiden)
-
     void DirectTick()
     {
         if (navTarget == null) { AbortAutopilot(true); return; }
@@ -318,7 +295,6 @@ public class ProbeAutopilot : MonoBehaviour
         }
         else
         {
-            // Planeten sollten hier selten landen; Sicherheitslogik:
             float bodyRadius = GuessBodyRadius(navTarget);
             float desired = Mathf.Max(bodyRadius * orbitAltitudeFactor, bodyRadius + minOrbitAltitudeUnits);
             boundaryNow = Mathf.Max(0f, centerDist - (desired + 1e-3f));
@@ -389,13 +365,10 @@ public class ProbeAutopilot : MonoBehaviour
         }
     }
 
-
-
     void SpiralTick()
     {
         if (navTarget == null) { AbortAutopilot(true); return; }
         StatusUpdated?.Invoke("Approaching");
-        Debug.Log($"Approaching to {navTarget.name}");
 
         Vector3 center = navTarget.position;
 
@@ -408,7 +381,6 @@ public class ProbeAutopilot : MonoBehaviour
                 if (belt != null)
                 {
                     ComputeBeltNearestPoint(belt, transform.position, out _beltAimPoint, out desiredOrbitRadius);
-
                     center = _beltAimPoint;
                 }
             }
@@ -503,8 +475,7 @@ public class ProbeAutopilot : MonoBehaviour
         Vector3 carriedVel = keepMomentum ? (_lastMove / Mathf.Max(Time.fixedDeltaTime, 1e-6f)) : Vector3.zero;
 
         rb.isKinematic = false;
-        //rb.linearVelocity = carriedVel;
-        rb.linearVelocity = carriedVel;
+        rb.linearVelocity = carriedVel;          // FIX: velocity statt linearVelocity
         rb.angularVelocity = Vector3.zero;
 
         autoState = AutoState.None;
@@ -516,7 +487,6 @@ public class ProbeAutopilot : MonoBehaviour
 
         _directInit = false;
         _directDecelPhase = false;
-
     }
 
     static float GuessBodyRadius(Transform body)

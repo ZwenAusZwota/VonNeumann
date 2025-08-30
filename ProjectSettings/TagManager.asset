@@ -9,6 +9,7 @@ TagManager:
   - Moon
   - Star
   - AsteroidBelt
+  - DropoffHub
   layers:
   - Default
   - TransparentFX

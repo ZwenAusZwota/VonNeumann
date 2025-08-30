@@ -1,4 +1,4 @@
-// Assets/Scripts/UI/InventoryPanelController.cs
+﻿// Assets/Scripts/UI/Panels/InventoryPanelController.cs
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
@@ -8,7 +8,7 @@ public class InventoryPanelController : MonoBehaviour
 {
     [Header("UI Targets")]
     [SerializeField] private Transform listContainer;   // ScrollView/Viewport/Content
-    [SerializeField] private GameObject listItemPrefab; // enth�lt TextMeshPro: "txtName", "txtAmount" und optional Image
+    [SerializeField] private GameObject listItemPrefab; // enthält TextMeshPro: "txtName", "txtAmount" und optional Image
     [SerializeField] private TextMeshProUGUI txtCapacity;
 
     [Header("HUD Layout")]
@@ -22,19 +22,54 @@ public class InventoryPanelController : MonoBehaviour
 
     private void OnEnable()
     {
-        HUDBindingService.ActiveInventoryChanged += OnActiveInventoryChanged;
-        HUDBindingService.Reannounce();
+        if (HUDBindingService.I != null)
+        {
+            HUDBindingService.I.OnSelectionChanged += HandleSelectionChanged;
+            HUDBindingService.I.OnItemChanged += HandleItemChanged;
+            HUDBindingService.I.OnListReset += HandleListReset;
+        }
+        RebindToSelected();
     }
 
     private void OnDisable()
     {
-        HUDBindingService.ActiveInventoryChanged -= OnActiveInventoryChanged;
+        if (HUDBindingService.I != null)
+        {
+            HUDBindingService.I.OnSelectionChanged -= HandleSelectionChanged;
+            HUDBindingService.I.OnItemChanged -= HandleItemChanged;
+            HUDBindingService.I.OnListReset -= HandleListReset;
+        }
         Unbind();
     }
 
-    private void OnActiveInventoryChanged(InventoryController inv)
+    // ───────────────────── Hub-Event-Handler ─────────────────────
+    private void HandleSelectionChanged(HUDItem _)
     {
+        RebindToSelected();
+    }
+
+    private void HandleItemChanged(HUDItem item)
+    {
+        // Nur refreshen, wenn die geänderte Entity auch selektiert ist
+        var sel = HUDBindingService.I?.SelectedItem;
+        if (sel != null && item != null && sel.Id == item.Id)
+            ForceRefresh();
+    }
+
+    private void HandleListReset(IReadOnlyList<HUDItem> _)
+    {
+        RebindToSelected();
+    }
+
+    // ───────────────────── Binding-Logik ─────────────────────
+    private void RebindToSelected()
+    {
+        var sel = HUDBindingService.I?.SelectedItem;
+        var tr = sel?.Transform;
+        var inv = tr ? tr.GetComponent<InventoryController>() : null;
+
         if (inv == bound) return;
+
         Unbind();
         Bind(inv);
     }
@@ -42,6 +77,7 @@ public class InventoryPanelController : MonoBehaviour
     private void Bind(InventoryController inv)
     {
         bound = inv;
+
         if (bound == null)
         {
             RebuildList(null);
@@ -51,7 +87,9 @@ public class InventoryPanelController : MonoBehaviour
 
         bound.InventoryUpdated += RebuildList;
         bound.CargoChanged += SetCapacity;
-        bound.ForceRefreshUI();
+
+        // einmaliger Initial-Refresh
+        ForceRefresh();
     }
 
     private void Unbind()
@@ -62,19 +100,35 @@ public class InventoryPanelController : MonoBehaviour
         bound = null;
     }
 
+    private void ForceRefresh()
+    {
+        if (bound != null)
+        {
+            bound.ForceRefreshUI();
+        }
+        else
+        {
+            RebuildList(null);
+            SetCapacity(0, 0);
+        }
+    }
+
+    // ───────────────────── Rendering ─────────────────────
     private void RebuildList(IReadOnlyList<InventoryItemView> items)
     {
         // clear
-        for (int i = listContainer.childCount - 1; i >= 0; i--)
-            Destroy(listContainer.GetChild(i).gameObject);
+        if (listContainer)
+        {
+            for (int i = listContainer.childCount - 1; i >= 0; i--)
+                Destroy(listContainer.GetChild(i).gameObject);
+        }
 
-        if (items == null) return;
+        if (items == null || listContainer == null || listItemPrefab == null) return;
 
         // build
         for (int i = 0; i < items.Count; i++)
         {
             var it = items[i];
-           
             var go = Instantiate(listItemPrefab, listContainer);
 
             var rect = go.GetComponent<RectTransform>();

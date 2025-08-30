@@ -14,33 +14,111 @@ public class ScanPanelController : MonoBehaviour
     [SerializeField] private TextMeshProUGUI txtNearScan;
     [SerializeField] private TextMeshProUGUI txtFarScan;
 
-    void OnEnable()
+    private void OnEnable()
     {
-        HUDBindingService.NearScanResults += OnNearScanResults;
-        HUDBindingService.FarScanResults += OnFarScanResults;
+        if (HUDBindingService.I != null)
+        {
+            HUDBindingService.I.OnSelectionChanged += HandleSelectionChanged;
+            HUDBindingService.I.OnItemChanged += HandleItemChanged;
+            HUDBindingService.I.OnListReset += _ => RefreshAll();
+        }
+        RefreshAll();
     }
 
-    void OnDisable()
+    private void OnDisable()
     {
-        HUDBindingService.NearScanResults -= OnNearScanResults;
-        HUDBindingService.FarScanResults -= OnFarScanResults;
+        if (HUDBindingService.I != null)
+        {
+            HUDBindingService.I.OnSelectionChanged -= HandleSelectionChanged;
+            HUDBindingService.I.OnItemChanged -= HandleItemChanged;
+            HUDBindingService.I.OnListReset -= _ => RefreshAll();
+        }
     }
 
-    /* ───────────── HUD-Buttons ───────────── */
-    public void OnNearScanClicked() => HUDBindingService.RequestNearScan();   // nutzt CurrentObject-Scanner
-    public void OnFarScanClicked() => HUDBindingService.RequestFarScan();    // s. HUDBindingService API 
-
-    /* ───────────── Ergebnisverarbeitung ───────────── */
-    private void OnNearScanResults(GameObject source, List<SystemObject> entries)
+    // ───────────────────── HUD-Buttons ─────────────────────
+    public void OnNearScanClicked()
     {
-        if (txtNearScan) txtNearScan.text = entries.Count > 0 ? $"NearScan: {entries.Count}" : "NearScan: –";
-        RebuildList(nearContainer, listItemPrefabNear, entries);
+        var sel = HUDBindingService.I?.SelectedItem;
+        var tr = sel?.Transform;
+        if (!tr) return;
+
+        var near = tr.GetComponent<NearScannerController>();
+        if (near != null)
+        {
+            near.PerformScan(); // Ergebnisse landen im NearScanViewModel, HUD wird via Registry.NotifyChanged getriggert
+        }
     }
 
-    private void OnFarScanResults(GameObject source, List<SystemObject> entries)
+    public void OnFarScanClicked()
     {
-        if (txtFarScan) txtFarScan.text = entries.Count > 0 ? $"FarScan: {entries.Count}" : "FarScan: –";
-        RebuildList(farContainer, listItemPrefabFar, entries);
+        var sel = HUDBindingService.I?.SelectedItem;
+        var tr = sel?.Transform;
+        if (!tr) return;
+
+        var far = tr.GetComponent<FarScannerController>();
+        if (far != null)
+        {
+            far.PerformScan(); // Ergebnisse landen im FarScanViewModel, HUD wird via Registry.NotifyChanged getriggert
+        }
+    }
+
+    // ───────────────────── Ereignisse ─────────────────────
+    private void HandleSelectionChanged(HUDItem item)
+    {
+        RefreshAll();
+    }
+
+    private void HandleItemChanged(HUDItem item)
+    {
+        // Nur aktualisieren, wenn das geänderte Item die Selektion ist
+        var sel = HUDBindingService.I?.SelectedItem;
+        if (sel != null && item != null && sel.Id == item.Id)
+            RefreshAll();
+    }
+
+    // ───────────────────── Rendering ─────────────────────
+    private void RefreshAll()
+    {
+        var sel = HUDBindingService.I?.SelectedItem;
+        var tr = sel?.Transform;
+
+        if (!tr)
+        {
+            SetNearCount(0);
+            SetFarCount(0);
+            ClearContainer(nearContainer);
+            ClearContainer(farContainer);
+            return;
+        }
+
+        var nearVM = tr.GetComponent<NearScanViewModel>();
+        var farVM = tr.GetComponent<FarScanViewModel>();
+
+        var nearEntries = nearVM != null ? new List<SystemObject>(nearVM.LatestEntries) : new List<SystemObject>();
+        var farEntries = farVM != null ? new List<SystemObject>(farVM.LatestEntries) : new List<SystemObject>();
+
+        SetNearCount(nearEntries.Count);
+        SetFarCount(farEntries.Count);
+
+        RebuildList(nearContainer, listItemPrefabNear, nearEntries);
+        RebuildList(farContainer, listItemPrefabFar, farEntries);
+    }
+
+    private void SetNearCount(int count)
+    {
+        if (txtNearScan) txtNearScan.text = count > 0 ? $"NearScan: {count}" : "NearScan: –";
+    }
+
+    private void SetFarCount(int count)
+    {
+        if (txtFarScan) txtFarScan.text = count > 0 ? $"FarScan: {count}" : "FarScan: –";
+    }
+
+    private void ClearContainer(Transform container)
+    {
+        if (!container) return;
+        for (int i = container.childCount - 1; i >= 0; i--)
+            Destroy(container.GetChild(i).gameObject);
     }
 
     private void RebuildList(Transform container, GameObject prefab, List<SystemObject> entries)
@@ -60,11 +138,12 @@ public class ScanPanelController : MonoBehaviour
             var item = go.GetComponent<ObjectItemUI>();
             if (item != null)
             {
-                item.Init(so); // OnClick sendet HUDBindingService.SelectNavTarget(...)
+                item.Init(so);
             }
         }
 
-        // Optional: Layout sofort aktualisieren, falls nötig
-        LayoutRebuilder.ForceRebuildLayoutImmediate(container as RectTransform);
+        // Optional: Layout sofort aktualisieren (falls nötig)
+        var rect = container as RectTransform;
+        if (rect) LayoutRebuilder.ForceRebuildLayoutImmediate(rect);
     }
 }
