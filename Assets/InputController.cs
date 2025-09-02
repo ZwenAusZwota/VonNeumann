@@ -405,49 +405,31 @@ public partial class @InputController: IInputActionCollection2, IDisposable
             ]
         },
         {
-            ""name"": ""HUD"",
+            ""name"": ""UI"",
             ""id"": ""1972519b-5a5b-459b-b6d3-da35acec68bd"",
             ""actions"": [
                 {
-                    ""name"": ""ToggleInventory"",
+                    ""name"": ""Navigate"",
+                    ""type"": ""Value"",
+                    ""id"": ""56059c04-8b46-4be8-8ccf-c39ebfa0e27c"",
+                    ""expectedControlType"": ""Vector2"",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": true
+                },
+                {
+                    ""name"": ""Submit"",
                     ""type"": ""Button"",
-                    ""id"": ""28042cb1-f85f-445a-88a8-8c80338991a7"",
+                    ""id"": ""eb297d39-2bf1-4bc1-b1e3-085d0bd649d8"",
                     ""expectedControlType"": """",
                     ""processors"": """",
                     ""interactions"": """",
                     ""initialStateCheck"": false
                 },
                 {
-                    ""name"": ""ToggleFabricator"",
+                    ""name"": ""Cancel"",
                     ""type"": ""Button"",
-                    ""id"": ""1e962fbb-8a81-4be5-854d-c22f24f57f9f"",
-                    ""expectedControlType"": """",
-                    ""processors"": """",
-                    ""interactions"": """",
-                    ""initialStateCheck"": false
-                },
-                {
-                    ""name"": ""Escape"",
-                    ""type"": ""Button"",
-                    ""id"": ""130d92c9-10f6-4560-a8e2-b6efa75dfe82"",
-                    ""expectedControlType"": """",
-                    ""processors"": """",
-                    ""interactions"": """",
-                    ""initialStateCheck"": false
-                },
-                {
-                    ""name"": ""ToggleScanner"",
-                    ""type"": ""Button"",
-                    ""id"": ""635374ac-0b46-409b-9312-23f855a81228"",
-                    ""expectedControlType"": """",
-                    ""processors"": """",
-                    ""interactions"": """",
-                    ""initialStateCheck"": false
-                },
-                {
-                    ""name"": ""ToggleTasks"",
-                    ""type"": ""Button"",
-                    ""id"": ""0311acc4-c662-4679-bafe-0c36e8fec856"",
+                    ""id"": ""277576cb-9d97-459f-833a-6f716a44c6b5"",
                     ""expectedControlType"": """",
                     ""processors"": """",
                     ""interactions"": """",
@@ -457,56 +439,206 @@ public partial class @InputController: IInputActionCollection2, IDisposable
             ""bindings"": [
                 {
                     ""name"": """",
-                    ""id"": ""e9703044-9103-49de-b411-e193c75437d1"",
-                    ""path"": ""<Keyboard>/#(I)"",
+                    ""id"": ""280f62df-5f52-4795-a2f2-3fcf49ebef45"",
+                    ""path"": ""<Keyboard>/enter"",
                     ""interactions"": """",
                     ""processors"": """",
                     ""groups"": """",
-                    ""action"": ""ToggleInventory"",
+                    ""action"": ""Submit"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
                 },
                 {
                     ""name"": """",
-                    ""id"": ""0489450a-4db8-4c53-a2ea-3aec8c938393"",
-                    ""path"": ""<Keyboard>/#(B)"",
+                    ""id"": ""3b3c4ba5-3e92-4db6-b52c-4ce80a0b9264"",
+                    ""path"": ""<Keyboard>/{Cancel}"",
                     ""interactions"": """",
                     ""processors"": """",
                     ""groups"": """",
-                    ""action"": ""ToggleFabricator"",
+                    ""action"": ""Cancel"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
                 },
                 {
-                    ""name"": """",
-                    ""id"": ""1493a8eb-715e-419c-93a9-00ef2e236e74"",
-                    ""path"": ""<Keyboard>/escape"",
+                    ""name"": ""2D Vector"",
+                    ""id"": ""949d9efc-02cd-4185-9521-c7582b9f814e"",
+                    ""path"": ""2DVector"",
                     ""interactions"": """",
                     ""processors"": """",
                     ""groups"": """",
-                    ""action"": ""Escape"",
-                    ""isComposite"": false,
+                    ""action"": ""Navigate"",
+                    ""isComposite"": true,
                     ""isPartOfComposite"": false
                 },
                 {
-                    ""name"": """",
-                    ""id"": ""95223cbd-42a1-41f9-b847-d08f790015ae"",
+                    ""name"": ""up"",
+                    ""id"": ""f920ba01-3b78-46f2-8cb6-fa27cbf68e38"",
+                    ""path"": ""<Keyboard>/w"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""Navigate"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": true
+                },
+                {
+                    ""name"": ""down"",
+                    ""id"": ""4dcac6f4-628b-452a-a957-f7d30b34758b"",
                     ""path"": ""<Keyboard>/s"",
                     ""interactions"": """",
                     ""processors"": """",
                     ""groups"": """",
-                    ""action"": ""ToggleScanner"",
+                    ""action"": ""Navigate"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": true
+                },
+                {
+                    ""name"": ""left"",
+                    ""id"": ""8059c454-e648-4974-b6e3-e85221f49907"",
+                    ""path"": ""<Keyboard>/a"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""Navigate"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": true
+                },
+                {
+                    ""name"": ""right"",
+                    ""id"": ""a99fe3e3-51f7-422f-a96b-6bd4844c7766"",
+                    ""path"": ""<Keyboard>/d"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""Navigate"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": true
+                }
+            ]
+        },
+        {
+            ""name"": ""GamePlay"",
+            ""id"": ""05443054-a46f-429f-a7e5-de7cdec617fc"",
+            ""actions"": [
+                {
+                    ""name"": ""Pause"",
+                    ""type"": ""Button"",
+                    ""id"": ""c5f2ab12-869a-4a45-8457-3ef576175891"",
+                    ""expectedControlType"": """",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""Inventory"",
+                    ""type"": ""Button"",
+                    ""id"": ""10bedd79-aafd-4188-b400-df6099af6b84"",
+                    ""expectedControlType"": """",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""Management"",
+                    ""type"": ""Button"",
+                    ""id"": ""500cc38f-d31d-425f-89ef-f9a9926eb7dc"",
+                    ""expectedControlType"": """",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""Scan"",
+                    ""type"": ""Button"",
+                    ""id"": ""c1868b6d-1c6a-468e-877c-a4d1110c8658"",
+                    ""expectedControlType"": """",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""QuickSave"",
+                    ""type"": ""Button"",
+                    ""id"": ""0ae6aa1f-9809-4d8b-a6e8-b5677ddd3c56"",
+                    ""expectedControlType"": """",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""QuickLoad"",
+                    ""type"": ""Button"",
+                    ""id"": ""002b91d3-0ca5-4a4a-a622-6793d9951fcb"",
+                    ""expectedControlType"": """",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                }
+            ],
+            ""bindings"": [
+                {
+                    ""name"": """",
+                    ""id"": ""0aad8f7a-da05-4461-b073-760eab2ec941"",
+                    ""path"": ""<Keyboard>/escape"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""Pause"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
                 },
                 {
                     ""name"": """",
-                    ""id"": ""0c455545-e57a-450e-9548-a400a429e579"",
-                    ""path"": ""<Keyboard>/t"",
+                    ""id"": ""3da4f322-e103-4c1f-82cf-3da86389925f"",
+                    ""path"": ""<Keyboard>/i"",
                     ""interactions"": """",
                     ""processors"": """",
                     ""groups"": """",
-                    ""action"": ""ToggleTasks"",
+                    ""action"": ""Inventory"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""fb6263d5-692f-44e9-8492-32be06dee4be"",
+                    ""path"": ""<Keyboard>/m"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""Management"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""04e97e92-ab85-499e-835d-9e3e4484b781"",
+                    ""path"": ""<Keyboard>/s"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""Scan"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""71348049-48fc-4ef4-89ec-0cf732783467"",
+                    ""path"": ""<Keyboard>/f5"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""QuickSave"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""5926cea7-e1ae-4765-bef8-09b0b0489f3d"",
+                    ""path"": ""<Keyboard>/f9"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""QuickLoad"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
                 }
@@ -528,20 +660,27 @@ public partial class @InputController: IInputActionCollection2, IDisposable
         m_Camera_Reset = m_Camera.FindAction("Reset", throwIfNotFound: true);
         m_Camera_RightClick = m_Camera.FindAction("RightClick", throwIfNotFound: true);
         m_Camera_Zoom = m_Camera.FindAction("Zoom", throwIfNotFound: true);
-        // HUD
-        m_HUD = asset.FindActionMap("HUD", throwIfNotFound: true);
-        m_HUD_ToggleInventory = m_HUD.FindAction("ToggleInventory", throwIfNotFound: true);
-        m_HUD_ToggleFabricator = m_HUD.FindAction("ToggleFabricator", throwIfNotFound: true);
-        m_HUD_Escape = m_HUD.FindAction("Escape", throwIfNotFound: true);
-        m_HUD_ToggleScanner = m_HUD.FindAction("ToggleScanner", throwIfNotFound: true);
-        m_HUD_ToggleTasks = m_HUD.FindAction("ToggleTasks", throwIfNotFound: true);
+        // UI
+        m_UI = asset.FindActionMap("UI", throwIfNotFound: true);
+        m_UI_Navigate = m_UI.FindAction("Navigate", throwIfNotFound: true);
+        m_UI_Submit = m_UI.FindAction("Submit", throwIfNotFound: true);
+        m_UI_Cancel = m_UI.FindAction("Cancel", throwIfNotFound: true);
+        // GamePlay
+        m_GamePlay = asset.FindActionMap("GamePlay", throwIfNotFound: true);
+        m_GamePlay_Pause = m_GamePlay.FindAction("Pause", throwIfNotFound: true);
+        m_GamePlay_Inventory = m_GamePlay.FindAction("Inventory", throwIfNotFound: true);
+        m_GamePlay_Management = m_GamePlay.FindAction("Management", throwIfNotFound: true);
+        m_GamePlay_Scan = m_GamePlay.FindAction("Scan", throwIfNotFound: true);
+        m_GamePlay_QuickSave = m_GamePlay.FindAction("QuickSave", throwIfNotFound: true);
+        m_GamePlay_QuickLoad = m_GamePlay.FindAction("QuickLoad", throwIfNotFound: true);
     }
 
     ~@InputController()
     {
         UnityEngine.Debug.Assert(!m_Probe.enabled, "This will cause a leak and performance issues, InputController.Probe.Disable() has not been called.");
         UnityEngine.Debug.Assert(!m_Camera.enabled, "This will cause a leak and performance issues, InputController.Camera.Disable() has not been called.");
-        UnityEngine.Debug.Assert(!m_HUD.enabled, "This will cause a leak and performance issues, InputController.HUD.Disable() has not been called.");
+        UnityEngine.Debug.Assert(!m_UI.enabled, "This will cause a leak and performance issues, InputController.UI.Disable() has not been called.");
+        UnityEngine.Debug.Assert(!m_GamePlay.enabled, "This will cause a leak and performance issues, InputController.GamePlay.Disable() has not been called.");
     }
 
     /// <summary>
@@ -883,49 +1022,39 @@ public partial class @InputController: IInputActionCollection2, IDisposable
     /// </summary>
     public CameraActions @Camera => new CameraActions(this);
 
-    // HUD
-    private readonly InputActionMap m_HUD;
-    private List<IHUDActions> m_HUDActionsCallbackInterfaces = new List<IHUDActions>();
-    private readonly InputAction m_HUD_ToggleInventory;
-    private readonly InputAction m_HUD_ToggleFabricator;
-    private readonly InputAction m_HUD_Escape;
-    private readonly InputAction m_HUD_ToggleScanner;
-    private readonly InputAction m_HUD_ToggleTasks;
+    // UI
+    private readonly InputActionMap m_UI;
+    private List<IUIActions> m_UIActionsCallbackInterfaces = new List<IUIActions>();
+    private readonly InputAction m_UI_Navigate;
+    private readonly InputAction m_UI_Submit;
+    private readonly InputAction m_UI_Cancel;
     /// <summary>
-    /// Provides access to input actions defined in input action map "HUD".
+    /// Provides access to input actions defined in input action map "UI".
     /// </summary>
-    public struct HUDActions
+    public struct UIActions
     {
         private @InputController m_Wrapper;
 
         /// <summary>
         /// Construct a new instance of the input action map wrapper class.
         /// </summary>
-        public HUDActions(@InputController wrapper) { m_Wrapper = wrapper; }
+        public UIActions(@InputController wrapper) { m_Wrapper = wrapper; }
         /// <summary>
-        /// Provides access to the underlying input action "HUD/ToggleInventory".
+        /// Provides access to the underlying input action "UI/Navigate".
         /// </summary>
-        public InputAction @ToggleInventory => m_Wrapper.m_HUD_ToggleInventory;
+        public InputAction @Navigate => m_Wrapper.m_UI_Navigate;
         /// <summary>
-        /// Provides access to the underlying input action "HUD/ToggleFabricator".
+        /// Provides access to the underlying input action "UI/Submit".
         /// </summary>
-        public InputAction @ToggleFabricator => m_Wrapper.m_HUD_ToggleFabricator;
+        public InputAction @Submit => m_Wrapper.m_UI_Submit;
         /// <summary>
-        /// Provides access to the underlying input action "HUD/Escape".
+        /// Provides access to the underlying input action "UI/Cancel".
         /// </summary>
-        public InputAction @Escape => m_Wrapper.m_HUD_Escape;
-        /// <summary>
-        /// Provides access to the underlying input action "HUD/ToggleScanner".
-        /// </summary>
-        public InputAction @ToggleScanner => m_Wrapper.m_HUD_ToggleScanner;
-        /// <summary>
-        /// Provides access to the underlying input action "HUD/ToggleTasks".
-        /// </summary>
-        public InputAction @ToggleTasks => m_Wrapper.m_HUD_ToggleTasks;
+        public InputAction @Cancel => m_Wrapper.m_UI_Cancel;
         /// <summary>
         /// Provides access to the underlying input action map instance.
         /// </summary>
-        public InputActionMap Get() { return m_Wrapper.m_HUD; }
+        public InputActionMap Get() { return m_Wrapper.m_UI; }
         /// <inheritdoc cref="UnityEngine.InputSystem.InputActionMap.Enable()" />
         public void Enable() { Get().Enable(); }
         /// <inheritdoc cref="UnityEngine.InputSystem.InputActionMap.Disable()" />
@@ -933,9 +1062,9 @@ public partial class @InputController: IInputActionCollection2, IDisposable
         /// <inheritdoc cref="UnityEngine.InputSystem.InputActionMap.enabled" />
         public bool enabled => Get().enabled;
         /// <summary>
-        /// Implicitly converts an <see ref="HUDActions" /> to an <see ref="InputActionMap" /> instance.
+        /// Implicitly converts an <see ref="UIActions" /> to an <see ref="InputActionMap" /> instance.
         /// </summary>
-        public static implicit operator InputActionMap(HUDActions set) { return set.Get(); }
+        public static implicit operator InputActionMap(UIActions set) { return set.Get(); }
         /// <summary>
         /// Adds <see cref="InputAction.started"/>, <see cref="InputAction.performed"/> and <see cref="InputAction.canceled"/> callbacks provided via <param cref="instance" /> on all input actions contained in this map.
         /// </summary>
@@ -943,26 +1072,20 @@ public partial class @InputController: IInputActionCollection2, IDisposable
         /// <remarks>
         /// If <paramref name="instance" /> is <c>null</c> or <paramref name="instance"/> have already been added this method does nothing.
         /// </remarks>
-        /// <seealso cref="HUDActions" />
-        public void AddCallbacks(IHUDActions instance)
+        /// <seealso cref="UIActions" />
+        public void AddCallbacks(IUIActions instance)
         {
-            if (instance == null || m_Wrapper.m_HUDActionsCallbackInterfaces.Contains(instance)) return;
-            m_Wrapper.m_HUDActionsCallbackInterfaces.Add(instance);
-            @ToggleInventory.started += instance.OnToggleInventory;
-            @ToggleInventory.performed += instance.OnToggleInventory;
-            @ToggleInventory.canceled += instance.OnToggleInventory;
-            @ToggleFabricator.started += instance.OnToggleFabricator;
-            @ToggleFabricator.performed += instance.OnToggleFabricator;
-            @ToggleFabricator.canceled += instance.OnToggleFabricator;
-            @Escape.started += instance.OnEscape;
-            @Escape.performed += instance.OnEscape;
-            @Escape.canceled += instance.OnEscape;
-            @ToggleScanner.started += instance.OnToggleScanner;
-            @ToggleScanner.performed += instance.OnToggleScanner;
-            @ToggleScanner.canceled += instance.OnToggleScanner;
-            @ToggleTasks.started += instance.OnToggleTasks;
-            @ToggleTasks.performed += instance.OnToggleTasks;
-            @ToggleTasks.canceled += instance.OnToggleTasks;
+            if (instance == null || m_Wrapper.m_UIActionsCallbackInterfaces.Contains(instance)) return;
+            m_Wrapper.m_UIActionsCallbackInterfaces.Add(instance);
+            @Navigate.started += instance.OnNavigate;
+            @Navigate.performed += instance.OnNavigate;
+            @Navigate.canceled += instance.OnNavigate;
+            @Submit.started += instance.OnSubmit;
+            @Submit.performed += instance.OnSubmit;
+            @Submit.canceled += instance.OnSubmit;
+            @Cancel.started += instance.OnCancel;
+            @Cancel.performed += instance.OnCancel;
+            @Cancel.canceled += instance.OnCancel;
         }
 
         /// <summary>
@@ -971,33 +1094,27 @@ public partial class @InputController: IInputActionCollection2, IDisposable
         /// <remarks>
         /// Calling this method when <paramref name="instance" /> have not previously been registered has no side-effects.
         /// </remarks>
-        /// <seealso cref="HUDActions" />
-        private void UnregisterCallbacks(IHUDActions instance)
+        /// <seealso cref="UIActions" />
+        private void UnregisterCallbacks(IUIActions instance)
         {
-            @ToggleInventory.started -= instance.OnToggleInventory;
-            @ToggleInventory.performed -= instance.OnToggleInventory;
-            @ToggleInventory.canceled -= instance.OnToggleInventory;
-            @ToggleFabricator.started -= instance.OnToggleFabricator;
-            @ToggleFabricator.performed -= instance.OnToggleFabricator;
-            @ToggleFabricator.canceled -= instance.OnToggleFabricator;
-            @Escape.started -= instance.OnEscape;
-            @Escape.performed -= instance.OnEscape;
-            @Escape.canceled -= instance.OnEscape;
-            @ToggleScanner.started -= instance.OnToggleScanner;
-            @ToggleScanner.performed -= instance.OnToggleScanner;
-            @ToggleScanner.canceled -= instance.OnToggleScanner;
-            @ToggleTasks.started -= instance.OnToggleTasks;
-            @ToggleTasks.performed -= instance.OnToggleTasks;
-            @ToggleTasks.canceled -= instance.OnToggleTasks;
+            @Navigate.started -= instance.OnNavigate;
+            @Navigate.performed -= instance.OnNavigate;
+            @Navigate.canceled -= instance.OnNavigate;
+            @Submit.started -= instance.OnSubmit;
+            @Submit.performed -= instance.OnSubmit;
+            @Submit.canceled -= instance.OnSubmit;
+            @Cancel.started -= instance.OnCancel;
+            @Cancel.performed -= instance.OnCancel;
+            @Cancel.canceled -= instance.OnCancel;
         }
 
         /// <summary>
-        /// Unregisters <param cref="instance" /> and unregisters all input action callbacks via <see cref="HUDActions.UnregisterCallbacks(IHUDActions)" />.
+        /// Unregisters <param cref="instance" /> and unregisters all input action callbacks via <see cref="UIActions.UnregisterCallbacks(IUIActions)" />.
         /// </summary>
-        /// <seealso cref="HUDActions.UnregisterCallbacks(IHUDActions)" />
-        public void RemoveCallbacks(IHUDActions instance)
+        /// <seealso cref="UIActions.UnregisterCallbacks(IUIActions)" />
+        public void RemoveCallbacks(IUIActions instance)
         {
-            if (m_Wrapper.m_HUDActionsCallbackInterfaces.Remove(instance))
+            if (m_Wrapper.m_UIActionsCallbackInterfaces.Remove(instance))
                 UnregisterCallbacks(instance);
         }
 
@@ -1007,21 +1124,172 @@ public partial class @InputController: IInputActionCollection2, IDisposable
         /// <remarks>
         /// If <paramref name="instance" /> is <c>null</c>, calling this method will only unregister all existing callbacks but not register any new callbacks.
         /// </remarks>
-        /// <seealso cref="HUDActions.AddCallbacks(IHUDActions)" />
-        /// <seealso cref="HUDActions.RemoveCallbacks(IHUDActions)" />
-        /// <seealso cref="HUDActions.UnregisterCallbacks(IHUDActions)" />
-        public void SetCallbacks(IHUDActions instance)
+        /// <seealso cref="UIActions.AddCallbacks(IUIActions)" />
+        /// <seealso cref="UIActions.RemoveCallbacks(IUIActions)" />
+        /// <seealso cref="UIActions.UnregisterCallbacks(IUIActions)" />
+        public void SetCallbacks(IUIActions instance)
         {
-            foreach (var item in m_Wrapper.m_HUDActionsCallbackInterfaces)
+            foreach (var item in m_Wrapper.m_UIActionsCallbackInterfaces)
                 UnregisterCallbacks(item);
-            m_Wrapper.m_HUDActionsCallbackInterfaces.Clear();
+            m_Wrapper.m_UIActionsCallbackInterfaces.Clear();
             AddCallbacks(instance);
         }
     }
     /// <summary>
-    /// Provides a new <see cref="HUDActions" /> instance referencing this action map.
+    /// Provides a new <see cref="UIActions" /> instance referencing this action map.
     /// </summary>
-    public HUDActions @HUD => new HUDActions(this);
+    public UIActions @UI => new UIActions(this);
+
+    // GamePlay
+    private readonly InputActionMap m_GamePlay;
+    private List<IGamePlayActions> m_GamePlayActionsCallbackInterfaces = new List<IGamePlayActions>();
+    private readonly InputAction m_GamePlay_Pause;
+    private readonly InputAction m_GamePlay_Inventory;
+    private readonly InputAction m_GamePlay_Management;
+    private readonly InputAction m_GamePlay_Scan;
+    private readonly InputAction m_GamePlay_QuickSave;
+    private readonly InputAction m_GamePlay_QuickLoad;
+    /// <summary>
+    /// Provides access to input actions defined in input action map "GamePlay".
+    /// </summary>
+    public struct GamePlayActions
+    {
+        private @InputController m_Wrapper;
+
+        /// <summary>
+        /// Construct a new instance of the input action map wrapper class.
+        /// </summary>
+        public GamePlayActions(@InputController wrapper) { m_Wrapper = wrapper; }
+        /// <summary>
+        /// Provides access to the underlying input action "GamePlay/Pause".
+        /// </summary>
+        public InputAction @Pause => m_Wrapper.m_GamePlay_Pause;
+        /// <summary>
+        /// Provides access to the underlying input action "GamePlay/Inventory".
+        /// </summary>
+        public InputAction @Inventory => m_Wrapper.m_GamePlay_Inventory;
+        /// <summary>
+        /// Provides access to the underlying input action "GamePlay/Management".
+        /// </summary>
+        public InputAction @Management => m_Wrapper.m_GamePlay_Management;
+        /// <summary>
+        /// Provides access to the underlying input action "GamePlay/Scan".
+        /// </summary>
+        public InputAction @Scan => m_Wrapper.m_GamePlay_Scan;
+        /// <summary>
+        /// Provides access to the underlying input action "GamePlay/QuickSave".
+        /// </summary>
+        public InputAction @QuickSave => m_Wrapper.m_GamePlay_QuickSave;
+        /// <summary>
+        /// Provides access to the underlying input action "GamePlay/QuickLoad".
+        /// </summary>
+        public InputAction @QuickLoad => m_Wrapper.m_GamePlay_QuickLoad;
+        /// <summary>
+        /// Provides access to the underlying input action map instance.
+        /// </summary>
+        public InputActionMap Get() { return m_Wrapper.m_GamePlay; }
+        /// <inheritdoc cref="UnityEngine.InputSystem.InputActionMap.Enable()" />
+        public void Enable() { Get().Enable(); }
+        /// <inheritdoc cref="UnityEngine.InputSystem.InputActionMap.Disable()" />
+        public void Disable() { Get().Disable(); }
+        /// <inheritdoc cref="UnityEngine.InputSystem.InputActionMap.enabled" />
+        public bool enabled => Get().enabled;
+        /// <summary>
+        /// Implicitly converts an <see ref="GamePlayActions" /> to an <see ref="InputActionMap" /> instance.
+        /// </summary>
+        public static implicit operator InputActionMap(GamePlayActions set) { return set.Get(); }
+        /// <summary>
+        /// Adds <see cref="InputAction.started"/>, <see cref="InputAction.performed"/> and <see cref="InputAction.canceled"/> callbacks provided via <param cref="instance" /> on all input actions contained in this map.
+        /// </summary>
+        /// <param name="instance">Callback instance.</param>
+        /// <remarks>
+        /// If <paramref name="instance" /> is <c>null</c> or <paramref name="instance"/> have already been added this method does nothing.
+        /// </remarks>
+        /// <seealso cref="GamePlayActions" />
+        public void AddCallbacks(IGamePlayActions instance)
+        {
+            if (instance == null || m_Wrapper.m_GamePlayActionsCallbackInterfaces.Contains(instance)) return;
+            m_Wrapper.m_GamePlayActionsCallbackInterfaces.Add(instance);
+            @Pause.started += instance.OnPause;
+            @Pause.performed += instance.OnPause;
+            @Pause.canceled += instance.OnPause;
+            @Inventory.started += instance.OnInventory;
+            @Inventory.performed += instance.OnInventory;
+            @Inventory.canceled += instance.OnInventory;
+            @Management.started += instance.OnManagement;
+            @Management.performed += instance.OnManagement;
+            @Management.canceled += instance.OnManagement;
+            @Scan.started += instance.OnScan;
+            @Scan.performed += instance.OnScan;
+            @Scan.canceled += instance.OnScan;
+            @QuickSave.started += instance.OnQuickSave;
+            @QuickSave.performed += instance.OnQuickSave;
+            @QuickSave.canceled += instance.OnQuickSave;
+            @QuickLoad.started += instance.OnQuickLoad;
+            @QuickLoad.performed += instance.OnQuickLoad;
+            @QuickLoad.canceled += instance.OnQuickLoad;
+        }
+
+        /// <summary>
+        /// Removes <see cref="InputAction.started"/>, <see cref="InputAction.performed"/> and <see cref="InputAction.canceled"/> callbacks provided via <param cref="instance" /> on all input actions contained in this map.
+        /// </summary>
+        /// <remarks>
+        /// Calling this method when <paramref name="instance" /> have not previously been registered has no side-effects.
+        /// </remarks>
+        /// <seealso cref="GamePlayActions" />
+        private void UnregisterCallbacks(IGamePlayActions instance)
+        {
+            @Pause.started -= instance.OnPause;
+            @Pause.performed -= instance.OnPause;
+            @Pause.canceled -= instance.OnPause;
+            @Inventory.started -= instance.OnInventory;
+            @Inventory.performed -= instance.OnInventory;
+            @Inventory.canceled -= instance.OnInventory;
+            @Management.started -= instance.OnManagement;
+            @Management.performed -= instance.OnManagement;
+            @Management.canceled -= instance.OnManagement;
+            @Scan.started -= instance.OnScan;
+            @Scan.performed -= instance.OnScan;
+            @Scan.canceled -= instance.OnScan;
+            @QuickSave.started -= instance.OnQuickSave;
+            @QuickSave.performed -= instance.OnQuickSave;
+            @QuickSave.canceled -= instance.OnQuickSave;
+            @QuickLoad.started -= instance.OnQuickLoad;
+            @QuickLoad.performed -= instance.OnQuickLoad;
+            @QuickLoad.canceled -= instance.OnQuickLoad;
+        }
+
+        /// <summary>
+        /// Unregisters <param cref="instance" /> and unregisters all input action callbacks via <see cref="GamePlayActions.UnregisterCallbacks(IGamePlayActions)" />.
+        /// </summary>
+        /// <seealso cref="GamePlayActions.UnregisterCallbacks(IGamePlayActions)" />
+        public void RemoveCallbacks(IGamePlayActions instance)
+        {
+            if (m_Wrapper.m_GamePlayActionsCallbackInterfaces.Remove(instance))
+                UnregisterCallbacks(instance);
+        }
+
+        /// <summary>
+        /// Replaces all existing callback instances and previously registered input action callbacks associated with them with callbacks provided via <param cref="instance" />.
+        /// </summary>
+        /// <remarks>
+        /// If <paramref name="instance" /> is <c>null</c>, calling this method will only unregister all existing callbacks but not register any new callbacks.
+        /// </remarks>
+        /// <seealso cref="GamePlayActions.AddCallbacks(IGamePlayActions)" />
+        /// <seealso cref="GamePlayActions.RemoveCallbacks(IGamePlayActions)" />
+        /// <seealso cref="GamePlayActions.UnregisterCallbacks(IGamePlayActions)" />
+        public void SetCallbacks(IGamePlayActions instance)
+        {
+            foreach (var item in m_Wrapper.m_GamePlayActionsCallbackInterfaces)
+                UnregisterCallbacks(item);
+            m_Wrapper.m_GamePlayActionsCallbackInterfaces.Clear();
+            AddCallbacks(instance);
+        }
+    }
+    /// <summary>
+    /// Provides a new <see cref="GamePlayActions" /> instance referencing this action map.
+    /// </summary>
+    public GamePlayActions @GamePlay => new GamePlayActions(this);
     /// <summary>
     /// Interface to implement callback methods for all input action callbacks associated with input actions defined by "Probe" which allows adding and removing callbacks.
     /// </summary>
@@ -1102,46 +1370,82 @@ public partial class @InputController: IInputActionCollection2, IDisposable
         void OnZoom(InputAction.CallbackContext context);
     }
     /// <summary>
-    /// Interface to implement callback methods for all input action callbacks associated with input actions defined by "HUD" which allows adding and removing callbacks.
+    /// Interface to implement callback methods for all input action callbacks associated with input actions defined by "UI" which allows adding and removing callbacks.
     /// </summary>
-    /// <seealso cref="HUDActions.AddCallbacks(IHUDActions)" />
-    /// <seealso cref="HUDActions.RemoveCallbacks(IHUDActions)" />
-    public interface IHUDActions
+    /// <seealso cref="UIActions.AddCallbacks(IUIActions)" />
+    /// <seealso cref="UIActions.RemoveCallbacks(IUIActions)" />
+    public interface IUIActions
     {
         /// <summary>
-        /// Method invoked when associated input action "ToggleInventory" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+        /// Method invoked when associated input action "Navigate" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
         /// </summary>
         /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
         /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
         /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
-        void OnToggleInventory(InputAction.CallbackContext context);
+        void OnNavigate(InputAction.CallbackContext context);
         /// <summary>
-        /// Method invoked when associated input action "ToggleFabricator" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+        /// Method invoked when associated input action "Submit" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
         /// </summary>
         /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
         /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
         /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
-        void OnToggleFabricator(InputAction.CallbackContext context);
+        void OnSubmit(InputAction.CallbackContext context);
         /// <summary>
-        /// Method invoked when associated input action "Escape" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+        /// Method invoked when associated input action "Cancel" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
         /// </summary>
         /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
         /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
         /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
-        void OnEscape(InputAction.CallbackContext context);
+        void OnCancel(InputAction.CallbackContext context);
+    }
+    /// <summary>
+    /// Interface to implement callback methods for all input action callbacks associated with input actions defined by "GamePlay" which allows adding and removing callbacks.
+    /// </summary>
+    /// <seealso cref="GamePlayActions.AddCallbacks(IGamePlayActions)" />
+    /// <seealso cref="GamePlayActions.RemoveCallbacks(IGamePlayActions)" />
+    public interface IGamePlayActions
+    {
         /// <summary>
-        /// Method invoked when associated input action "ToggleScanner" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+        /// Method invoked when associated input action "Pause" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
         /// </summary>
         /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
         /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
         /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
-        void OnToggleScanner(InputAction.CallbackContext context);
+        void OnPause(InputAction.CallbackContext context);
         /// <summary>
-        /// Method invoked when associated input action "ToggleTasks" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+        /// Method invoked when associated input action "Inventory" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
         /// </summary>
         /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
         /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
         /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
-        void OnToggleTasks(InputAction.CallbackContext context);
+        void OnInventory(InputAction.CallbackContext context);
+        /// <summary>
+        /// Method invoked when associated input action "Management" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+        /// </summary>
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+        void OnManagement(InputAction.CallbackContext context);
+        /// <summary>
+        /// Method invoked when associated input action "Scan" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+        /// </summary>
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+        void OnScan(InputAction.CallbackContext context);
+        /// <summary>
+        /// Method invoked when associated input action "QuickSave" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+        /// </summary>
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+        void OnQuickSave(InputAction.CallbackContext context);
+        /// <summary>
+        /// Method invoked when associated input action "QuickLoad" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+        /// </summary>
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+        void OnQuickLoad(InputAction.CallbackContext context);
     }
 }

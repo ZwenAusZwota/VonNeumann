@@ -13,4 +13,4 @@ MonoBehaviour:
   m_Name: PreloadCatalog
   m_EditorClassIdentifier: 
   Keys:
-  - prefabs
+  - Prefabs

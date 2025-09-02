@@ -26,7 +26,6 @@ using UnityEngine;
     public class Vec3Dto
     {
         public float x, y, z;
-
         public Vector3 ToVector3(float scale = 1f) => new(x * scale, y * scale, z * scale);
     }
 
@@ -42,36 +41,36 @@ public class ObjectDto
 }
 
 [Serializable]
-public class StarDto : ObjectDto
+public class StarDto
 {
-    public string spect;
-    public float mag;
+    public string name;
+    public string spect;                 // z.B. "G2V"
+    public float luminosity_solar = 1f;  // L/L☉
+    public float colorTemperatureK = 5772f;
 }
 
 [Serializable]
-public class PlanetDto: ObjectDto
+public class PlanetDto
 {
-    public float orbital_period_days;
-    public string atmosphere;
-    public float gravity_g;
-    public float star_distance_km;
-    public Dictionary<string, float> resources;
-    /* Belt-spezifisch */
-    /*public float inner_radius_km;
+    public string object_type = "planet";
+    public string name;
+    public string displayName;
+    public float radius_km;              // physischer Radius
+    public float star_distance_km;       // Bahn-Halbachse ~ km
+    public float orbital_period_days;    // für OrbitAnimation
+    public string atmosphere;            // "kein", "dünn", "sauerstoffarm", "stickstoffreich"
+    public Vec3Dto position;             // wird von PlanetGenerator gesetzt/benutzt
+}
+
+[Serializable]
+public class AsteroidBeltDto
+{
+    public string name;
+    public float inner_radius_km;
     public float outer_radius_km;
-    public float density;*/
 }
 
 [Serializable]
-    public class AsteroidBeltDto: ObjectDto
-    {
-        public float star_distance_km;
-        public float inner_radius_km;
-        public float outer_radius_km;
-        public float density;
-    }
-
-    [Serializable]
     public class InitPayload
     {
         public PlayerDto player;

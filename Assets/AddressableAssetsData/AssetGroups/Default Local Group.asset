@@ -1,0 +1,35 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bbb281ee3bf0b054c82ac2347e9e782c, type: 3}
+  m_Name: Default Local Group
+  m_EditorClassIdentifier: 
+  m_GroupName: Default Local Group
+  m_GUID: cd0a3ebcde2e48947a3fcba6d3a8b40c
+  m_SerializeEntries:
+  - m_GUID: 5886b3a374a059e499615fe34b941d03
+    m_Address: Assets/Prefabs/Probe.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Prefabs
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: ef010ede9b7f57342a2a27a574ce20e2
+    m_Address: Assets/Prefabs/Miner_MK1.fbx
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - Prefabs
+    FlaggedDuringContentUpdateRestriction: 0
+  m_ReadOnly: 0
+  m_Settings: {fileID: 11400000, guid: 9498143e87f9ad24aa2c643fc783e648, type: 2}
+  m_SchemaSet:
+    m_Schemas:
+    - {fileID: 11400000, guid: f81ee326dbc456045ae8d88f53932482, type: 2}
+    - {fileID: 11400000, guid: 52e2f05500a6e6a4dafda9de05c8ae92, type: 2}

@@ -68,23 +68,61 @@ public class AssetProvider : MonoBehaviour
         float each = 1f / catalog.Keys.Count;
         float acc = 0f;
 
-        foreach (var key in catalog.Keys)
-        {
-            Log($"[AssetProvider] DownloadDependenciesAsync: '{key}'");
-            var handle = Addressables.DownloadDependenciesAsync((object)key, true);
+        //foreach (var key in catalog.Keys)
+        //{
+        //    Log($"[AssetProvider] DownloadDependenciesAsync: '{key}'");
+        //    var handle = Addressables.DownloadDependenciesAsync((object)key, true);
 
+        //    while (!handle.IsDone)
+        //    {
+        //        progress?.Report(Mathf.Clamp01(acc + handle.PercentComplete * each));
+        //        await UniTask.Yield(); // Frameweise updaten
+        //    }
+
+        //    // Handle freigeben – Daten verbleiben im Cache
+        //    Addressables.Release(handle);
+
+        //    acc += each;
+        //    progress?.Report(Mathf.Clamp01(acc));
+        //}
+
+        // ... nach InitializeAsync()
+        var keys = catalog != null ? catalog.Keys : new List<string>();
+        if (keys.Count == 0) { _initialized = true; progress?.Report(1f); return; }
+
+        foreach (var key in keys)
+        {
+            // 0) Gibt es für den Key/Label überhaupt Locations?
+            IList<UnityEngine.ResourceManagement.ResourceLocations.IResourceLocation> locs = null;
+            try
+            {
+                var locHandle = Addressables.LoadResourceLocationsAsync((object)key);
+                locs = await locHandle.ToUniTask();
+                Addressables.Release(locHandle);
+            }
+            catch { /* ignorieren – locs bleibt null */ }
+
+            if (locs == null || locs.Count == 0)
+            {
+                Debug.LogWarning($"[AssetProvider] Preload-Key/Label '{key}' hat keine Locations. (Falscher Name? Label nicht gesetzt?) – überspringe.");
+                acc += each; progress?.Report(Mathf.Clamp01(acc));
+                continue;
+            }
+
+            // 1) Dependencies laden
+            var handle = Addressables.DownloadDependenciesAsync((object)key, true);
             while (!handle.IsDone)
             {
                 progress?.Report(Mathf.Clamp01(acc + handle.PercentComplete * each));
-                await UniTask.Yield(); // Frameweise updaten
+                await Cysharp.Threading.Tasks.UniTask.Yield();
             }
-
-            // Handle freigeben – Daten verbleiben im Cache
             Addressables.Release(handle);
 
             acc += each;
             progress?.Report(Mathf.Clamp01(acc));
         }
+
+        _initialized = true;
 
         progress?.Report(1f);
         Log("[AssetProvider] Preload done.");

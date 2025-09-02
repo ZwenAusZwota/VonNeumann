@@ -526,7 +526,6 @@ GameObject:
   m_Component:
   - component: {fileID: 1047280768}
   - component: {fileID: 1047280767}
-  - component: {fileID: 1047280766}
   - component: {fileID: 1047280769}
   m_Layer: 0
   m_Name: Main Camera
@@ -535,14 +534,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!81 &1047280766
-AudioListener:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1047280765}
-  m_Enabled: 1
 --- !u!20 &1047280767
 Camera:
   m_ObjectHideFlags: 0
@@ -1040,13 +1031,12 @@ MonoBehaviour:
   m_GameObject: {fileID: 2035468071}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: de4fd74066aa42e4ebfceaca62a9bb3f, type: 3}
+  m_Script: {fileID: 11500000, guid: 11013f281dfaa07418492401418bcfb0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  catalog: {fileID: 11400000, guid: 812efa8c37d10a0489856eac346a0ef6, type: 2}
   progressBar: {fileID: 1146672912}
-  targetSceneName: GameScene
-  loadingSceneName: Loading
-  fakeDelaySeconds: 2
+  percentLabel: {fileID: 2295295}
 --- !u!1 &2097978266
 GameObject:
   m_ObjectHideFlags: 0

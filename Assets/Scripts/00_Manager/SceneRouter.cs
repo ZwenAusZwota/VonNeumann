@@ -80,8 +80,13 @@ public class SceneRouter : MonoBehaviour
 
     public UniTask ToSplash() => LoadSet(new[] { AppScene.Splash });
     public UniTask ToMainMenu() => LoadSet(new[] { AppScene.MainMenu });
-    public UniTask ToNewGame() => LoadSet(new[] { AppScene.Loading, AppScene.Game, AppScene.GameUI });
-    public UniTask ToLoadGame() => LoadSet(new[] { AppScene.Loading, AppScene.Game, AppScene.GameUI });
+    //public UniTask ToNewGame() => LoadSet(new[] { AppScene.Loading, AppScene.Game, AppScene.GameUI });
+    //public UniTask ToLoadGame() => LoadSet(new[] { AppScene.Loading, AppScene.Game, AppScene.GameUI });
+
+    // SceneRouter.cs
+    public UniTask ToNewGame() => LoadSet(new[] { AppScene.Loading });
+    public UniTask ToLoadGame() => LoadSet(new[] { AppScene.Loading });
+
 
     /// <summary>Pausen-/Optionsszene additiv ein-/ausblenden.</summary>
     public UniTask TogglePause(bool on) => ToggleScene(AppScene.Pause, on);

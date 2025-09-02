@@ -319,49 +319,31 @@
             ]
         },
         {
-            "name": "HUD",
+            "name": "UI",
             "id": "1972519b-5a5b-459b-b6d3-da35acec68bd",
             "actions": [
                 {
-                    "name": "ToggleInventory",
+                    "name": "Navigate",
+                    "type": "Value",
+                    "id": "56059c04-8b46-4be8-8ccf-c39ebfa0e27c",
+                    "expectedControlType": "Vector2",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": true
+                },
+                {
+                    "name": "Submit",
                     "type": "Button",
-                    "id": "28042cb1-f85f-445a-88a8-8c80338991a7",
+                    "id": "eb297d39-2bf1-4bc1-b1e3-085d0bd649d8",
                     "expectedControlType": "",
                     "processors": "",
                     "interactions": "",
                     "initialStateCheck": false
                 },
                 {
-                    "name": "ToggleFabricator",
+                    "name": "Cancel",
                     "type": "Button",
-                    "id": "1e962fbb-8a81-4be5-854d-c22f24f57f9f",
-                    "expectedControlType": "",
-                    "processors": "",
-                    "interactions": "",
-                    "initialStateCheck": false
-                },
-                {
-                    "name": "Escape",
-                    "type": "Button",
-                    "id": "130d92c9-10f6-4560-a8e2-b6efa75dfe82",
-                    "expectedControlType": "",
-                    "processors": "",
-                    "interactions": "",
-                    "initialStateCheck": false
-                },
-                {
-                    "name": "ToggleScanner",
-                    "type": "Button",
-                    "id": "635374ac-0b46-409b-9312-23f855a81228",
-                    "expectedControlType": "",
-                    "processors": "",
-                    "interactions": "",
-                    "initialStateCheck": false
-                },
-                {
-                    "name": "ToggleTasks",
-                    "type": "Button",
-                    "id": "0311acc4-c662-4679-bafe-0c36e8fec856",
+                    "id": "277576cb-9d97-459f-833a-6f716a44c6b5",
                     "expectedControlType": "",
                     "processors": "",
                     "interactions": "",
@@ -371,56 +353,206 @@
             "bindings": [
                 {
                     "name": "",
-                    "id": "e9703044-9103-49de-b411-e193c75437d1",
-                    "path": "<Keyboard>/#(I)",
+                    "id": "280f62df-5f52-4795-a2f2-3fcf49ebef45",
+                    "path": "<Keyboard>/enter",
                     "interactions": "",
                     "processors": "",
                     "groups": "",
-                    "action": "ToggleInventory",
+                    "action": "Submit",
                     "isComposite": false,
                     "isPartOfComposite": false
                 },
                 {
                     "name": "",
-                    "id": "0489450a-4db8-4c53-a2ea-3aec8c938393",
-                    "path": "<Keyboard>/#(B)",
+                    "id": "3b3c4ba5-3e92-4db6-b52c-4ce80a0b9264",
+                    "path": "<Keyboard>/{Cancel}",
                     "interactions": "",
                     "processors": "",
                     "groups": "",
-                    "action": "ToggleFabricator",
+                    "action": "Cancel",
                     "isComposite": false,
                     "isPartOfComposite": false
                 },
                 {
-                    "name": "",
-                    "id": "1493a8eb-715e-419c-93a9-00ef2e236e74",
-                    "path": "<Keyboard>/escape",
+                    "name": "2D Vector",
+                    "id": "949d9efc-02cd-4185-9521-c7582b9f814e",
+                    "path": "2DVector",
                     "interactions": "",
                     "processors": "",
                     "groups": "",
-                    "action": "Escape",
-                    "isComposite": false,
+                    "action": "Navigate",
+                    "isComposite": true,
                     "isPartOfComposite": false
                 },
                 {
-                    "name": "",
-                    "id": "95223cbd-42a1-41f9-b847-d08f790015ae",
+                    "name": "up",
+                    "id": "f920ba01-3b78-46f2-8cb6-fa27cbf68e38",
+                    "path": "<Keyboard>/w",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Navigate",
+                    "isComposite": false,
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "down",
+                    "id": "4dcac6f4-628b-452a-a957-f7d30b34758b",
                     "path": "<Keyboard>/s",
                     "interactions": "",
                     "processors": "",
                     "groups": "",
-                    "action": "ToggleScanner",
+                    "action": "Navigate",
+                    "isComposite": false,
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "left",
+                    "id": "8059c454-e648-4974-b6e3-e85221f49907",
+                    "path": "<Keyboard>/a",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Navigate",
+                    "isComposite": false,
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "right",
+                    "id": "a99fe3e3-51f7-422f-a96b-6bd4844c7766",
+                    "path": "<Keyboard>/d",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Navigate",
+                    "isComposite": false,
+                    "isPartOfComposite": true
+                }
+            ]
+        },
+        {
+            "name": "GamePlay",
+            "id": "05443054-a46f-429f-a7e5-de7cdec617fc",
+            "actions": [
+                {
+                    "name": "Pause",
+                    "type": "Button",
+                    "id": "c5f2ab12-869a-4a45-8457-3ef576175891",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "Inventory",
+                    "type": "Button",
+                    "id": "10bedd79-aafd-4188-b400-df6099af6b84",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "Management",
+                    "type": "Button",
+                    "id": "500cc38f-d31d-425f-89ef-f9a9926eb7dc",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "Scan",
+                    "type": "Button",
+                    "id": "c1868b6d-1c6a-468e-877c-a4d1110c8658",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "QuickSave",
+                    "type": "Button",
+                    "id": "0ae6aa1f-9809-4d8b-a6e8-b5677ddd3c56",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "QuickLoad",
+                    "type": "Button",
+                    "id": "002b91d3-0ca5-4a4a-a622-6793d9951fcb",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                }
+            ],
+            "bindings": [
+                {
+                    "name": "",
+                    "id": "0aad8f7a-da05-4461-b073-760eab2ec941",
+                    "path": "<Keyboard>/escape",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Pause",
                     "isComposite": false,
                     "isPartOfComposite": false
                 },
                 {
                     "name": "",
-                    "id": "0c455545-e57a-450e-9548-a400a429e579",
-                    "path": "<Keyboard>/t",
+                    "id": "3da4f322-e103-4c1f-82cf-3da86389925f",
+                    "path": "<Keyboard>/i",
                     "interactions": "",
                     "processors": "",
                     "groups": "",
-                    "action": "ToggleTasks",
+                    "action": "Inventory",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "fb6263d5-692f-44e9-8492-32be06dee4be",
+                    "path": "<Keyboard>/m",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Management",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "04e97e92-ab85-499e-835d-9e3e4484b781",
+                    "path": "<Keyboard>/s",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Scan",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "71348049-48fc-4ef4-89ec-0cf732783467",
+                    "path": "<Keyboard>/f5",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "QuickSave",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "5926cea7-e1ae-4765-bef8-09b0b0489f3d",
+                    "path": "<Keyboard>/f9",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "QuickLoad",
                     "isComposite": false,
                     "isPartOfComposite": false
                 }
