@@ -60,6 +60,9 @@ public class ProbeController : MonoBehaviour
 
     void Awake()
     {
+        // Wichtig: Sonde bleibt beim Szenenwechsel bestehen
+        DontDestroyOnLoad(this.gameObject);
+
         rb = GetComponent<Rigidbody>();
         registry = PlanetRegistry.Instance;
         inputController = new InputController();
@@ -81,6 +84,7 @@ public class ProbeController : MonoBehaviour
         };
         SafeRegisterHub(hubInfo);
     }
+
 
     void OnEnable()
     {

@@ -46,7 +46,8 @@ public class StarGenerator : MonoBehaviour
         GameObject starGO = GameObject.CreatePrimitive(PrimitiveType.Sphere);
         starGO.tag = "Star";
         starGO.name = string.IsNullOrWhiteSpace(dto.name) ? "Star" : dto.name;
-        starGO.transform.SetParent(transform, false);
+        //starGO.transform.SetParent(transform, false);
+        starGO.transform.SetParent(WorldRoot.Instance.starRoot, false);
         starGO.transform.localPosition = Vector3.zero;
 
         if (removeCollider)

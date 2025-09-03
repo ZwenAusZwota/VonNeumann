@@ -14,31 +14,28 @@ public class MineableAsteroid : MonoBehaviour
     public string materialId = "Iron";
     public float startUnits = 1_000f;     // Gesamtvorrat beim Spawnen
 
-    [Header("Visual Settings")]
-    [Tooltip("Minimum-Skalierung bevor der Asteroid als 'leer' gilt")]
-    [Range(0.01f, 0.3f)]
-    public float minimumScale = 0.1f;
+    [Tooltip("Minimale visuelle Größe (als Faktor), damit der Asteroid nie auf 0 schrumpft.")]
+    [Range(0.05f, 1f)]
+    public float minimumScale = 0.2f;
 
-    [Tooltip("Soll der Asteroid visuell schrumpfen beim Abbauen?")]
+    [Tooltip("Wenn true, verringert sich die visuelle Größe mit abgebauten Einheiten.")]
     public bool visuallyDegrade = true;
 
-    [Header("Effects")]
-    [Tooltip("Partikel-Effekt beim Abbauen (optional)")]
+    [Header("Mining")]
+    [Tooltip("Einheiten pro Sekunde, die beim Mining maximal entnommen werden.")]
+    public float maxExtractPerSecond = 20f;
+
+    [Tooltip("Optionaler Partikeleffekt beim Mining.")]
     public ParticleSystem miningEffect;
 
-    [Tooltip("Sound beim Abbauen (optional)")]
+    [Tooltip("Optionaler Sound beim Mining.")]
     public AudioClip miningSound;
 
-    // Private Felder
+    // Zustand
     private float unitsRemaining;
     private Vector3 startScale;
+    private bool isMining;
     private AudioSource audioSource;
-
-    // Properties
-    public float UnitsRemaining => unitsRemaining;
-    public float StartUnits => startUnits;
-    public bool IsFullyMined => unitsRemaining <= 0f;
-    public float RemainingPercentage => startUnits > 0 ? unitsRemaining / startUnits : 0f;
 
     // Events
     public event Action<float> OnUnitsMined;           // Einheiten die abgebaut wurden
@@ -52,6 +49,7 @@ public class MineableAsteroid : MonoBehaviour
         ResetToStartValues();
         startScale = transform.localScale;
 
+        ApplyRenderMaterial(); // Zentrale Materialzuweisung
         // AudioSource für Mining-Sounds
         audioSource = GetComponent<AudioSource>();
         if (audioSource == null && miningSound != null)
@@ -62,87 +60,101 @@ public class MineableAsteroid : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Setzt den Asteroiden auf Ausgangswerte zurück (für Object Pool)
-    /// </summary>
+    /// <summary>Setzt den Asteroiden auf Ausgangswerte zurück (für Object Pool)</summary>
     public void ResetToStartValues()
     {
         unitsRemaining = startUnits;
 
-        // Scale zurücksetzen falls bereits gesetzt
-        if (startScale != Vector3.zero)
-            transform.localScale = startScale;
+        // Mining stoppen
+        isMining = false;
+        if (miningEffect != null && miningEffect.isPlaying) miningEffect.Stop();
+        if (audioSource != null && audioSource.isPlaying) audioSource.Stop();
+
+        UpdateVisualScale();
+        OnUnitsRemainChanged?.Invoke(unitsRemaining);
     }
 
-    /// <summary>
-    /// Konfiguriert den Asteroiden mit neuen Werten
-    /// </summary>
+    /// <summary>Prozentualer Restbestand (0…1).</summary>
+    public float RemainingPercentage => Mathf.Approximately(startUnits, 0f) ? 0f : Mathf.Clamp01(unitsRemaining / startUnits);
+
+    /// <summary>Ob der Asteroid vollständig abgebaut ist.</summary>
+    public bool IsFullyMined => unitsRemaining <= 0f;
+
+    // ─── NEU: öffentliche Read-only Properties für Fremdcode (z. B. ProbeMiner) ───
+    public float UnitsRemaining => unitsRemaining;
+    public float StartUnits => startUnits;
+    public string MaterialId => materialId;
+
+    /// <summary>(Re-)Konfiguration über den Pool/Spawner.</summary>
     public void Configure(string newMaterialId, float newStartUnits)
     {
         materialId = newMaterialId;
         startUnits = newStartUnits;
         ResetToStartValues();
+
+        ApplyRenderMaterial(); // Material nach neuer ID anwenden
     }
 
-    /// <summary>
-    /// Liefert 0 … requested Einheiten, je nachdem was noch übrig ist.
-    /// </summary>
+    /// <summary>Liefert 0 … requested Einheiten, je nachdem was noch übrig ist.</summary>
     public float RemoveUnits(float requested)
     {
         if (requested <= 0f || IsFullyMined) return 0f;
 
         float granted = Mathf.Min(requested, unitsRemaining);
-        float previousUnits = unitsRemaining;
+        float previous = unitsRemaining;
         unitsRemaining -= granted;
 
-        // Events auslösen
-        OnUnitsMined?.Invoke(granted);
-        OnUnitsRemainChanged?.Invoke(unitsRemaining);
-
-        // Visuelles Update
-        if (visuallyDegrade)
-            UpdateVisualScale();
-
-        // Effekte abspielen
-        PlayMiningEffects();
-
-        // Check if fully mined
-        if (IsFullyMined && previousUnits > 0f)
+        if (!Mathf.Approximately(previous, unitsRemaining))
         {
-            OnFullyMined?.Invoke();
-            HandleFullyMined();
+            UpdateVisualScale();
+            OnUnitsRemainChanged?.Invoke(unitsRemaining);
         }
 
+        if (IsFullyMined)
+        {
+            OnFullyMined?.Invoke();
+            StopMining();
+        }
+
+        OnUnitsMined?.Invoke(granted);
         return granted;
     }
 
-    /// <summary>
-    /// Beginnt den Mining-Prozess (für kontinuierliches Mining)
-    /// </summary>
+    /// <summary>Startet den Mining-Prozess (Effekte/Sounds)</summary>
     public void StartMining()
     {
+        if (IsFullyMined) return;
+        if (isMining) return;
+
+        isMining = true;
         OnStartMining?.Invoke();
 
-        // Mining-Effekte starten
         if (miningEffect != null && !miningEffect.isPlaying)
             miningEffect.Play();
+
+        if (audioSource != null && miningSound != null && !audioSource.isPlaying)
+        {
+            audioSource.clip = miningSound;
+            audioSource.loop = true;
+            audioSource.Play();
+        }
     }
 
-    /// <summary>
-    /// Beendet den Mining-Prozess
-    /// </summary>
+    /// <summary>Beendet den Mining-Prozess</summary>
     public void StopMining()
     {
         OnStopMining?.Invoke();
 
-        // Mining-Effekte stoppen
         if (miningEffect != null && miningEffect.isPlaying)
             miningEffect.Stop();
+
+        if (audioSource != null && audioSource.isPlaying)
+            audioSource.Stop();
+
+        isMining = false;
     }
 
-    /// <summary>
-    /// Aktualisiert die visuelle Skalierung basierend auf verbleibenden Einheiten
-    /// </summary>
+    /// <summary>Aktualisiert die visuelle Skalierung basierend auf verbleibenden Einheiten</summary>
     void UpdateVisualScale()
     {
         if (!visuallyDegrade) return;
@@ -154,87 +166,14 @@ public class MineableAsteroid : MonoBehaviour
         transform.localScale = startScale * volumeScale;
     }
 
-    /// <summary>
-    /// Spielt Mining-Effekte ab
-    /// </summary>
-    void PlayMiningEffects()
+    void Update()
     {
-        // Partikel-Effekt
-        if (miningEffect != null && !miningEffect.isPlaying)
-        {
-            miningEffect.Play();
-        }
+        if (!isMining || IsFullyMined) return;
 
-        // Sound-Effekt
-        if (audioSource != null && miningSound != null)
-        {
-            audioSource.pitch = Random.Range(0.8f, 1.2f); // Variation
-            audioSource.PlayOneShot(miningSound);
-        }
+        float extractThisFrame = maxExtractPerSecond * Time.deltaTime;
+        RemoveUnits(extractThisFrame);
     }
 
-    /// <summary>
-    /// Behandelt vollständiges Abbauen
-    /// </summary>
-    void HandleFullyMined()
-    {
-        // Effekte stoppen
-        StopMining();
-
-        // Für Object Pool: Nicht direkt zerstören
-        var pooledComponent = GetComponent<PooledAsteroid>();
-        if (pooledComponent != null)
-        {
-            // Pool-System übernimmt
-            return;
-        }
-
-        // Fallback: Traditionelles Zerstören nach kurzer Verzögerung
-        Invoke(nameof(DestroyAsteroid), 1f);
-    }
-
-    /// <summary>
-    /// Zerstört den Asteroiden (Fallback wenn kein Pool verwendet wird)
-    /// </summary>
-    void DestroyAsteroid()
-    {
-        Destroy(gameObject);
-    }
-
-    /// <summary>
-    /// Gibt geschätzte Mining-Zeit zurück
-    /// </summary>
-    public float GetEstimatedMiningTime(float miningRate)
-    {
-        return miningRate > 0 ? unitsRemaining / miningRate : float.MaxValue;
-    }
-
-    /// <summary>
-    /// Prüft ob genügend Material für bestimmte Menge vorhanden ist
-    /// </summary>
-    public bool HasSufficientMaterial(float requiredAmount)
-    {
-        return unitsRemaining >= requiredAmount;
-    }
-
-    /// <summary>
-    /// Debug-Anzeige
-    /// </summary>
-    void OnDrawGizmosSelected()
-    {
-        Gizmos.color = Color.yellow;
-        Gizmos.DrawWireSphere(transform.position, 0.5f);
-
-        // Material-Info anzeigen
-#if UNITY_EDITOR
-        UnityEditor.Handles.Label(
-            transform.position + Vector3.up * 2f,
-            $"{materialId}: {unitsRemaining:F0}/{startUnits:F0}"
-        );
-#endif
-    }
-
-    // Für Mining-Animation/Feedback
     void OnTriggerEnter(Collider other)
     {
         if (other.CompareTag("Player") || other.CompareTag("MiningBeam"))
@@ -248,6 +187,17 @@ public class MineableAsteroid : MonoBehaviour
         if (other.CompareTag("Player") || other.CompareTag("MiningBeam"))
         {
             StopMining();
+        }
+    }
+
+    // --- Zentrale Render-Materialzuweisung aus MaterialDatabase ---
+    private void ApplyRenderMaterial()
+    {
+        var mat = MaterialDatabase.GetRenderMaterial(materialId);
+        var renderers = GetComponentsInChildren<Renderer>(true);
+        foreach (var r in renderers)
+        {
+            if (r != null) r.sharedMaterial = mat;
         }
     }
 }

@@ -24,24 +24,33 @@ public class NewGameSystemSeeder : MonoBehaviour
 
     private async void Start()
     {
+        // Guard: Welt existiert bereits? Dann nicht noch einmal erzeugen.
+        if (WorldRoot.Instance.starRoot.childCount > 0 || WorldRoot.Instance.planetsRoot.childCount > 0)
+        {
+            Debug.Log("[Seeder] Welt existiert bereits – Erzeugung übersprungen.");
+            return;
+        }
+
+        // HYG laden (falls nicht via Inspector gesetzt)
         if (hygCsv == null)
             hygCsv = Resources.Load<TextAsset>("Data/hygdata");
 
         UnityEngine.Random.InitState(seed == 0 ? Environment.TickCount : seed);
 
-        // HubRegistry früh sicherstellen (falls Bootstrap mal nicht in der Szene wäre)
+        // Registry- und Infrastruktur-Absicherung
         HubRegistryBootstrap.Ensure();
 
-        // WICHTIG: AssetProvider vorbereiten (init + optional Download der Probe-Dependencies)
+        // Addressables/AssetProvider vorbereiten
         await EnsureAssetProviderReady(defaultProbeKeyOrLabel);
 
+        // Stern aus HYG wählen und erzeugen
         var star = PickRandomStar(hygCsv.text);
         var starDto = BuildStarDto(star);
+        // WICHTIG: In StarGenerator.CreateStar(...) bitte auf WorldRoot.Instance.starRoot parenten!
         starGenerator.CreateStar(starDto);
 
         // Planetensystem erzeugen (inkl. optionalem Sonden-Spawn im Belt)
         await GenerateSystem(starDto);
-        // -> danach in die GameScene wechseln
     }
 
     // =====================================================================================
@@ -134,11 +143,16 @@ public class NewGameSystemSeeder : MonoBehaviour
             var type = ClassifyPlanetType(aAU, hzInnerAU, hzOuterAU, snowLineAU);
             var pDto = MakePlanetDto(star, $"P{i + 1}", aAU, type);
             var go = planetGenerator.CreatePlanet(pDto);
+
+            // NEU: Planet unter den persistenten WorldRoot hängen
+            WorldRoot.Instance.Attach(go.transform, WorldRoot.Category.Planet, worldPos: false);
+
             planetTransforms.Add(go.transform);
 
-            int moonCount = (type == PlanetType.GasGiant) ? UnityEngine.Random.Range(2, 7)
-                          : (type == PlanetType.Water || type == PlanetType.Rocky || type == PlanetType.Habitable) ? UnityEngine.Random.Range(0, 3)
-                          : 0;
+            int moonCount =
+                (type == PlanetType.GasGiant) ? UnityEngine.Random.Range(2, 7)
+              : (type == PlanetType.Water || type == PlanetType.Rocky || type == PlanetType.Habitable) ? UnityEngine.Random.Range(0, 3)
+              : 0;
             CreateMoons(go.transform, moonCount, type);
         }
 
@@ -151,6 +165,10 @@ public class NewGameSystemSeeder : MonoBehaviour
             outer_radius_km = AU2Km(beltCenAU + beltHalfWidthAU)
         };
         var beltGo = planetGenerator.CreateAsteroidBelt(beltDto);
+
+        // NEU: Belt unter den persistenten WorldRoot hängen
+        WorldRoot.Instance.Attach(beltGo.transform, WorldRoot.Category.Belt, worldPos: false);
+
         var belt = beltGo ? beltGo.GetComponent<AsteroidBelt>() : null;
 
         if (spawnProbeInBelt && belt != null && !string.IsNullOrWhiteSpace(defaultProbeKeyOrLabel))
@@ -177,7 +195,7 @@ public class NewGameSystemSeeder : MonoBehaviour
             type == PlanetType.Water ? UnityEngine.Random.Range(6000f, 10000f) :
             type == PlanetType.Habitable ? UnityEngine.Random.Range(5500f, 7500f) :
             type == PlanetType.IceGiant ? UnityEngine.Random.Range(15000f, 30000f) :
-                                           UnityEngine.Random.Range(40000f, 80000f);
+                                          UnityEngine.Random.Range(40000f, 80000f);
 
         string atmo =
             (type == PlanetType.Rocky) ? (UnityEngine.Random.value < 0.5f ? "dünn" : "kein") :

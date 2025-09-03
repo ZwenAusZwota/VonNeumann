@@ -26,7 +26,7 @@ RenderSettings:
   m_AmbientIntensity: 1
   m_AmbientMode: 0
   m_SubtractiveShadowColor: {r: 0.42, g: 0.478, b: 0.627, a: 1}
-  m_SkyboxMaterial: {fileID: 10304, guid: 0000000000000000f000000000000000, type: 0}
+  m_SkyboxMaterial: {fileID: 2100000, guid: 81f714daf7144784b8a2f42f1cd30927, type: 2}
   m_HaloStrength: 0.5
   m_FlareStrength: 1
   m_FlareFadeSpeed: 3
@@ -93,7 +93,7 @@ LightmapSettings:
     m_ExportTrainingData: 0
     m_TrainingDataDestination: TrainingData
     m_LightProbeSampleCountMultiplier: 4
-  m_LightingDataAsset: {fileID: 20201, guid: 0000000000000000f000000000000000, type: 0}
+  m_LightingDataAsset: {fileID: 112000000, guid: 9711791fbb931a645b739ec705a7df1b, type: 2}
   m_LightingSettings: {fileID: 0}
 --- !u!196 &4
 NavMeshSettings:
@@ -253,6 +253,9 @@ GameObject:
   - component: {fileID: 1884198434}
   - component: {fileID: 1884198437}
   - component: {fileID: 1884198438}
+  - component: {fileID: 1884198439}
+  - component: {fileID: 1884198440}
+  - component: {fileID: 1884198441}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -391,10 +394,20 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   target: {fileID: 0}
+  autoBindOnStart: 1
+  autoBindWindowSeconds: 5
+  autoBindRetryInterval: 0.25
+  candidateTags:
+  - Probe
+  - Player
+  - Ship
+  candidateNamesContains:
+  - Probe
+  - Sonde
   defaultOffset: {x: 0, y: 2, z: -8}
-  minDistance: 0.1
-  maxDistance: 1000
-  zoomSpeed: 0.1
+  minDistance: 0.5
+  maxDistance: 100
+  zoomSpeed: 0.2
   smoothZoom: 1
   zoomSmoothSpeed: 5
   mouseSensitivity: 2
@@ -411,6 +424,41 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 4294967295
   collisionRadius: 0.5
+--- !u!114 &1884198439
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1884198433}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c992492636faf5f478ce586a90635d14, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  farClip: 5000000
+--- !u!114 &1884198440
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1884198433}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 43dc93386407631429ee84da6b4afe56, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  preferredSceneName: 10_Game
+--- !u!45 &1884198441
+Skybox:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1884198433}
+  m_Enabled: 1
+  m_CustomSkybox: {fileID: 2100000, guid: 81f714daf7144784b8a2f42f1cd30927, type: 2}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

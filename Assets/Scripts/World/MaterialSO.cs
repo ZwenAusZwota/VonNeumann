@@ -22,4 +22,7 @@ public class MaterialSO : ScriptableObject
 
     [Tooltip("Art des Materials (fest, flüssig, gasförmig)")]
     public MaterialType type = MaterialType.solid;
+
+    [Header("Material für Rendering")]
+    public Material renderMaterial;
 }
