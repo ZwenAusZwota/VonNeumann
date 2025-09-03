@@ -15,7 +15,7 @@ public enum AppScene
     Game,
     GameUI,
     Pause,
-    Research
+    Management
 }
 
 /// <summary>
@@ -91,8 +91,8 @@ public class SceneRouter : MonoBehaviour
     /// <summary>Pausen-/Optionsszene additiv ein-/ausblenden.</summary>
     public UniTask TogglePause(bool on) => ToggleScene(AppScene.Pause, on);
 
-    /// <summary>Forschungsszene additiv ein-/ausblenden.</summary>
-    public UniTask ToggleResearch(bool on) => ToggleScene(AppScene.Research, on);
+    /// <summary>Management additiv ein-/ausblenden.</summary>
+    public UniTask ToggleManagement(bool on) => ToggleScene(AppScene.Management, on);
 
     /// <summary>
     /// Lädt ein Set von Szenen additiv in Reihenfolge, entlädt alle Nicht-Bootstrap-Szenen vorher.
@@ -194,9 +194,57 @@ public class SceneRouter : MonoBehaviour
         AppScene.Game => "10_Game",
         AppScene.GameUI => "10_Game_UI",
         AppScene.Pause => "11_PauseOptions",
-        AppScene.Research => "12_Research",
+        AppScene.Management => "12_Management",
         _ => string.Empty
     };
+
+    // SceneRouter.cs – Ergänzung in der Klasse SceneRouter
+    public async UniTask ToPauseSingle(bool adoptCurrentCamera = true)
+    {
+        if (IsBusy) return;
+        IsBusy = true;
+
+        try
+        {
+            // Events informieren (optional)
+            OnBeforeLoadSet?.Invoke(new[] { AppScene.Pause });
+
+            // Zeit anhalten (Physik/FixedUpdate stoppen)
+            Time.timeScale = 0f;
+
+            // Aktuelle Kamera sichern und überlebensfähig machen
+            Camera cam = null;
+            if (adoptCurrentCamera && Camera.main != null)
+            {
+                cam = Camera.main;
+                DontDestroyOnLoad(cam.gameObject);
+            }
+
+            // Pausen-Szene als einzelne Szene laden (Single!)
+            string pauseName = SceneName(AppScene.Pause);
+            await SceneManager.LoadSceneAsync(pauseName, LoadSceneMode.Single).ToUniTask();
+
+            // Kamera in die neu geladene Szene „verschieben“
+            if (cam != null)
+            {
+                var pauseScene = SceneManager.GetSceneByName(pauseName);
+                if (pauseScene.IsValid())
+                    SceneManager.MoveGameObjectToScene(cam.gameObject, pauseScene);
+            }
+
+            // aktive Szene setzen
+            var target = SceneManager.GetSceneByName(pauseName);
+            if (target.IsValid())
+                SceneManager.SetActiveScene(target);
+
+            OnAfterLoadSet?.Invoke(new[] { AppScene.Pause });
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
 
     // Debug-Hilfen im Editor
 #if UNITY_EDITOR
@@ -217,12 +265,12 @@ public class SceneRouter : MonoBehaviour
         TogglePause(!sc.isLoaded).Forget();
     }
 
-    [ContextMenu("Editor: Toggle Research")]
-    private void EditorToggleResearch()
+    [ContextMenu("Editor: Toggle Management")]
+    private void EditorToggleManagement()
     {
-        string name = SceneName(AppScene.Research);
+        string name = SceneName(AppScene.Management);
         var sc = SceneManager.GetSceneByName(name);
-        ToggleResearch(!sc.isLoaded).Forget();
+        ToggleManagement(!sc.isLoaded).Forget();
     }
 #endif
 }

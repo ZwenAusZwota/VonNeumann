@@ -80,6 +80,8 @@ public class ProbeAutopilot : MonoBehaviour
     /* helper */
     float OrbitDegPerSec => 360f / Mathf.Max(orbitPeriod, 1e-4f);
 
+    public Transform NavTarget => navTarget;
+
     void Awake()
     {
         rb = GetComponent<Rigidbody>();
@@ -105,7 +107,7 @@ public class ProbeAutopilot : MonoBehaviour
     }
 
     /*====================================================================*/
-    #region FixedUpdate – State-Machine
+
     void FixedUpdate()
     {
         if (autoState == AutoState.None) return;
@@ -131,10 +133,10 @@ public class ProbeAutopilot : MonoBehaviour
         _lastMove = transform.position - before;
         _prevPos = before;
     }
-    #endregion
+
 
     /*====================================================================*/
-    #region Public API
+
     public void SetNavTarget(Transform tgt)
     {
         navTarget = tgt;
@@ -160,10 +162,10 @@ public class ProbeAutopilot : MonoBehaviour
     public void StopAutopilot() => AbortAutopilot(false);
 
     public bool IsAutopilotActive => autoState != AutoState.None;
-    #endregion
+
 
     /*====================================================================*/
-    #region Alignment
+
     void AlignTick()
     {
         if (navTarget == null) { AbortAutopilot(true); return; }
@@ -209,7 +211,6 @@ public class ProbeAutopilot : MonoBehaviour
             StartApproach();
         }
     }
-    #endregion
 
     void StartApproach()
     {
@@ -240,7 +241,6 @@ public class ProbeAutopilot : MonoBehaviour
     }
 
     /*====================================================================*/
-    #region Approach (dynamisch für Belts, Nähe für Asteroiden)
     void DirectTick()
     {
         if (navTarget == null) { AbortAutopilot(true); return; }
@@ -445,10 +445,8 @@ public class ProbeAutopilot : MonoBehaviour
             }
         }
     }
-    #endregion
 
     /*====================================================================*/
-    #region Orbit
     void OrbitTick()
     {
         if (navTarget == null) { AbortAutopilot(true); return; }
@@ -465,10 +463,10 @@ public class ProbeAutopilot : MonoBehaviour
         if (dirTangent.sqrMagnitude > 1e-6f)
             transform.rotation = Quaternion.LookRotation(dirTangent, orbitPlaneNormal);
     }
-    #endregion
+
 
     /*====================================================================*/
-    #region Abort / Helpers
+
     public void AbortAutopilot(bool keepMomentum)
     {
         StatusUpdated?.Invoke("Stopping");
@@ -531,5 +529,24 @@ public class ProbeAutopilot : MonoBehaviour
         Vector3 radialDir = inPlane.normalized;
         nearestPoint = C + radialDir * targetRadius;
     }
-    #endregion
+
+    // aktuelle Fluggeschwindigkeit in Units/s (funktioniert auch im kinematischen Modus)
+    public float CurrentSpeedUnits
+    {
+        get
+        {
+            float dt = Mathf.Max(Time.fixedDeltaTime, 1e-6f);
+            return _lastMove.magnitude / dt;
+        }
+    }
+
+    // Distanz zum Ziel (Units); null/NaN-Schutz
+    public float CurrentDistanceUnits
+    {
+        get
+        {
+            if (navTarget == null) return float.NaN;
+            return Vector3.Distance(transform.position, navTarget.position);
+        }
+    }
 }

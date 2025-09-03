@@ -68,7 +68,16 @@ public class ObjectItemUI : MonoBehaviour,
         {
             var ok = ProbeAutopilot.TrySetNavTargetOnSelectedProbe(SObject.GameObject.transform);
             if (!ok)
+            {
                 Debug.LogWarning("[ObjectItemUI] Konnte Nav-Ziel nicht setzen (keine Sonde im HUD selektiert?).");
+                return;
+            }
+
+            // Autopilot unmittelbar starten
+            var sel = HUDBindingService.I?.SelectedItem;
+            var ap = sel?.Transform ? sel.Transform.GetComponent<ProbeAutopilot>() : null;
+            //if (ap != null && !ap.IsAutopilotActive)
+                //ap.StartAutopilot();
         }
     }
 }

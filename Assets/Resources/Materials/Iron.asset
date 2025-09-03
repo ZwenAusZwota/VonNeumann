@@ -19,3 +19,4 @@ MonoBehaviour:
   mineRate: 10
   weight: 3
   type: 0
+  renderMaterial: {fileID: 2100000, guid: 1e1d62280b7721745ab94db429f74521, type: 2}

@@ -409,15 +409,6 @@ public partial class @InputController: IInputActionCollection2, IDisposable
             ""id"": ""1972519b-5a5b-459b-b6d3-da35acec68bd"",
             ""actions"": [
                 {
-                    ""name"": ""Navigate"",
-                    ""type"": ""Value"",
-                    ""id"": ""56059c04-8b46-4be8-8ccf-c39ebfa0e27c"",
-                    ""expectedControlType"": ""Vector2"",
-                    ""processors"": """",
-                    ""interactions"": """",
-                    ""initialStateCheck"": true
-                },
-                {
                     ""name"": ""Submit"",
                     ""type"": ""Button"",
                     ""id"": ""eb297d39-2bf1-4bc1-b1e3-085d0bd649d8"",
@@ -458,61 +449,6 @@ public partial class @InputController: IInputActionCollection2, IDisposable
                     ""action"": ""Cancel"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
-                },
-                {
-                    ""name"": ""2D Vector"",
-                    ""id"": ""949d9efc-02cd-4185-9521-c7582b9f814e"",
-                    ""path"": ""2DVector"",
-                    ""interactions"": """",
-                    ""processors"": """",
-                    ""groups"": """",
-                    ""action"": ""Navigate"",
-                    ""isComposite"": true,
-                    ""isPartOfComposite"": false
-                },
-                {
-                    ""name"": ""up"",
-                    ""id"": ""f920ba01-3b78-46f2-8cb6-fa27cbf68e38"",
-                    ""path"": ""<Keyboard>/w"",
-                    ""interactions"": """",
-                    ""processors"": """",
-                    ""groups"": """",
-                    ""action"": ""Navigate"",
-                    ""isComposite"": false,
-                    ""isPartOfComposite"": true
-                },
-                {
-                    ""name"": ""down"",
-                    ""id"": ""4dcac6f4-628b-452a-a957-f7d30b34758b"",
-                    ""path"": ""<Keyboard>/s"",
-                    ""interactions"": """",
-                    ""processors"": """",
-                    ""groups"": """",
-                    ""action"": ""Navigate"",
-                    ""isComposite"": false,
-                    ""isPartOfComposite"": true
-                },
-                {
-                    ""name"": ""left"",
-                    ""id"": ""8059c454-e648-4974-b6e3-e85221f49907"",
-                    ""path"": ""<Keyboard>/a"",
-                    ""interactions"": """",
-                    ""processors"": """",
-                    ""groups"": """",
-                    ""action"": ""Navigate"",
-                    ""isComposite"": false,
-                    ""isPartOfComposite"": true
-                },
-                {
-                    ""name"": ""right"",
-                    ""id"": ""a99fe3e3-51f7-422f-a96b-6bd4844c7766"",
-                    ""path"": ""<Keyboard>/d"",
-                    ""interactions"": """",
-                    ""processors"": """",
-                    ""groups"": """",
-                    ""action"": ""Navigate"",
-                    ""isComposite"": false,
-                    ""isPartOfComposite"": true
                 }
             ]
         },
@@ -569,6 +505,15 @@ public partial class @InputController: IInputActionCollection2, IDisposable
                     ""name"": ""QuickLoad"",
                     ""type"": ""Button"",
                     ""id"": ""002b91d3-0ca5-4a4a-a622-6793d9951fcb"",
+                    ""expectedControlType"": """",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""Navigation"",
+                    ""type"": ""Button"",
+                    ""id"": ""ecd5e3db-ce51-45fb-95b1-8b3d4dd7c4a0"",
                     ""expectedControlType"": """",
                     ""processors"": """",
                     ""interactions"": """",
@@ -641,6 +586,17 @@ public partial class @InputController: IInputActionCollection2, IDisposable
                     ""action"": ""QuickLoad"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""76abdaf6-2adc-41eb-82bd-ea7b232bceaa"",
+                    ""path"": ""<Keyboard>/n"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""Navigation"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
                 }
             ]
         }
@@ -662,7 +618,6 @@ public partial class @InputController: IInputActionCollection2, IDisposable
         m_Camera_Zoom = m_Camera.FindAction("Zoom", throwIfNotFound: true);
         // UI
         m_UI = asset.FindActionMap("UI", throwIfNotFound: true);
-        m_UI_Navigate = m_UI.FindAction("Navigate", throwIfNotFound: true);
         m_UI_Submit = m_UI.FindAction("Submit", throwIfNotFound: true);
         m_UI_Cancel = m_UI.FindAction("Cancel", throwIfNotFound: true);
         // GamePlay
@@ -673,6 +628,7 @@ public partial class @InputController: IInputActionCollection2, IDisposable
         m_GamePlay_Scan = m_GamePlay.FindAction("Scan", throwIfNotFound: true);
         m_GamePlay_QuickSave = m_GamePlay.FindAction("QuickSave", throwIfNotFound: true);
         m_GamePlay_QuickLoad = m_GamePlay.FindAction("QuickLoad", throwIfNotFound: true);
+        m_GamePlay_Navigation = m_GamePlay.FindAction("Navigation", throwIfNotFound: true);
     }
 
     ~@InputController()
@@ -1025,7 +981,6 @@ public partial class @InputController: IInputActionCollection2, IDisposable
     // UI
     private readonly InputActionMap m_UI;
     private List<IUIActions> m_UIActionsCallbackInterfaces = new List<IUIActions>();
-    private readonly InputAction m_UI_Navigate;
     private readonly InputAction m_UI_Submit;
     private readonly InputAction m_UI_Cancel;
     /// <summary>
@@ -1039,10 +994,6 @@ public partial class @InputController: IInputActionCollection2, IDisposable
         /// Construct a new instance of the input action map wrapper class.
         /// </summary>
         public UIActions(@InputController wrapper) { m_Wrapper = wrapper; }
-        /// <summary>
-        /// Provides access to the underlying input action "UI/Navigate".
-        /// </summary>
-        public InputAction @Navigate => m_Wrapper.m_UI_Navigate;
         /// <summary>
         /// Provides access to the underlying input action "UI/Submit".
         /// </summary>
@@ -1077,9 +1028,6 @@ public partial class @InputController: IInputActionCollection2, IDisposable
         {
             if (instance == null || m_Wrapper.m_UIActionsCallbackInterfaces.Contains(instance)) return;
             m_Wrapper.m_UIActionsCallbackInterfaces.Add(instance);
-            @Navigate.started += instance.OnNavigate;
-            @Navigate.performed += instance.OnNavigate;
-            @Navigate.canceled += instance.OnNavigate;
             @Submit.started += instance.OnSubmit;
             @Submit.performed += instance.OnSubmit;
             @Submit.canceled += instance.OnSubmit;
@@ -1097,9 +1045,6 @@ public partial class @InputController: IInputActionCollection2, IDisposable
         /// <seealso cref="UIActions" />
         private void UnregisterCallbacks(IUIActions instance)
         {
-            @Navigate.started -= instance.OnNavigate;
-            @Navigate.performed -= instance.OnNavigate;
-            @Navigate.canceled -= instance.OnNavigate;
             @Submit.started -= instance.OnSubmit;
             @Submit.performed -= instance.OnSubmit;
             @Submit.canceled -= instance.OnSubmit;
@@ -1149,6 +1094,7 @@ public partial class @InputController: IInputActionCollection2, IDisposable
     private readonly InputAction m_GamePlay_Scan;
     private readonly InputAction m_GamePlay_QuickSave;
     private readonly InputAction m_GamePlay_QuickLoad;
+    private readonly InputAction m_GamePlay_Navigation;
     /// <summary>
     /// Provides access to input actions defined in input action map "GamePlay".
     /// </summary>
@@ -1184,6 +1130,10 @@ public partial class @InputController: IInputActionCollection2, IDisposable
         /// Provides access to the underlying input action "GamePlay/QuickLoad".
         /// </summary>
         public InputAction @QuickLoad => m_Wrapper.m_GamePlay_QuickLoad;
+        /// <summary>
+        /// Provides access to the underlying input action "GamePlay/Navigation".
+        /// </summary>
+        public InputAction @Navigation => m_Wrapper.m_GamePlay_Navigation;
         /// <summary>
         /// Provides access to the underlying input action map instance.
         /// </summary>
@@ -1228,6 +1178,9 @@ public partial class @InputController: IInputActionCollection2, IDisposable
             @QuickLoad.started += instance.OnQuickLoad;
             @QuickLoad.performed += instance.OnQuickLoad;
             @QuickLoad.canceled += instance.OnQuickLoad;
+            @Navigation.started += instance.OnNavigation;
+            @Navigation.performed += instance.OnNavigation;
+            @Navigation.canceled += instance.OnNavigation;
         }
 
         /// <summary>
@@ -1257,6 +1210,9 @@ public partial class @InputController: IInputActionCollection2, IDisposable
             @QuickLoad.started -= instance.OnQuickLoad;
             @QuickLoad.performed -= instance.OnQuickLoad;
             @QuickLoad.canceled -= instance.OnQuickLoad;
+            @Navigation.started -= instance.OnNavigation;
+            @Navigation.performed -= instance.OnNavigation;
+            @Navigation.canceled -= instance.OnNavigation;
         }
 
         /// <summary>
@@ -1377,13 +1333,6 @@ public partial class @InputController: IInputActionCollection2, IDisposable
     public interface IUIActions
     {
         /// <summary>
-        /// Method invoked when associated input action "Navigate" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
-        /// </summary>
-        /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
-        /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
-        /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
-        void OnNavigate(InputAction.CallbackContext context);
-        /// <summary>
         /// Method invoked when associated input action "Submit" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
         /// </summary>
         /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
@@ -1447,5 +1396,12 @@ public partial class @InputController: IInputActionCollection2, IDisposable
         /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
         /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
         void OnQuickLoad(InputAction.CallbackContext context);
+        /// <summary>
+        /// Method invoked when associated input action "Navigation" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+        /// </summary>
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+        void OnNavigation(InputAction.CallbackContext context);
     }
 }
