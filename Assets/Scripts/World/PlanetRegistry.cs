@@ -56,4 +56,13 @@ public class PlanetRegistry : MonoBehaviour
         Objects.Sort((a, b) =>
             (a.position - Star.position).sqrMagnitude
             .CompareTo((b.position - Star.position).sqrMagnitude));
+
+    // Assets/Scripts/Core/PlanetRegistry.cs
+    public void RegisterProbe(Transform probe)
+    {
+        Objects.Add(probe);
+        if (Star != null) SortObjects();
+    }
+
+
 }

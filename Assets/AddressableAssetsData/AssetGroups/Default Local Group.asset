@@ -19,7 +19,7 @@ MonoBehaviour:
     m_Address: Assets/Prefabs/Probe.prefab
     m_ReadOnly: 0
     m_SerializedLabels:
-    - Prefabs
+    - Probe_Default
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: ef010ede9b7f57342a2a27a574ce20e2
     m_Address: Assets/Prefabs/Miner_MK1.fbx

@@ -10,6 +10,7 @@ TagManager:
   - Star
   - AsteroidBelt
   - DropoffHub
+  - Probe
   layers:
   - Default
   - TransparentFX

@@ -108,6 +108,7 @@ public class PlanetGenerator : MonoBehaviour
 
         // 6) Planet‑Komponente
         body.AddComponent<Planet>();
+        body.AddComponent<ScanSignature>();
 
         // 7) Registry
         PlanetRegistry.Instance?.RegisterPlanet(body.transform);

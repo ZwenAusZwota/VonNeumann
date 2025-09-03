@@ -1,5 +1,6 @@
 ﻿// Assets/Scripts/Entities/ProbeController.cs
 using System;
+using System.Collections;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -70,6 +71,7 @@ public class ProbeController : MonoBehaviour
         transform.localScale = Vector3.one * spawnScale;
         rb.maxAngularVelocity = maxDegPerSec * Mathf.Deg2Rad * 1.5f;
 
+        // ⚠️ Robust: Registrierung erst, wenn HubRegistry.Instance verfügbar ist
         var hubInfo = new HubRegistry.HubInfo
         {
             Id = "probe01",
@@ -77,7 +79,7 @@ public class ProbeController : MonoBehaviour
             Kind = "Probe",
             LastKnownPos = transform.position
         };
-        HubRegistry.Instance.RegisterOrUpdate(hubInfo);
+        SafeRegisterHub(hubInfo);
     }
 
     void OnEnable()
@@ -97,36 +99,51 @@ public class ProbeController : MonoBehaviour
         map.Reset.performed += _ => HandleMinusKey();
         map.SpawnPrefab.performed += _ => spawnPrefab();
 
-        // saubere Event-Handler (damit Unsubscribe funktioniert)
-        autopilot.AutoPilotStarted += HandleAutoPilotStarted;
-        autopilot.AutoPilotStopped += HandleAutoPilotStopped;
-        autopilot.StatusUpdated += HandleStatusUpdated;
+        // Saubere Event-Handler (und null-sicher)
+        if (autopilot != null)
+        {
+            autopilot.AutoPilotStarted += HandleAutoPilotStarted;
+            autopilot.AutoPilotStopped += HandleAutoPilotStopped;
+            autopilot.StatusUpdated += HandleStatusUpdated;
+        }
+        else
+        {
+            Debug.LogWarning("ProbeController: Kein ProbeAutopilot auf dem Prefab.");
+        }
 
-        miner.StatusUpdated += HandleMinerStatusUpdated;
+        if (miner != null)
+        {
+            miner.StatusUpdated += HandleMinerStatusUpdated;
+        }
     }
 
     void OnDisable()
     {
         inputController.Disable();
 
-        autopilot.AutoPilotStarted -= HandleAutoPilotStarted;
-        autopilot.AutoPilotStopped -= HandleAutoPilotStopped;
-        autopilot.StatusUpdated -= HandleStatusUpdated;
+        if (autopilot != null)
+        {
+            autopilot.AutoPilotStarted -= HandleAutoPilotStarted;
+            autopilot.AutoPilotStopped -= HandleAutoPilotStopped;
+            autopilot.StatusUpdated -= HandleStatusUpdated;
+        }
 
-        miner.StatusUpdated -= HandleMinerStatusUpdated;
+        if (miner != null)
+        {
+            miner.StatusUpdated -= HandleMinerStatusUpdated;
+        }
     }
 
     private void OnDestroy() => inputController?.Dispose();
 
     private void Start()
     {
-        // ✨ Fix: HUDBindingService ist instanzbasiert
+        // HUD-Auswahl beim Spawn (null-sicher)
         HUDBindingService.I?.Select(this.gameObject);
     }
 
     public void OnSelectedByPlayer()
     {
-        // ✨ Fix: HUDBindingService ist instanzbasiert
         HUDBindingService.I?.Select(this.gameObject);
     }
 
@@ -184,15 +201,15 @@ public class ProbeController : MonoBehaviour
     }
     #endregion
 
-    #region Autopilot
+    #region Autopilot (Brücke zum Component)
     public void SetNavTarget(Transform tgt)
     {
         navTarget = tgt;
-        autopilot.SetNavTarget(tgt);
+        if (autopilot != null) autopilot.SetNavTarget(tgt);
     }
-    public void StartAutopilot() => autopilot.StartAutopilot();
-    public void StopAutopilot() => autopilot.StopAutopilot();
-    public bool IsAutopilotActive => autopilot.IsAutopilotActive;
+    public void StartAutopilot() { if (autopilot != null) autopilot.StartAutopilot(); }
+    public void StopAutopilot() { if (autopilot != null) autopilot.StopAutopilot(); }
+    public bool IsAutopilotActive => autopilot != null && autopilot.IsAutopilotActive;
     #endregion
 
     /*====================================================================*/
@@ -232,7 +249,7 @@ public class ProbeController : MonoBehaviour
 
     void ApplyEmergencyBrake()
     {
-        // ✨ Fix: Rigidbody.velocity statt linearVelocity
+        // In deiner bestehenden Datei wird linearVelocity verwendet – beibehalten.
         Vector3 v = rb.linearVelocity;
         if (v.sqrMagnitude < 0.01f)
         {
@@ -249,7 +266,6 @@ public class ProbeController : MonoBehaviour
     void ResetProbe()
     {
         rb.isKinematic = false;
-        // ✨ Fix: Rigidbody.velocity statt linearVelocity
         rb.linearVelocity = Vector3.zero;
         rb.angularVelocity = Vector3.zero;
 
@@ -261,7 +277,8 @@ public class ProbeController : MonoBehaviour
     void HandleMinusKey()
     {
         ResetProbe();
-        autopilot.AbortAutopilot(keepMomentum: true);
+        // null-sicherer Abbruch
+        autopilot?.AbortAutopilot(keepMomentum: true);
     }
 
     static float GuessBodyRadius(Transform body)
@@ -272,7 +289,6 @@ public class ProbeController : MonoBehaviour
             return rend.bounds.extents.magnitude;
         return body.lossyScale.x * 0.5f;
     }
-    #endregion
 
     // ───────────────────── Event-Handler (benannt) ─────────────────────
     void HandleAutoPilotStarted() => AutoPilotStarted?.Invoke();
@@ -282,4 +298,35 @@ public class ProbeController : MonoBehaviour
     {
         // Platzhalter für spätere HUD-Updates (Cargo etc.)
     }
+    #endregion
+
+    /*====================================================================*/
+    #region HubRegistry – robuste Registrierung
+    void SafeRegisterHub(HubRegistry.HubInfo info)
+    {
+        if (HubRegistry.Instance != null)
+        {
+            HubRegistry.Instance.RegisterOrUpdate(info);
+        }
+        else
+        {
+            StartCoroutine(RegisterWhenHubReady(info));
+        }
+    }
+
+    IEnumerator RegisterWhenHubReady(HubRegistry.HubInfo info)
+    {
+        int guard = 0;
+        while (HubRegistry.Instance == null && guard < 300) // ~5 Sek. @60 FPS
+        {
+            guard++;
+            yield return null;
+        }
+
+        if (HubRegistry.Instance != null)
+            HubRegistry.Instance.RegisterOrUpdate(info);
+        else
+            Debug.LogWarning("ProbeController: HubRegistry.Instance blieb null – Registrierung übersprungen.");
+    }
+    #endregion
 }

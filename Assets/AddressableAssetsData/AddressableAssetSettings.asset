@@ -15,9 +15,10 @@ MonoBehaviour:
   m_DefaultGroup: cd0a3ebcde2e48947a3fcba6d3a8b40c
   m_currentHash:
     serializedVersion: 2
-    Hash: c8264afb387e49ef77f81898e6aa9a32
+    Hash: 5fad4649da3ebe92b0a2c258a3f2f315
   m_OptimizeCatalogSize: 0
   m_BuildRemoteCatalog: 0
+  m_BundleLocalCatalog: 0
   m_CatalogRequestsTimeout: 0
   m_DisableCatalogUpdateOnStart: 0
   m_InternalIdNamingMode: 0
@@ -100,6 +101,8 @@ MonoBehaviour:
     m_LabelNames:
     - default
     - Prefabs
+    - Probe_Default
+    - Mat_Probe_Default
   m_SchemaTemplates: []
   m_GroupTemplateObjects:
   - {fileID: 11400000, guid: d5a9541cf4bb2414c9ed67a05c0eef92, type: 2}
