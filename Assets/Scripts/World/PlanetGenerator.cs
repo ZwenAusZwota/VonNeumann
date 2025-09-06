@@ -37,6 +37,8 @@ public class PlanetGenerator : MonoBehaviour
     [Header("Debug")]
     public bool showDebugInfo = true;
 
+    public int multiplier = 10;
+
     #endregion
 
     #region Public API
@@ -138,7 +140,7 @@ public class PlanetGenerator : MonoBehaviour
         float scale = PlanetScale.KM_PER_UNIT;
 
         // 1) Distanz ermitteln
-        float distanceKm = Mathf.Max(dto.star_distance_km, 0f);
+        float distanceKm = Mathf.Max(dto.star_distance_km * multiplier, 0f);
 
         // Fallback: DTO‑Position, falls Wert 0/leer
         if (distanceKm <= 0f)
@@ -150,11 +152,11 @@ public class PlanetGenerator : MonoBehaviour
 
         // 2) Clamp auf 0.1 – 50 AU
         float distanceAU = distanceKm / KM_PER_AU;
-        if (distanceAU < 0.1f || distanceAU > 500f)
+        if (distanceAU < 0.1f || distanceAU > (500f * multiplier))
         {
             if (showDebugInfo)
                 Debug.LogWarning($"Planet {dto.name}: Distanz {distanceAU:F2} AU außerhalb realistischer Spanne (0.1‑500). Wird begrenzt.");
-            distanceAU = Mathf.Clamp(distanceAU, 0.1f, 100f);
+            distanceAU = Mathf.Clamp(distanceAU, 0.1f, 500f * multiplier);
         }
         distanceKm = distanceAU * KM_PER_AU;
 
@@ -194,7 +196,7 @@ public class PlanetGenerator : MonoBehaviour
     private float CalculateVisualSize(PlanetDto dto)
     {
         float radiusUnits = dto.radius_km / PlanetScale.KM_PER_UNIT *10;
-        float visualDiameter = radiusUnits * 2f * sizeMultiplier;
+        float visualDiameter = radiusUnits * 2f * sizeMultiplier * multiplier;
         return Mathf.Max(visualDiameter, 0.01f);
     }
 
@@ -225,32 +227,7 @@ public class PlanetGenerator : MonoBehaviour
 
     #endregion
 
-    #region Validation
-
-    /*private void ValidatePlanetDistance(PlanetDto dto, Vector3 position)
-    {
-        float distanceKm = position.magnitude * PlanetScale.KM_PER_UNIT;
-        float distanceAU = distanceKm / 149_597_870.7f;
-
-        // Vergleich mit bestehenden Planeten
-        if (PlanetRegistry.Instance != null)
-        {
-            foreach (Transform other in PlanetRegistry.Instance.Planets)
-            {
-                if (other == null || other == position) continue;
-
-                float dAu = Vector3.Distance(position, other.position) * PlanetScale.KM_PER_UNIT / 149_597_870.7f;
-                if (dAu < minPlanetSpacing)
-                    Debug.LogWarning($"Planet {dto.name} ist {dAu:F3} AU von {other.name} entfernt – unter Mindestabstand {minPlanetSpacing:F2} AU!");
-            }
-        }
-
-        Debug.Log($"Planet {dto.name}: {distanceAU:F2} AU Abstand zum Stern.");
-    }*/
-
-    #endregion
-
-    #region Asteroid Belt
+        #region Asteroid Belt
 
     public GameObject CreateAsteroidBelt(AsteroidBeltDto dto)
     {

@@ -240,6 +240,8 @@ GameObject:
   - component: {fileID: 8489181273570653767}
   - component: {fileID: 1018420495907089618}
   - component: {fileID: 2091974327098159234}
+  - component: {fileID: 4838445700571816485}
+  - component: {fileID: 6416385362209173933}
   m_Layer: 0
   m_Name: Probe
   m_TagString: Player
@@ -429,14 +431,22 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   alignDegPerSec: 60
   alignToleranceDeg: 1
-  radialAccel: 1
-  radialApproachFraction: 0.2
-  orbitAltitudeFactor: 1.3
-  minOrbitAltitudeUnits: 5
-  orbitPeriod: 60
-  asteroidApproachDistance: 2
-  asteroidStopTolerance: 0.5
-  beltAimRecalcEvery: 10
+  reorientInterval: 0.6
+  speedGain: 0.1
+  maxCruiseSpeed: 400
+  approachSpeed: 3
+  accel: 20
+  holdDistanceUnits: 10
+  surfaceStandOff: 1
+  trackAssistDistance: 200
+  trackAssistMargin: 1
+  stickAfterAutopilot: 1
+  stickPosSmoothTime: 0.25
+  stickDeadzoneUnits: 0.1
+  stickMaxSpeed: 200
+  stickFaceDegPerSec: 45
+  freezeOnStop: 1
+  navTarget: {fileID: 0}
 --- !u!114 &8489181273570653767
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -465,7 +475,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a4cd3971adb889043ba7c548d24412fd, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  scanRadiusAU: 0.2
+  scanRadiusAU: 1.5
   scanLayers:
     serializedVersion: 2
     m_Bits: 4294967295
@@ -494,6 +504,37 @@ MonoBehaviour:
   defaultFarAU: 100
   simulateLightDelay: 1
   signalSpeedKmPerSec: 299792.47
+--- !u!114 &4838445700571816485
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1336562065826069938}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: edb267112972e334884f1000f6cb07ed, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  id:
+    _value: b4053ee2-53f6-4dd0-9de7-790034fddbc8
+--- !u!114 &6416385362209173933
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1336562065826069938}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 52b38ca0fb128a341b4656f1bfec899e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  guidProvider: {fileID: 4838445700571816485}
+  typeId: Probe
+  autoRegister: 1
+  autoUnregisterOnDestroy: 1
+  stateProviderBehaviour: {fileID: 0}
 --- !u!1 &2351539471288224827
 GameObject:
   m_ObjectHideFlags: 0

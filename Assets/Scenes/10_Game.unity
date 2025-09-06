@@ -406,7 +406,7 @@ MonoBehaviour:
   - Sonde
   defaultOffset: {x: 0, y: 2, z: -8}
   minDistance: 0.5
-  maxDistance: 100
+  maxDistance: 10
   zoomSpeed: 0.2
   smoothZoom: 1
   zoomSmoothSpeed: 5
@@ -416,7 +416,7 @@ MonoBehaviour:
   autoFocusNearbyObjects: 1
   autoFocusDistance: 50
   targetTransitionSpeed: 2
-  defaultFOV: 60
+  defaultFOV: 30
   maxFOV: 120
   dynamicFOV: 1
   preventCollision: 1

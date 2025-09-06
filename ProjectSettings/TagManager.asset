@@ -11,6 +11,7 @@ TagManager:
   - AsteroidBelt
   - DropoffHub
   - Probe
+  - MiningBeam
   layers:
   - Default
   - TransparentFX

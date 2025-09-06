@@ -145,7 +145,7 @@ public class NavPanelController : MonoBehaviour
     string FormatSpeed(float unitsPerSec)
     {
         // Units/s → km/s
-        float kmps = unitsPerSec * Mathf.Max(PlanetScale.KM_PER_UNIT, 1e-6f);
-        return $"{kmps:0.###} km/s";
+        float kmps = unitsPerSec * Mathf.Max(PlanetScale.KM_PER_UNIT, 1e-6f) / 3600; 
+        return $"{kmps:0} km/h";
     }
 }

@@ -7,7 +7,6 @@ public class ProbeMiner : MonoBehaviour
 {
     public Key mineKey = Key.M;
 
-    //HUDControllerModular hud;          // liefert Item der Scan-Liste
     InventoryController cargo;
 
     MineableAsteroid target;
@@ -18,7 +17,6 @@ public class ProbeMiner : MonoBehaviour
 
     void Awake()
     {
-        //hud = FindFirstObjectByType<HUDControllerModular>();
         cargo = GetComponent<InventoryController>();
     }
 
@@ -28,19 +26,15 @@ public class ProbeMiner : MonoBehaviour
         if (isMining) DoMining();
     }
 
-    /* -------------------------------------------------- */
-
     void HandleInput()
     {
         if (!Keyboard.current[mineKey].wasPressedThisFrame) return;
 
-        // Taste gedrückt ⇒ Mining toggeln
         if (isMining) { StopMining(); return; }
         StartMining();
-
     }
 
-    void StopMining()            // zentraler „Aus‐Schalter“
+    void StopMining()
     {
         StatusText = "Mining stopped";
         isMining = false;
@@ -48,32 +42,33 @@ public class ProbeMiner : MonoBehaviour
         StatusUpdated?.Invoke();
     }
 
-
     public void StartMining()
     {
         var sel = GetComponent<ProbeController>().navTarget;
         StatusText = "Mining started";
         StatusUpdated?.Invoke();
+
         if (sel != null && sel.TryGetComponent(out MineableAsteroid ast))
         {
             Debug.Log($"Mining {ast.name} ({ast.materialId})");
             target = ast;
+
+            // NEU: beim Start des Minings an die Oberfläche „anlegen“
+            var ap = GetComponent<ProbeAutopilot>();
+            if (ap != null) ap.SetSurfaceContact(ast.transform);
+
             isMining = true;
         }
     }
-    /* -------------------------------------------------- */
+
     void DoMining()
     {
         if (target == null) { StopMining(); return; }
         StatusText = "Mining in progress";
         var def = MaterialDatabase.Get(target.materialId);
-        // a) max. was Material hergibt
+
         float uMat = def.mineRate * Time.deltaTime;
-
-        // b) max. was Laderaum zulässt
         float uVol = cargo.FreeVolume / def.volumePerUnit;
-
-        // c) max. was noch im Asteroiden steckt
         float unitsWanted = Mathf.Min(uMat, uVol, target.UnitsRemaining);
 
         if (unitsWanted <= 0f) { StopMining(); return; }
@@ -81,9 +76,9 @@ public class ProbeMiner : MonoBehaviour
         float removed = target.RemoveUnits(unitsWanted);
         cargo.Add(def.id, removed);
 
-        // Ziel evtl. fertig?
         if (target == null || target.Equals(null))
             StopMining();
+
         StatusUpdated?.Invoke();
     }
 
@@ -98,8 +93,5 @@ public class ProbeMiner : MonoBehaviour
         isMining = true;
         StatusText = "Mining target set";
         StatusUpdated?.Invoke();
-        // Optional: Update HUD or other UI elements
-        //hud?.UpdateMiningStatus($"Mining {target.name} ({target.materialId})");
     }
-
 }

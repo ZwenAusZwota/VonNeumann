@@ -264,7 +264,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   background: {fileID: 7164945992300705644}
   label: {fileID: 5666045061158413645}
-  normalColor: {r: 0.12, g: 0.55, b: 1, a: 0.11764706}
+  normalColor: {r: 0.08499106, g: 0.085867606, b: 0.08679241, a: 0.11764706}
   hoverColor: {r: 0.12156862, g: 0.28381157, b: 1, a: 0.55}
   selectedColor: {r: 1, g: 1, b: 1, a: 0.2901961}
 --- !u!114 &7762354840899041648

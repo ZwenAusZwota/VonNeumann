@@ -518,6 +518,15 @@ public partial class @InputController: IInputActionCollection2, IDisposable
                     ""processors"": """",
                     ""interactions"": """",
                     ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""Mining"",
+                    ""type"": ""Button"",
+                    ""id"": ""66d50484-8d05-4699-997f-c848ea5c78d2"",
+                    ""expectedControlType"": """",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
                 }
             ],
             ""bindings"": [
@@ -546,7 +555,7 @@ public partial class @InputController: IInputActionCollection2, IDisposable
                 {
                     ""name"": """",
                     ""id"": ""fb6263d5-692f-44e9-8492-32be06dee4be"",
-                    ""path"": ""<Keyboard>/m"",
+                    ""path"": ""<Keyboard>/f10"",
                     ""interactions"": """",
                     ""processors"": """",
                     ""groups"": """",
@@ -597,6 +606,17 @@ public partial class @InputController: IInputActionCollection2, IDisposable
                     ""action"": ""Navigation"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""4657f837-fc93-452e-846e-d9016b2d0d9f"",
+                    ""path"": ""<Keyboard>/m"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""Mining"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
                 }
             ]
         }
@@ -629,6 +649,7 @@ public partial class @InputController: IInputActionCollection2, IDisposable
         m_GamePlay_QuickSave = m_GamePlay.FindAction("QuickSave", throwIfNotFound: true);
         m_GamePlay_QuickLoad = m_GamePlay.FindAction("QuickLoad", throwIfNotFound: true);
         m_GamePlay_Navigation = m_GamePlay.FindAction("Navigation", throwIfNotFound: true);
+        m_GamePlay_Mining = m_GamePlay.FindAction("Mining", throwIfNotFound: true);
     }
 
     ~@InputController()
@@ -1095,6 +1116,7 @@ public partial class @InputController: IInputActionCollection2, IDisposable
     private readonly InputAction m_GamePlay_QuickSave;
     private readonly InputAction m_GamePlay_QuickLoad;
     private readonly InputAction m_GamePlay_Navigation;
+    private readonly InputAction m_GamePlay_Mining;
     /// <summary>
     /// Provides access to input actions defined in input action map "GamePlay".
     /// </summary>
@@ -1134,6 +1156,10 @@ public partial class @InputController: IInputActionCollection2, IDisposable
         /// Provides access to the underlying input action "GamePlay/Navigation".
         /// </summary>
         public InputAction @Navigation => m_Wrapper.m_GamePlay_Navigation;
+        /// <summary>
+        /// Provides access to the underlying input action "GamePlay/Mining".
+        /// </summary>
+        public InputAction @Mining => m_Wrapper.m_GamePlay_Mining;
         /// <summary>
         /// Provides access to the underlying input action map instance.
         /// </summary>
@@ -1181,6 +1207,9 @@ public partial class @InputController: IInputActionCollection2, IDisposable
             @Navigation.started += instance.OnNavigation;
             @Navigation.performed += instance.OnNavigation;
             @Navigation.canceled += instance.OnNavigation;
+            @Mining.started += instance.OnMining;
+            @Mining.performed += instance.OnMining;
+            @Mining.canceled += instance.OnMining;
         }
 
         /// <summary>
@@ -1213,6 +1242,9 @@ public partial class @InputController: IInputActionCollection2, IDisposable
             @Navigation.started -= instance.OnNavigation;
             @Navigation.performed -= instance.OnNavigation;
             @Navigation.canceled -= instance.OnNavigation;
+            @Mining.started -= instance.OnMining;
+            @Mining.performed -= instance.OnMining;
+            @Mining.canceled -= instance.OnMining;
         }
 
         /// <summary>
@@ -1403,5 +1435,12 @@ public partial class @InputController: IInputActionCollection2, IDisposable
         /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
         /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
         void OnNavigation(InputAction.CallbackContext context);
+        /// <summary>
+        /// Method invoked when associated input action "Mining" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+        /// </summary>
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+        void OnMining(InputAction.CallbackContext context);
     }
 }

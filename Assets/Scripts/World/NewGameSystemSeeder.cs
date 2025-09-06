@@ -7,6 +7,16 @@ using Cysharp.Threading.Tasks;
 
 public class NewGameSystemSeeder : MonoBehaviour
 {
+    [Header("World Root (optional)")]
+    [Tooltip("Zuweisbares World-GameObject. Wenn gesetzt, wird/bleibt dieses Objekt die WorldRoot-Instanz (DontDestroyOnLoad).")]
+    [SerializeField] private GameObject worldRootGO;
+
+    [Header("Asteroid Belt")]
+    [Tooltip("Optional: Belt-Template in der Szene (templateOnly = true). Wird zur Laufzeit in den produktiven Belt umgewandelt.")]
+    [SerializeField] private AsteroidBelt beltTemplate;
+    [Tooltip("Falls bereits ein Belt unter WorldRoot existiert, wird kein weiterer erzeugt.")]
+    public bool skipIfBeltExists = true;
+
     [Header("Refs")]
     public StarGenerator starGenerator;       // in Loading-Szene zuweisen
     public PlanetGenerator planetGenerator;   // in Loading-Szene zuweisen
@@ -20,74 +30,93 @@ public class NewGameSystemSeeder : MonoBehaviour
     public string defaultProbeKeyOrLabel = "Probe_Default";
     public bool spawnProbeInBelt = true;
 
-    // --------------------------------------------------------------------
-
     private async void Start()
     {
-        // Guard: Welt existiert bereits? Dann nicht noch einmal erzeugen.
-        if (WorldRoot.Instance.starRoot.childCount > 0 || WorldRoot.Instance.planetsRoot.childCount > 0)
+        EnsureWorldRoot();
+        if (WorldRoot.Instance == null)
+        {
+            Debug.LogError("[Seeder] Keine WorldRoot verfügbar. Abbruch.");
+            return;
+        }
+
+        // Wenn bereits etwas existiert, nicht nochmal ein ganzes System bauen:
+        if (WorldRoot.Instance.starRoot.childCount > 0 ||
+            WorldRoot.Instance.planetsRoot.childCount > 0)
         {
             Debug.Log("[Seeder] Welt existiert bereits – Erzeugung übersprungen.");
             return;
         }
 
-        // HYG laden (falls nicht via Inspector gesetzt)
-        if (hygCsv == null)
-            hygCsv = Resources.Load<TextAsset>("Data/hygdata");
-
+        // HYG laden
+        if (hygCsv == null) hygCsv = Resources.Load<TextAsset>("Data/hygdata");
         UnityEngine.Random.InitState(seed == 0 ? Environment.TickCount : seed);
 
-        // Registry- und Infrastruktur-Absicherung
         HubRegistryBootstrap.Ensure();
-
-        // Addressables/AssetProvider vorbereiten
         await EnsureAssetProviderReady(defaultProbeKeyOrLabel);
 
-        // Stern aus HYG wählen und erzeugen
+        // Stern erzeugen
         var star = PickRandomStar(hygCsv.text);
         var starDto = BuildStarDto(star);
-        // WICHTIG: In StarGenerator.CreateStar(...) bitte auf WorldRoot.Instance.starRoot parenten!
-        starGenerator.CreateStar(starDto);
+        starGenerator.CreateStar(starDto); // parented in StarGenerator selbst
 
-        // Planetensystem erzeugen (inkl. optionalem Sonden-Spawn im Belt)
-        await GenerateSystem(starDto);
+        // Planeten erzeugen
+        await GeneratePlanets(starDto);
+
+        // Belt erzeugen – bevorzugt: Template nutzen, sonst Fallback
+        AsteroidBelt belt = await CreateOrAdoptAsteroidBeltAsync(starDto);
+
+        // Optionale Sonde im Belt
+        if (spawnProbeInBelt && belt != null && !string.IsNullOrWhiteSpace(defaultProbeKeyOrLabel))
+        {
+            await SpawnDefaultProbeInBeltAsync(belt, defaultProbeKeyOrLabel, registerInRegistry: true);
+        }
     }
 
-    // =====================================================================================
-    // AssetProvider-Absicherung
-    // =====================================================================================
+    private void EnsureWorldRoot()
+    {
+        if (WorldRoot.Instance != null) return;
+
+        if (worldRootGO != null)
+        {
+            var wr = worldRootGO.GetComponent<WorldRoot>();
+            if (wr == null) wr = worldRootGO.AddComponent<WorldRoot>();
+            if (WorldRoot.Instance == null)
+            {
+                WorldRoot.Ensure();
+                if (WorldRoot.Instance == null)
+                {
+                    DontDestroyOnLoad(worldRootGO);
+                }
+            }
+        }
+        else
+        {
+            WorldRoot.Ensure();
+        }
+    }
+
     private async UniTask EnsureAssetProviderReady(string maybeKeyOrLabel)
     {
-        // Singleton bereitstellen, falls nicht in der Szene
         if (AssetProvider.I == null)
         {
             var go = new GameObject("AssetProvider");
             go.AddComponent<AssetProvider>();
         }
 
-        // Initialisieren (ohne PreloadCatalog; kann später separat erfolgen)
         if (!AssetProvider.I.IsInitialized)
-        {
             await AssetProvider.I.Initialize(null, null);
-        }
 
-        // Optional: Dependencies für die Sonde vorab laden (macht Instanziierung flotter)
         if (!string.IsNullOrWhiteSpace(maybeKeyOrLabel))
-        {
             await AssetProvider.I.DownloadDependenciesAsync(new[] { maybeKeyOrLabel }, null);
-        }
     }
 
-    // =====================================================================================
-    // Sternwahl aus HYG
-    // =====================================================================================
+    // ------------------- Sterne/Planeten -------------------
     HygStarRecord PickRandomStar(string csv)
     {
         var lines = csv.Split('\n');
         var bag = new List<HygStarRecord>(1024);
         for (int i = 1; i < lines.Length; i++)
-            if (HygStarRecord.TryParse(lines[i].Trim(), out var rec))
-                bag.Add(rec);
+            if (HygStarRecord.TryParse(lines[i].Trim(), out var rec)) bag.Add(rec);
         return bag[UnityEngine.Random.Range(0, bag.Count)];
     }
 
@@ -109,10 +138,7 @@ public class NewGameSystemSeeder : MonoBehaviour
         return Mathf.Clamp(t, 2500f, 35000f);
     }
 
-    // =====================================================================================
-    // Systemaufbau
-    // =====================================================================================
-    private async UniTask GenerateSystem(StarDto star)
+    private async UniTask GeneratePlanets(StarDto star)
     {
         float sqrtL = Mathf.Sqrt(Mathf.Max(0.05f, star.luminosity_solar));
         float hzInnerAU = 0.95f * sqrtL;
@@ -136,44 +162,18 @@ public class NewGameSystemSeeder : MonoBehaviour
         }
         semiMajorAU.Sort();
 
-        var planetTransforms = new List<Transform>();
         for (int i = 0; i < semiMajorAU.Count; i++)
         {
             float aAU = semiMajorAU[i];
             var type = ClassifyPlanetType(aAU, hzInnerAU, hzOuterAU, snowLineAU);
             var pDto = MakePlanetDto(star, $"P{i + 1}", aAU, type);
             var go = planetGenerator.CreatePlanet(pDto);
-
-            // NEU: Planet unter den persistenten WorldRoot hängen
             WorldRoot.Instance.Attach(go.transform, WorldRoot.Category.Planet, worldPos: false);
-
-            planetTransforms.Add(go.transform);
-
             int moonCount =
                 (type == PlanetType.GasGiant) ? UnityEngine.Random.Range(2, 7)
               : (type == PlanetType.Water || type == PlanetType.Rocky || type == PlanetType.Habitable) ? UnityEngine.Random.Range(0, 3)
               : 0;
             CreateMoons(go.transform, moonCount, type);
-        }
-
-        float beltCenAU = 2.5f * sqrtL;
-        float beltHalfWidthAU = 0.5f * sqrtL;
-        var beltDto = new AsteroidBeltDto
-        {
-            name = "Main Belt",
-            inner_radius_km = AU2Km(Mathf.Max(0.8f * beltCenAU, beltCenAU - beltHalfWidthAU)),
-            outer_radius_km = AU2Km(beltCenAU + beltHalfWidthAU)
-        };
-        var beltGo = planetGenerator.CreateAsteroidBelt(beltDto);
-
-        // NEU: Belt unter den persistenten WorldRoot hängen
-        WorldRoot.Instance.Attach(beltGo.transform, WorldRoot.Category.Belt, worldPos: false);
-
-        var belt = beltGo ? beltGo.GetComponent<AsteroidBelt>() : null;
-
-        if (spawnProbeInBelt && belt != null && !string.IsNullOrWhiteSpace(defaultProbeKeyOrLabel))
-        {
-            await SpawnDefaultProbeInBeltAsync(belt, defaultProbeKeyOrLabel, registerInRegistry: true);
         }
     }
 
@@ -241,7 +241,7 @@ public class NewGameSystemSeeder : MonoBehaviour
                 Mathf.Cos(phi) * Mathf.Sin(theta) * aMoonKm
             );
             moon.transform.localPosition = posKm / PlanetScale.KM_PER_UNIT;
-            float visDiameterUnits = (rMoonKm / PlanetScale.KM_PER_UNIT) * 2f * planetGenerator.sizeMultiplier;
+            float visDiameterUnits = (rMoonKm / PlanetScale.KM_PER_UNIT) * 2f * planetGenerator.sizeMultiplier * planetGenerator.multiplier;
             moon.transform.localScale = Vector3.one * Mathf.Max(visDiameterUnits, 0.01f);
 
             var orbit = moon.AddComponent<OrbitAroundParent>();
@@ -258,9 +258,44 @@ public class NewGameSystemSeeder : MonoBehaviour
 
     static float AU2Km(float au) => au * 149_597_870.7f;
 
-    // =====================================================================================
-    // Addressables-Spawn der Standardsonde im Belt
-    // =====================================================================================
+    // ------------------- Belt-Erzeugung -------------------
+    private async UniTask<AsteroidBelt> CreateOrAdoptAsteroidBeltAsync(StarDto star)
+    {
+        // Wenn schon ein Belt existiert, optional nichts mehr erzeugen
+        if (skipIfBeltExists && WorldRoot.Instance?.beltsRoot != null && WorldRoot.Instance.beltsRoot.childCount > 0)
+        {
+            var existing = WorldRoot.Instance.beltsRoot.GetChild(0).GetComponent<AsteroidBelt>();
+            if (existing != null) return existing;
+        }
+
+        // Wenn ein Template zugewiesen/gefunden wurde: dieses verwenden (und aktivieren)
+        AsteroidBelt tpl = beltTemplate;
+        if (tpl == null) tpl = FindFirstObjectByType<AsteroidBelt>(FindObjectsInactive.Include);
+        if (tpl != null)
+        {
+            // Template in WorldRoot einhängen und produktiv schalten
+            WorldRoot.Instance.Attach(tpl.transform, WorldRoot.Category.Belt, worldPos: false);
+            tpl.templateOnly = false; // jetzt selbst spawnen lassen
+            return tpl;
+        }
+
+        // Fallback: via PlanetGenerator erzeugen (wie bisher)
+        float sqrtL = Mathf.Sqrt(Mathf.Max(0.05f, star.luminosity_solar));
+        float beltCenAU = 2.5f * sqrtL;
+        float beltHalfWidthAU = 0.5f * sqrtL;
+
+        var beltDto = new AsteroidBeltDto
+        {
+            name = "Main Belt",
+            inner_radius_km = AU2Km(Mathf.Max(0.8f * beltCenAU, beltCenAU - beltHalfWidthAU)),
+            outer_radius_km = AU2Km(beltCenAU + beltHalfWidthAU)
+        };
+        var beltGo = planetGenerator.CreateAsteroidBelt(beltDto); // erzeugt neuen Belt
+        WorldRoot.Instance.Attach(beltGo.transform, WorldRoot.Category.Belt, worldPos: false);
+        return beltGo.GetComponent<AsteroidBelt>();
+    }
+
+    // ------------------- Probe-Spawn im Belt -------------------
     private async UniTask<GameObject> SpawnDefaultProbeInBeltAsync(
         AsteroidBelt belt,
         object probeKeyOrLabel,
@@ -272,16 +307,17 @@ public class NewGameSystemSeeder : MonoBehaviour
             return null;
         }
 
-        float rInner = Mathf.Max(0.1f, belt.innerRadius);
-        float rOuter = Mathf.Max(rInner + 0.1f, belt.outerRadius);
-        float r = Mathf.Lerp(rInner, rOuter, 0.5f);
+        // KORREKT: aufgelöste (Unity-Units) verwenden – NICHT belt.innerRadius (km/AU)!
+        var cfg = belt.ToResolvedConfig(); // liefert *_UU
+        float rInnerUU = Mathf.Max(0.1f, cfg.innerRadiusUU);
+        float rOuterUU = Mathf.Max(rInnerUU + 0.1f, cfg.outerRadiusUU);
+        float r = Mathf.Lerp(rInnerUU, rOuterUU, 0.5f);
 
         float theta = UnityEngine.Random.Range(0f, Mathf.PI * 2f);
-        float y = UnityEngine.Random.Range(-belt.beltThickness * 0.5f, belt.beltThickness * 0.5f);
+        float y = UnityEngine.Random.Range(-cfg.beltThicknessUU * 0.5f, cfg.beltThicknessUU * 0.5f);
         Vector3 local = new Vector3(Mathf.Cos(theta) * r, y, Mathf.Sin(theta) * r);
         Vector3 pos = belt.transform.position + local;
 
-        // AssetProvider ist zu diesem Zeitpunkt bereits initialisiert (EnsureAssetProviderReady in Start)
         GameObject probe = await AssetProvider.I.InstantiateAsync(probeKeyOrLabel, pos, Quaternion.identity);
         if (probe == null)
         {

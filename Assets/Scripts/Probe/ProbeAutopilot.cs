@@ -1,102 +1,575 @@
-﻿// Assets/Scripts/Entities/ProbeAutopilot.cs
+﻿// Assets/Scripts/Probe/ProbeAutopilot.cs
 using System;
 using UnityEngine;
 
 [RequireComponent(typeof(Rigidbody))]
 public class ProbeAutopilot : MonoBehaviour
 {
-    /*─────────────────────────────── Autopilot – Alignment */
-    [Header("Autopilot – Alignment")]
-    [Tooltip("Maximale Winkelgeschwindigkeit beim Ausrichten (deg/s).")]
-    public float alignDegPerSec = 60f;
+    /* ===================== Einstellungen ===================== */
 
-    [Tooltip("Wenn der Restwinkel unter diesen Wert fällt (deg), ist Alignment fertig.")]
-    public float alignToleranceDeg = 1f;
+    [Header("Ausrichten")]
+    public float alignDegPerSec = 45f;
+    public float alignToleranceDeg = 1.5f;
+    public float reorientInterval = 0.6f;
 
-    /*─────────────────────────────── Autopilot – Approach */
-    [Header("Autopilot – Approach")]
-    [Tooltip("Radiale Beschleunigung beim Spiral-/Direkt-Approach (Units/s²).")]
-    public float radialAccel = 0.5f;
+    [Header("Direkter Flug")]
+    public float speedGain = 0.1f;
+    public float maxCruiseSpeed = 400f;
+    public float approachSpeed = 3.0f;
+    public float accel = 20f;
+    public float holdDistanceUnits = 10f;
 
-    [Tooltip("Unbenutzt (Reserviert für spätere Kurven-Profile).")]
-    [Range(0.01f, 1f)] public float radialApproachFraction = 0.2f;
+    [Header("Anflug auf Asteroiden")]
+    [Tooltip("Abstand vor der Oberfläche der Nav-Sphäre, an dem beim Autopilot-Anflug gehalten wird.")]
+    public float surfaceStandOff = 3f;
 
-    /*─────────────────────────────── Autopilot – Orbit Capture (Planeten) */
-    [Header("Autopilot – Orbit (Planeten)")]
-    [Tooltip("Orbit-Höhe relativ zum Körperradius.")]
-    [Range(1.02f, 5f)] public float orbitAltitudeFactor = 1.1f;
+    [Header("Track-Assist (weit weg)")]
+    public float trackAssistDistance = 200f;
+    public float trackAssistMargin = 1.0f;
 
-    [Tooltip("Absolute Mindest-Orbit-Höhe (Units).")]
-    public float minOrbitAltitudeUnits = 2f;
+    [Header("Sticky-Follow")]
+    public bool stickAfterAutopilot = true;
+    [Range(0f, 1f)] public float stickPosSmoothTime = 0.25f;
+    public float stickDeadzoneUnits = 0.1f;
+    public float stickMaxSpeed = 200f;
+    public float stickFaceDegPerSec = 45f;
 
-    [Tooltip("Umlaufdauer im Orbit (Sekunden).")]
-    public float orbitPeriod = 60f;
+    [Header("Autopilot Stop Verhalten")]
+    public bool freezeOnStop = true;
 
-    /*─────────────────────────────── Autopilot – Asteroid Approach */
-    [Header("Autopilot – Asteroid Approach")]
-    [Tooltip("Zielabstand zur Oberfläche eines Einzel-Asteroiden (Units).")]
-    public float asteroidApproachDistance = 8f;
 
-    [Tooltip("Toleranz zum Erreichen des Asteroiden-Zielabstands (Units).")]
-    public float asteroidStopTolerance = 0.5f;
+    /* ===================== Laufzeit-Zustand ===================== */
 
-    /*──────────────────────────── Runtime */
-    enum AutoState { None, Align, SpiralApproach, DirectApproach, Orbit }
-    AutoState autoState = AutoState.None;
+    private enum AutoState { None, Aligning, Cruising }
+    private AutoState state = AutoState.None;
 
-    Transform navTarget;
-    Transform lastTarget;
+    [SerializeField] private Transform navTarget;
+    private Transform lastTarget;
 
-    float desiredOrbitRadius;        // Zielabstand vom Zielzentrum
-    Vector3 orbitPlaneNormal;
+    // Das tatsächlich angeflogene Ziel (beim Belt: der gewählte Asteroiden-Root)
+    private Transform flightTarget;
 
-    Vector3 _prevPos;
-    Vector3 _lastMove;
-    float radialSpeed;
+    private Rigidbody rb;
 
-    // Belt-bezogene Felder
-    private Vector3 _beltAimPoint;
-    private bool _hasBeltAimPoint = false;
+    // Fixer Anchor (für Nicht-Kugel-Ziele)
+    private Vector3 anchorLocal;
 
-    private int _beltAimRecalcCounter = 0;
-    [Tooltip("Alle X FixedUpdates Belt-Zielpunkt neu bestimmen.")]
-    public int beltAimRecalcEvery = 10;
+    // Dynamischer Kugel-Anchor (für Asteroiden)
+    private bool dynamicSurfaceAnchor = false;
+    private float dynamicSurfaceRadiusUU = 0f; // Welt-Radius (UU)
 
-    // Direct-flight Halfway Profile
-    bool _directInit = false;
-    bool _directDecelPhase = false;
-    float _directInitialBoundary = 0f;
-    float _directHalfBoundary = 0f;
+    private Vector3 desiredWorld;
+    private float curSpeed = 0f;
+    private float reorientTimer = 0f;
+    private Quaternion desiredFacing;
 
-    /*──────────────────────────── Cached */
-    Rigidbody rb;
-    PlanetRegistry registry;
+    // Sticky
+    private bool stickyActive = false;
+    private Transform stickyTarget = null;
+    private Vector3 stickyLocalOffset; // bei dynamischem Anchor ungenutzt
+    private Vector3 stickyVel;
 
-    /*──────────────────────────── Events */
-    public event Action AutoPilotStarted;
-    public event Action AutoPilotStopped;
+    // Diagnose & Kinematik
+    private Vector3 lastMove;
+    private Vector3 _tPrevPos, _tVel;
+
+    /* ===================== Events ===================== */
+    public event Action AutoPilotStarted, AutoPilotStopped;
     public event Action<string> StatusUpdated;
-
-    /* helper */
-    float OrbitDegPerSec => 360f / Mathf.Max(orbitPeriod, 1e-4f);
-
     public Transform NavTarget => navTarget;
 
-    void Awake()
+    /* ===================== Unity ===================== */
+    private void Awake() { rb = GetComponent<Rigidbody>(); }
+
+    private void FixedUpdate()
     {
-        rb = GetComponent<Rigidbody>();
-        registry = PlanetRegistry.Instance;
+        if (state == AutoState.None && stickyActive && stickyTarget != null)
+        { StickyFollowTick(); return; }
+        if (state == AutoState.None) return;
+
+        Vector3 before = transform.position;
+
+        if (lastTarget != null && navTarget != lastTarget)
+        { AbortAutopilot(keepMomentum: true); return; }
+
+        switch (state)
+        {
+            case AutoState.Aligning: AlignTick(); break;
+            case AutoState.Cruising: CruiseTick(); break;
+        }
+
+        lastMove = transform.position - before;
     }
 
-    // ───────────────────── Öffentliche Helfer für UI ─────────────────────
-    /// <summary>
-    /// Setzt das Nav-Ziel auf die aktuell im HUD selektierte Sonde (falls vorhanden).
-    /// Rückgabe: true = Ziel gesetzt.
-    /// </summary>
+    /* ===================== Öffentliche API ===================== */
+    public void SetNavTarget(Transform tgt)
+    {
+        navTarget = tgt;
+        AbortAutopilot(keepMomentum: true);
+    }
+    public bool IsAutopilotActive => state != AutoState.None;
+
+    public void StartAutopilot()
+    {
+        if (navTarget == null || state != AutoState.None) return;
+
+        ResetRigidbody(makeKinematicAfter: true);
+
+        lastTarget = navTarget;
+        stickyTarget = navTarget;
+        stickyActive = false;
+
+        _tPrevPos = navTarget.position;
+        _tVel = Vector3.zero;
+
+        desiredFacing = ComputeLookRotationTo(navTarget.position);
+
+        state = AutoState.Aligning;
+        curSpeed = 0f;
+        reorientTimer = 0f;
+
+        AutoPilotStarted?.Invoke();
+        StatusUpdated?.Invoke("Aligning");
+    }
+
+    public void StopAutopilot() => AbortAutopilot(false);
+
+    /* ===================== Kern-Logik ===================== */
+
+    private void AlignTick()
+    {
+        if (navTarget == null) { AbortAutopilot(true); return; }
+
+        reorientTimer += Time.fixedDeltaTime;
+        if (reorientTimer >= reorientInterval)
+        {
+            desiredFacing = ComputeLookRotationTo(navTarget.position);
+            reorientTimer = 0f;
+        }
+
+        transform.rotation = Quaternion.RotateTowards(
+            transform.rotation, desiredFacing, alignDegPerSec * Time.fixedDeltaTime);
+
+        if (Quaternion.Angle(transform.rotation, desiredFacing) <= alignToleranceDeg)
+        {
+            ChooseFlightTargetAndAnchor();
+            desiredWorld = GetDesiredWorld(); // erster Zielpunkt
+
+            SampleTargetKinematics();
+
+            state = AutoState.Cruising;
+            StatusUpdated?.Invoke("Cruising (direct)");
+        }
+    }
+
+    private void CruiseTick()
+    {
+        if (flightTarget == null) { AbortAutopilot(true); return; }
+
+        reorientTimer += Time.fixedDeltaTime;
+        if (reorientTimer >= reorientInterval)
+        {
+            desiredFacing = ComputeLookRotationTo(flightTarget.position);
+            reorientTimer = 0f;
+            SampleTargetKinematics();
+        }
+
+        desiredWorld = GetDesiredWorld();
+
+        float dist = Vector3.Distance(transform.position, desiredWorld);
+
+        float baseSpeed = Mathf.Clamp(dist * Mathf.Max(0f, speedGain), approachSpeed, maxCruiseSpeed);
+        float minTrack = (dist > trackAssistDistance) ? Mathf.Min(maxCruiseSpeed, _tVel.magnitude + trackAssistMargin) : approachSpeed;
+        float targetSpeed = Mathf.Max(baseSpeed, minTrack);
+
+        curSpeed = Mathf.MoveTowards(curSpeed, targetSpeed, accel * Time.fixedDeltaTime);
+
+        // ---- Bewegung erstellen und HART vor der Nav-Sphäre kappen ----
+        float dt = Time.fixedDeltaTime;
+        Vector3 next = Vector3.MoveTowards(transform.position, desiredWorld, curSpeed * dt);
+
+        HardClampOutsideAsteroid(ref next, surfaceStandOff);
+
+        Vector3 move = next - transform.position;
+        if (move.sqrMagnitude > 1e-10f)
+        {
+            transform.position = next;
+            transform.rotation = Quaternion.RotateTowards(transform.rotation, desiredFacing, alignDegPerSec * dt);
+        }
+
+        // Ankunft?
+        float stopThresh = Mathf.Max(0.05f, holdDistanceUnits * 0.2f);
+        if (Vector3.Distance(transform.position, GetDesiredWorld()) <= stopThresh)
+        {
+            stickyTarget = flightTarget;
+            stickyLocalOffset = anchorLocal; // bei dynamischem Anchor unbenutzt
+
+            stickyActive = stickAfterAutopilot && stickyTarget != null;
+            rb.isKinematic = stickyActive;
+
+            state = AutoState.None;
+            AutoPilotStopped?.Invoke();
+            StatusUpdated?.Invoke(stickyActive ? "Arrived (sticky follow active)" : "Arrived");
+        }
+    }
+
+    private void StickyFollowTick()
+    {
+        if (stickyTarget == null) { stickyActive = false; return; }
+
+        float dt = Time.fixedDeltaTime;
+
+        Vector3 desired = dynamicSurfaceAnchor
+            ? ComputeSphereStandOffPoint(stickyTarget, dynamicSurfaceRadiusUU, 0f)
+            : stickyTarget.TransformPoint(stickyLocalOffset);
+
+        HardClampOutsideAsteroid(ref desired, 0f);
+
+        Vector3 delta = desired - transform.position;
+
+        if (delta.magnitude > stickDeadzoneUnits)
+        {
+            if (stickPosSmoothTime > 0f)
+            {
+                transform.position = Vector3.SmoothDamp(
+                    transform.position, desired, ref stickyVel,
+                    stickPosSmoothTime, stickMaxSpeed, dt);
+            }
+            else
+            {
+                transform.position = Vector3.MoveTowards(transform.position, desired, stickMaxSpeed * dt);
+            }
+        }
+
+        reorientTimer += dt;
+        if (reorientTimer >= reorientInterval)
+        {
+            desiredFacing = ComputeLookRotationTo(stickyTarget.position);
+            reorientTimer = 0f;
+        }
+
+        transform.rotation = Quaternion.RotateTowards(transform.rotation, desiredFacing, stickFaceDegPerSec * dt);
+    }
+
+    /* ===================== Zielwahl & Anchor ===================== */
+
+    private void ChooseFlightTargetAndAnchor()
+    {
+        flightTarget = navTarget;
+        dynamicSurfaceAnchor = false;
+        dynamicSurfaceRadiusUU = 0f;
+
+        // Belt?
+        var belt = navTarget != null ? navTarget.GetComponent<AsteroidBelt>() : null;
+        if (belt != null)
+        {
+            Transform closest = belt.GetClosestAsteroid(transform.position);
+            if (closest != null)
+            {
+                // robust auf Asteroiden-ROOT samt Radius
+                if (TryGetAsteroidNavData(closest, out var root, out var radiusWorld))
+                {
+                    flightTarget = root;
+                    dynamicSurfaceAnchor = true;
+                    dynamicSurfaceRadiusUU = radiusWorld;
+                }
+                else
+                {
+                    // Fallback: fixer Oberflächenpunkt (Bounds) – NIE Zentrum!
+                    flightTarget = closest;
+                    Vector3 anchorWorld = ComputeSurfaceAnchorFromBounds(closest, transform.position, surfaceStandOff);
+                    anchorLocal = flightTarget.InverseTransformPoint(anchorWorld);
+                }
+            }
+            else
+            {
+                // Belt-Fallback: Punkt auf näherem Radius
+                var cfg = belt.ToResolvedConfig();
+                Vector3 fixedAnchorWorld = ComputeFixedBeltAnchorWorld(belt, cfg, transform.position);
+                anchorLocal = navTarget.InverseTransformPoint(fixedAnchorWorld);
+                flightTarget = navTarget;
+            }
+        }
+        else
+        {
+            // Normales Ziel (Planet, einzelner Asteroid als Target, etc.)
+            var t = navTarget;
+            Vector3 dir = (transform.position - t.position);
+            if (dir.sqrMagnitude < 1e-6f) dir = Vector3.right;
+            Vector3 worldAnchor = t.position + dir.normalized * Mathf.Max(0.01f, holdDistanceUnits);
+            anchorLocal = t.InverseTransformPoint(worldAnchor);
+        }
+
+        desiredFacing = ComputeLookRotationTo(flightTarget.position);
+    }
+
+    private Vector3 GetDesiredWorld()
+    {
+        if (dynamicSurfaceAnchor && flightTarget != null)
+            return ComputeSphereStandOffPoint(flightTarget, dynamicSurfaceRadiusUU, surfaceStandOff);
+
+        return flightTarget.TransformPoint(anchorLocal);
+    }
+
+    /// Punkt auf Linie Zentrum→Sonde bei (Radius + StandOff) – **WELT-Radius!**
+    private Vector3 ComputeSphereStandOffPoint(Transform asteroidRoot, float radiusWorldUU, float standOff)
+    {
+        Vector3 center = asteroidRoot.position;
+        Vector3 dir = transform.position - center;
+        if (dir.sqrMagnitude < 1e-8f) dir = asteroidRoot.forward;
+        dir.Normalize();
+        const float eps = 0.01f; // vermeidet Flattern
+        return center + dir * (radiusWorldUU + Mathf.Max(0f, standOff) + eps);
+    }
+
+    /// Fallback: Belt-Rand (in UU) bei näherem Radius
+    private Vector3 ComputeFixedBeltAnchorWorld(AsteroidBelt belt, AsteroidBelt.ResolvedConfig cfg, Vector3 probePos)
+    {
+        Vector3 C = belt.transform.position;   // Belt-Zentrum
+        Vector3 N = belt.transform.up;         // Belt-Normale
+
+        Vector3 inPlane = Vector3.ProjectOnPlane(probePos - C, N);
+        if (inPlane.sqrMagnitude < 1e-10f) inPlane = belt.transform.right;
+
+        float r = inPlane.magnitude;
+        Vector3 radialDir = inPlane.normalized;
+
+        float dInner = Mathf.Abs(r - cfg.innerRadiusUU);
+        float dOuter = Mathf.Abs(cfg.outerRadiusUU - r);
+        float targetR = (dInner <= dOuter) ? cfg.innerRadiusUU : cfg.outerRadiusUU;
+
+        return C + radialDir * targetR;
+    }
+
+    /// Fallback: Bounds-basierter Oberflächenpunkt (wenn keine Nav-Sphäre vorhanden)
+    private Vector3 ComputeSurfaceAnchorFromBounds(Transform asteroid, Vector3 probePos, float standOff)
+    {
+        Vector3 center = asteroid.position;
+        Vector3 dir = probePos - center;
+        if (dir.sqrMagnitude < 1e-8f) dir = asteroid.forward;
+        dir.Normalize();
+
+        float r = ApproximateRadiusFromBounds(asteroid);
+        const float eps = 0.01f;
+        return center + dir * (r + Mathf.Max(0f, standOff) + eps);
+    }
+
+    private static float ApproximateRadiusFromBounds(Transform t)
+    {
+        float radius = 0.5f * t.lossyScale.magnitude; // Fallback
+
+        var renderers = t.GetComponentsInChildren<Renderer>(true);
+        if (renderers != null && renderers.Length > 0)
+        {
+            Bounds b = renderers[0].bounds;
+            for (int i = 1; i < renderers.Length; i++) b.Encapsulate(renderers[i].bounds);
+            radius = Mathf.Max(radius, b.extents.magnitude);
+        }
+        else
+        {
+            var colliders = t.GetComponentsInChildren<Collider>(true);
+            if (colliders != null && colliders.Length > 0)
+            {
+                Bounds b = colliders[0].bounds;
+                for (int i = 1; i < colliders.Length; i++) b.Encapsulate(colliders[i].bounds);
+                radius = Mathf.Max(radius, b.extents.magnitude);
+            }
+        }
+        return Mathf.Max(radius, 0.01f);
+    }
+
+    /* ===================== Utilities ===================== */
+
+    /// Liefert Asteroiden-Root + **WELT-Nav-Radius** (aus SphereCollider), sonst Bounds.
+    private bool TryGetAsteroidNavData(Transform any, out Transform asteroidRoot, out float radiusWorldUU)
+    {
+        asteroidRoot = null;
+        radiusWorldUU = 0f;
+
+        if (any == null) return false;
+
+        var ma = any.GetComponentInParent<MineableAsteroid>();
+        if (ma != null)
+        {
+            asteroidRoot = ma.transform;
+
+            // bevorzugt Nav-SphereCollider → Welt-Radius aus radius * maxLossyScale
+            var sc = ma.navSphereCollider;
+            if (sc != null)
+            {
+                float scale = Mathf.Max(asteroidRoot.lossyScale.x, Mathf.Max(asteroidRoot.lossyScale.y, asteroidRoot.lossyScale.z));
+                radiusWorldUU = Mathf.Max(0.01f, sc.radius * scale);
+                return true;
+            }
+
+            // Fallback: gespeicherter Radius oder Bounds
+            radiusWorldUU = (ma.navSphereRadiusUU > 0f) ? ma.navSphereRadiusUU : ApproximateRadiusFromBounds(asteroidRoot);
+            return true;
+        }
+
+        // Fallback: Tag/Hierarchie – obersten Asteroiden-Knoten suchen
+        var root = any;
+        while (root.parent != null) root = root.parent;
+
+        if (root.CompareTag("Asteroid"))
+        {
+            asteroidRoot = root;
+            var ma2 = asteroidRoot.GetComponent<MineableAsteroid>();
+            if (ma2 != null && ma2.navSphereCollider != null)
+            {
+                float scale = Mathf.Max(asteroidRoot.lossyScale.x, Mathf.Max(asteroidRoot.lossyScale.y, asteroidRoot.lossyScale.z));
+                radiusWorldUU = Mathf.Max(0.01f, ma2.navSphereCollider.radius * scale);
+                return true;
+            }
+            radiusWorldUU = (ma2 != null && ma2.navSphereRadiusUU > 0f) ? ma2.navSphereRadiusUU : ApproximateRadiusFromBounds(asteroidRoot);
+            return true;
+        }
+
+        return false;
+    }
+
+    /// Harter No-Clip-Guard: position stets **außerhalb** der Nav-Sphäre halten.
+    private void HardClampOutsideAsteroid(ref Vector3 pos, float standOff)
+    {
+        if (flightTarget == null) return;
+
+        if (!TryGetAsteroidNavData(flightTarget, out var root, out var radiusWorld)) return;
+
+        Vector3 c = root.position;
+        Vector3 v = pos - c;
+        float d = v.magnitude;
+        float minD = radiusWorld + Mathf.Max(0f, standOff);
+
+        if (d < minD && d > 1e-6f)
+        {
+            pos = c + v * (minD / d);
+            if (curSpeed > 0f) curSpeed = 0f; // sanft bremsen
+        }
+    }
+
+    private void SampleTargetKinematics()
+    {
+        if (flightTarget == null) { _tVel = Vector3.zero; _tPrevPos = Vector3.zero; return; }
+
+        if (flightTarget.TryGetComponent<Rigidbody>(out var trb))
+            _tVel = trb.linearVelocity; // Unity 6 API
+        else
+            _tVel = (flightTarget.position - _tPrevPos) / Mathf.Max(Time.fixedDeltaTime, 1e-5f);
+
+        _tPrevPos = flightTarget.position;
+    }
+
+    private Quaternion ComputeLookRotationTo(Vector3 worldPos)
+    {
+        Vector3 to = worldPos - transform.position;
+        if (to.sqrMagnitude < 1e-10f) to = transform.forward;
+        return Quaternion.LookRotation(to.normalized, Vector3.up);
+    }
+
+    public void AbortAutopilot(bool keepMomentum)
+    {
+        StatusUpdated?.Invoke("Stopping");
+
+        if (freezeOnStop)
+        {
+            rb.isKinematic = true;
+            rb.linearVelocity = Vector3.zero;
+            rb.angularVelocity = Vector3.zero;
+            stickyActive = false; // kein relativer Offset
+        }
+        else
+        {
+
+            bool willStick = stickAfterAutopilot && (stickyTarget != null);
+
+            if (willStick)
+            {
+                rb.isKinematic = true;
+            }
+            else
+            {
+                rb.isKinematic = false;
+                Vector3 carried = keepMomentum
+                    ? (lastMove / Mathf.Max(Time.fixedDeltaTime, 1e-6f))
+                    : Vector3.zero;
+                rb.linearVelocity = carried;
+                rb.angularVelocity = Vector3.zero;
+            }
+            stickyActive = willStick;
+        }
+        state = AutoState.None;
+        AutoPilotStopped?.Invoke();
+        StatusUpdated?.Invoke(stickyActive ? "Stopped (sticky follow active)" : "Stopped");
+    }
+
+    /* ==== Öffentliche Helper für Mining: Oberfläche „anlegen“ (StandOff=0) ==== */
+    public void SetSurfaceContact(Transform asteroid)
+    {
+        if (asteroid == null) return;
+
+        if (!TryGetAsteroidNavData(asteroid, out var root, out var radiusWorld)) return;
+
+        flightTarget = root;
+        dynamicSurfaceAnchor = true;
+        dynamicSurfaceRadiusUU = radiusWorld;
+
+        stickyTarget = root;
+        stickyLocalOffset = Vector3.zero; // ungenutzt
+        stickyActive = true;
+        rb.isKinematic = true;
+
+        desiredFacing = ComputeLookRotationTo(root.position);
+
+        state = AutoState.None;
+        AutoPilotStopped?.Invoke();
+        StatusUpdated?.Invoke("Surface contact engaged");
+    }
+
+    /* ===================== Diagnose ===================== */
+
+    /// Distanz zum tatsächlich angesteuerten Punkt
+    public float CurrentDistanceUnits
+    {
+        get
+        {
+            if (flightTarget != null)
+            {
+                var worldAnchor = dynamicSurfaceAnchor
+                    ? ComputeSphereStandOffPoint(flightTarget, dynamicSurfaceRadiusUU, surfaceStandOff)
+                    : flightTarget.TransformPoint(anchorLocal);
+                return Vector3.Distance(transform.position, worldAnchor);
+            }
+
+            if (navTarget == null) return float.NaN;
+
+            var belt = navTarget.GetComponent<AsteroidBelt>();
+            if (belt != null)
+            {
+                var cfg = belt.ToResolvedConfig();
+                Vector3 anchorWorld = ComputeFixedBeltAnchorWorld(belt, cfg, transform.position);
+                return Vector3.Distance(transform.position, anchorWorld);
+            }
+
+            return Vector3.Distance(transform.position, navTarget.position);
+        }
+    }
+
+    public float CurrentSpeedUnits
+    {
+        get
+        {
+            float dt = Mathf.Max(Time.fixedDeltaTime, 1e-6f);
+            return lastMove.magnitude / dt;
+        }
+    }
+
+    // UI-Kompatibilität
     public static bool TrySetNavTargetOnSelectedProbe(Transform target)
     {
+        if (target == null) return false;
+
         var sel = HUDBindingService.I?.SelectedItem;
-        if (sel?.Transform == null || target == null) return false;
+        if (sel?.Transform == null) return false;
 
         var ap = sel.Transform.GetComponent<ProbeAutopilot>();
         if (ap == null) return false;
@@ -106,447 +579,14 @@ public class ProbeAutopilot : MonoBehaviour
         return true;
     }
 
-    /*====================================================================*/
-
-    void FixedUpdate()
+    void ResetRigidbody(bool makeKinematicAfter)
     {
-        if (autoState == AutoState.None) return;
+        bool wasKinematic = rb.isKinematic;
+        if (wasKinematic) rb.isKinematic = false;
 
-        Vector3 before = transform.position;
-
-        // Target-Änderung während AP aktiv → sauber abbrechen (Momentum übernehmen)
-        if (lastTarget != null && navTarget != lastTarget)
-        {
-            Debug.LogWarning($"Autopilot: Target changed from {lastTarget.name} to {navTarget?.name}. Aborting.");
-            AbortAutopilot(keepMomentum: true);
-            return;
-        }
-
-        switch (autoState)
-        {
-            case AutoState.Align: AlignTick(); break;
-            case AutoState.SpiralApproach: SpiralTick(); break;
-            case AutoState.DirectApproach: DirectTick(); break;
-            case AutoState.Orbit: OrbitTick(); break;
-        }
-
-        _lastMove = transform.position - before;
-        _prevPos = before;
-    }
-
-
-    /*====================================================================*/
-
-    public void SetNavTarget(Transform tgt)
-    {
-        navTarget = tgt;
-        AbortAutopilot(keepMomentum: true);
-    }
-
-    public void StartAutopilot()
-    {
-        if (navTarget == null || autoState != AutoState.None) return;
-
-        // Physik anhalten, danach in kinematischen Modus wechseln
-        rb.linearVelocity = Vector3.zero;       // FIX: velocity statt linearVelocity
-        rb.angularVelocity = Vector3.zero;
-        rb.isKinematic = true;
-
-        autoState = AutoState.Align;
-        radialSpeed = 0f;
-        lastTarget = navTarget;
-
-        AutoPilotStarted?.Invoke();
-    }
-
-    public void StopAutopilot() => AbortAutopilot(false);
-
-    public bool IsAutopilotActive => autoState != AutoState.None;
-
-
-    /*====================================================================*/
-
-    void AlignTick()
-    {
-        if (navTarget == null) { AbortAutopilot(true); return; }
-
-        Vector3 dirWorld;
-
-        if (navTarget.CompareTag("AsteroidBelt"))
-        {
-            var belt = navTarget.GetComponent<AsteroidBelt>();
-            ComputeBeltNearestPoint(belt, transform.position, out _beltAimPoint, out desiredOrbitRadius);
-            _hasBeltAimPoint = true;
-            dirWorld = (_beltAimPoint - transform.position).normalized;
-        }
-        else if (navTarget.CompareTag("Asteroid"))
-        {
-            // Einzel-Asteroid: definierte Annäherung statt Orbit
-            float bodyRadius = GuessBodyRadius(navTarget);
-            float targetDistFromCenter = Mathf.Max(bodyRadius + asteroidApproachDistance, asteroidApproachDistance);
-            desiredOrbitRadius = targetDistFromCenter;
-            dirWorld = (navTarget.position - transform.position).normalized;
-        }
-        else
-        {
-            // Planet / generischer Körper → Orbit
-            float bodyRadius = GuessBodyRadius(navTarget);
-            desiredOrbitRadius = Mathf.Max(bodyRadius * orbitAltitudeFactor, bodyRadius + minOrbitAltitudeUnits);
-            dirWorld = (navTarget.position - transform.position).normalized;
-        }
-
-        StatusUpdated?.Invoke("Aligning");
-
-        if (dirWorld.sqrMagnitude < 1e-10f) dirWorld = transform.forward;
-        Quaternion targetRot = Quaternion.LookRotation(dirWorld, Vector3.up);
-
-        transform.rotation = Quaternion.RotateTowards(
-            transform.rotation,
-            targetRot,
-            alignDegPerSec * Time.fixedDeltaTime);
-
-        if (Quaternion.Angle(transform.rotation, targetRot) <= alignToleranceDeg)
-        {
-            StatusUpdated?.Invoke("Aligned");
-            StartApproach();
-        }
-    }
-
-    void StartApproach()
-    {
-        if (navTarget == null) { AbortAutopilot(true); return; }
-        StatusUpdated?.Invoke("Approaching");
-
-        if (navTarget.CompareTag("AsteroidBelt"))
-        {
-            autoState = AutoState.DirectApproach;
-            _beltAimRecalcCounter = 0;
-        }
-        else if (navTarget.CompareTag("Asteroid"))
-        {
-            autoState = AutoState.DirectApproach;
-            radialSpeed = 0f;
-        }
-        else
-        {
-            autoState = AutoState.Orbit;
-            radialSpeed = 0f;
-        }
-
-        if (autoState == AutoState.DirectApproach)
-        {
-            _directInit = false;
-            _directDecelPhase = false;
-        }
-    }
-
-    /*====================================================================*/
-    void DirectTick()
-    {
-        if (navTarget == null) { AbortAutopilot(true); return; }
-        StatusUpdated?.Invoke("Direct flight");
-
-        float dt = Time.fixedDeltaTime;
-
-        // --- Zielposition & Stop-Grenze bestimmen ---
-        Vector3 targetPos = navTarget.position;
-        float stopTol = asteroidStopTolerance;
-
-        if (navTarget.CompareTag("AsteroidBelt"))
-        {
-            // Kantenpunkt initialisieren / periodisch nachführen
-            if (!_hasBeltAimPoint)
-            {
-                var belt0 = navTarget.GetComponent<AsteroidBelt>();
-                if (belt0 != null)
-                {
-                    ComputeBeltNearestPoint(belt0, transform.position, out _beltAimPoint, out desiredOrbitRadius);
-                    _hasBeltAimPoint = true;
-                    _beltAimRecalcCounter = 0;
-                }
-            }
-            if (++_beltAimRecalcCounter % Mathf.Max(1, beltAimRecalcEvery) == 0)
-            {
-                var belt = navTarget.GetComponent<AsteroidBelt>();
-                if (belt != null)
-                {
-                    ComputeBeltNearestPoint(belt, transform.position, out _beltAimPoint, out desiredOrbitRadius);
-                }
-            }
-            targetPos = _beltAimPoint;
-            stopTol = 0.5f; // knapp vor der Kante stoppen
-        }
-
-        // Richtung & Distanzen
-        Vector3 toTarget = targetPos - transform.position;
-        float centerDist = toTarget.magnitude;
-
-        // Reststrecke bis zur Stop-Grenze je nach Zieltyp
-        float boundaryNow;
-        if (navTarget.CompareTag("AsteroidBelt"))
-        {
-            boundaryNow = Mathf.Max(0f, centerDist - stopTol);
-        }
-        else if (navTarget.CompareTag("Asteroid"))
-        {
-            float bodyRadius = GuessBodyRadius(navTarget);
-            float desired = Mathf.Max(bodyRadius + asteroidApproachDistance, asteroidApproachDistance);
-            boundaryNow = Mathf.Max(0f, centerDist - (desired + asteroidStopTolerance));
-        }
-        else
-        {
-            float bodyRadius = GuessBodyRadius(navTarget);
-            float desired = Mathf.Max(bodyRadius * orbitAltitudeFactor, bodyRadius + minOrbitAltitudeUnits);
-            boundaryNow = Mathf.Max(0f, centerDist - (desired + 1e-3f));
-        }
-
-        // Halfway-Profil initialisieren
-        if (!_directInit)
-        {
-            _directInit = true;
-            _directDecelPhase = false;
-            _directInitialBoundary = boundaryNow;
-            _directHalfBoundary = 0.5f * _directInitialBoundary;
-        }
-
-        // Fortschritt messen und ggf. in Bremsphase wechseln (Sticky-Schalter)
-        float progress = Mathf.Max(0f, _directInitialBoundary - boundaryNow);
-        if (!_directDecelPhase && progress >= _directHalfBoundary)
-            _directDecelPhase = true;
-
-        // a) bis zur Hälfte beschleunigen, b) ab Hälfte bremsen
-        if (!_directDecelPhase)
-            radialSpeed += radialAccel * dt;
-        else
-            radialSpeed = Mathf.Max(0f, radialSpeed - radialAccel * dt);
-
-        // Schrittweite begrenzen, damit wir die Stop-Grenze nicht überschießen
-        float step = radialSpeed * dt;
-        float advance = Mathf.Min(step, boundaryNow);
-
-        if (advance > 0f && centerDist > 1e-6f)
-        {
-            Vector3 dir = toTarget / centerDist;
-            transform.position += dir * advance;
-            transform.rotation = Quaternion.LookRotation(dir, Vector3.up);
-        }
-
-        // Ziel-/Abschlussbedingungen
-        if (navTarget.CompareTag("AsteroidBelt"))
-        {
-            if (Vector3.Distance(transform.position, targetPos) <= stopTol)
-            {
-                AbortAutopilot(false);
-                return;
-            }
-        }
-        else if (navTarget.CompareTag("Asteroid"))
-        {
-            float bodyRadius = GuessBodyRadius(navTarget);
-            float desired = Mathf.Max(bodyRadius + asteroidApproachDistance, asteroidApproachDistance);
-            if (Vector3.Distance(transform.position, navTarget.position) <= desired + asteroidStopTolerance)
-            {
-                AbortAutopilot(false);
-                return;
-            }
-        }
-        else
-        {
-            float bodyRadius = GuessBodyRadius(navTarget);
-            float desired = Mathf.Max(bodyRadius * orbitAltitudeFactor, bodyRadius + minOrbitAltitudeUnits);
-            if (Vector3.Distance(transform.position, navTarget.position) <= desired + 1e-3f)
-            {
-                orbitPlaneNormal = Vector3.up;
-                autoState = AutoState.Orbit;
-                radialSpeed = 0f;
-                _directInit = false; _directDecelPhase = false;
-                return;
-            }
-        }
-    }
-
-    void SpiralTick()
-    {
-        if (navTarget == null) { AbortAutopilot(true); return; }
-        StatusUpdated?.Invoke("Approaching");
-
-        Vector3 center = navTarget.position;
-
-        // Belt: Zielpunkt periodisch nachführen
-        if (navTarget.CompareTag("AsteroidBelt"))
-        {
-            if (++_beltAimRecalcCounter % Mathf.Max(1, beltAimRecalcEvery) == 0)
-            {
-                var belt = navTarget.GetComponent<AsteroidBelt>();
-                if (belt != null)
-                {
-                    ComputeBeltNearestPoint(belt, transform.position, out _beltAimPoint, out desiredOrbitRadius);
-                    center = _beltAimPoint;
-                }
-            }
-        }
-
-        // Radialdaten
-        Vector3 radial = transform.position - center;
-        float dist = radial.magnitude;
-        float dt = Time.fixedDeltaTime;
-
-        // (1) Tangentiale Bewegung für eine simple Spiralbahn (konst. Ebene)
-        Vector3 planeNormal = Vector3.up;
-        transform.RotateAround(center, planeNormal, OrbitDegPerSec * dt);
-
-        // (2) Radialbeschleunigungs-Profil (Dreieck): beschleunigen/abbremsen
-        float remaining = Mathf.Max(0f, dist - desiredOrbitRadius);
-        float stopDist = (radialSpeed * radialSpeed) / Mathf.Max(2f * radialAccel, 1e-6f);
-        radialSpeed += (stopDist >= remaining ? -radialAccel : radialAccel) * dt;
-        radialSpeed = Mathf.Max(0f, radialSpeed);
-
-        float move = radialSpeed * dt;
-        float newDist = Mathf.Max(dist - move, desiredOrbitRadius);
-
-        // (3) Neue Position entlang des Radials beibehalten
-        Vector3 newRadialDir = (transform.position - center).normalized;
-        if (newRadialDir.sqrMagnitude < 1e-8f)
-            newRadialDir = (radial.sqrMagnitude > 1e-8f ? radial.normalized : Vector3.forward);
-
-        transform.position = center + newRadialDir * newDist;
-        transform.rotation = Quaternion.LookRotation(-newRadialDir, Vector3.up);
-
-        // (4) Zielbedingungen
-        if (navTarget.CompareTag("AsteroidBelt"))
-        {
-            // Am Gürtelrand anhalten
-            if (newDist <= desiredOrbitRadius + 0.5f)
-            {
-                AbortAutopilot(false);
-                return;
-            }
-        }
-        else if (navTarget.CompareTag("Asteroid"))
-        {
-            // Nahe genug am Asteroiden → anhalten (kein Orbit)
-            if (newDist <= desiredOrbitRadius + asteroidStopTolerance)
-            {
-                AbortAutopilot(false);
-                return;
-            }
-        }
-        else // Planet / generisches Orbital-Ziel
-        {
-            if (newDist <= desiredOrbitRadius + 1e-3f)
-            {
-                Vector3 tangent = Vector3.Cross(planeNormal, newRadialDir).normalized;
-                orbitPlaneNormal = Vector3.Cross(newRadialDir, tangent).normalized;
-                if (orbitPlaneNormal.sqrMagnitude < 1e-6f) orbitPlaneNormal = Vector3.up;
-
-                autoState = AutoState.Orbit;
-                transform.rotation = Quaternion.LookRotation(tangent, orbitPlaneNormal);
-                radialSpeed = 0f;
-            }
-        }
-    }
-
-    /*====================================================================*/
-    void OrbitTick()
-    {
-        if (navTarget == null) { AbortAutopilot(true); return; }
-        StatusUpdated?.Invoke("Orbiting");
-
-        Vector3 center = navTarget.position;
-
-        transform.RotateAround(center, orbitPlaneNormal, OrbitDegPerSec * Time.fixedDeltaTime);
-
-        Vector3 radial = (transform.position - center).normalized;
-        transform.position = center + radial * desiredOrbitRadius;
-
-        Vector3 dirTangent = Vector3.Cross(orbitPlaneNormal, radial).normalized;
-        if (dirTangent.sqrMagnitude > 1e-6f)
-            transform.rotation = Quaternion.LookRotation(dirTangent, orbitPlaneNormal);
-    }
-
-
-    /*====================================================================*/
-
-    public void AbortAutopilot(bool keepMomentum)
-    {
-        StatusUpdated?.Invoke("Stopping");
-        Vector3 carriedVel = keepMomentum ? (_lastMove / Mathf.Max(Time.fixedDeltaTime, 1e-6f)) : Vector3.zero;
-
-        rb.isKinematic = false;
-        rb.linearVelocity = carriedVel;          // FIX: velocity statt linearVelocity
+        rb.linearVelocity = Vector3.zero;
         rb.angularVelocity = Vector3.zero;
 
-        autoState = AutoState.None;
-        radialSpeed = 0f;
-        _hasBeltAimPoint = false;
-
-        StatusUpdated?.Invoke("Stopped");
-        AutoPilotStopped?.Invoke();
-
-        _directInit = false;
-        _directDecelPhase = false;
-    }
-
-    static float GuessBodyRadius(Transform body)
-    {
-        if (body.TryGetComponent<SphereCollider>(out var col))
-            return body.lossyScale.x * col.radius;
-        if (body.TryGetComponent<Renderer>(out var rend))
-            return rend.bounds.extents.magnitude;
-        return body.lossyScale.x * 0.5f; // Fallback
-    }
-
-    /// <summary>
-    /// Nächster Punkt auf innerem/äußerem Belt-Radius + Zielradius (center→point).
-    /// </summary>
-    static void ComputeBeltNearestPoint(AsteroidBelt belt, Vector3 probePos, out Vector3 nearestPoint, out float targetRadius)
-    {
-        Vector3 C = belt.transform.position;      // Belt-Zentrum
-        Vector3 N = belt.transform.up;            // Normalenrichtung der Belt-Ebene
-
-        // Projektion der Sondenposition in die Belt-Ebene
-        Vector3 toProbe = probePos - C;
-        Vector3 inPlane = Vector3.ProjectOnPlane(toProbe, N);
-
-        if (inPlane.sqrMagnitude < 1e-10f)
-            inPlane = belt.transform.forward;
-
-        float r = inPlane.magnitude;
-
-        // Nächstgelegene Kante wählen
-        if (r < belt.innerRadius) targetRadius = belt.innerRadius;
-        else if (r > belt.outerRadius) targetRadius = belt.outerRadius;
-        else
-        {
-            float dInner = r - belt.innerRadius;
-            float dOuter = belt.outerRadius - r;
-            targetRadius = (dInner <= dOuter) ? belt.innerRadius : belt.outerRadius;
-        }
-
-        // Optional: leicht enger an die Kante heran (kleinerer Orbitradius an Gürtel)
-        targetRadius = Mathf.Max(belt.innerRadius, Mathf.Min(belt.outerRadius, targetRadius - 2f));
-
-        Vector3 radialDir = inPlane.normalized;
-        nearestPoint = C + radialDir * targetRadius;
-    }
-
-    // aktuelle Fluggeschwindigkeit in Units/s (funktioniert auch im kinematischen Modus)
-    public float CurrentSpeedUnits
-    {
-        get
-        {
-            float dt = Mathf.Max(Time.fixedDeltaTime, 1e-6f);
-            return _lastMove.magnitude / dt;
-        }
-    }
-
-    // Distanz zum Ziel (Units); null/NaN-Schutz
-    public float CurrentDistanceUnits
-    {
-        get
-        {
-            if (navTarget == null) return float.NaN;
-            return Vector3.Distance(transform.position, navTarget.position);
-        }
+        rb.isKinematic = makeKinematicAfter;
     }
 }

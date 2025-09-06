@@ -76,6 +76,13 @@ namespace SpaceGame.Input
             else Debug.LogWarning("[GameHotkeys] Keine aktive HUDPanelRouter-Instanz (10_Game_UI nicht geladen?).");
         }
 
+        public void OnMining(InputAction.CallbackContext ctx)
+        {
+            if (!ctx.performed) return;
+            //if (HUDPanelRouter.Active != null) HUDPanelRouter.Active.ToggleNav();
+            //else Debug.LogWarning("[GameHotkeys] Keine aktive HUDPanelRouter-Instanz (10_Game_UI nicht geladen?).");
+        }
+
         public void OnManagement(InputAction.CallbackContext ctx)
         {
             if (!ctx.performed) return;
