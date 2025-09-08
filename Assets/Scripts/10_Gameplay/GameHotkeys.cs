@@ -9,8 +9,8 @@ namespace SpaceGame.Input
     /// S -> Scan-Panel toggeln (über HUDPanelRouter)
     /// I -> Inventar-Panel toggeln
     /// Navigation -> Nav-Panel toggeln
-    /// M -> Management/Research öffnen
-    /// ESC -> Pause als Single-Szene laden
+    /// F10/M -> Management als Single-Set (pausiert + 12_Management; 10_Game & 10_Game_UI werden entladen)
+    /// ESC/F11 -> Pause als Single-Set (pausiert + 11_PauseOptions; 10_Game & 10_Game_UI werden entladen)
     /// </summary>
     public class GameHotkeys : MonoBehaviour, @InputController.IGamePlayActions
     {
@@ -80,7 +80,6 @@ namespace SpaceGame.Input
         {
             if (!ctx.performed) return;
 
-            // Finde die aktive Sonde (einfach/robust). Optional: durch dein eigenes Player-/Hub-System ersetzen.
 #if UNITY_2023_1_OR_NEWER
             var miner = Object.FindFirstObjectByType<ProbeMiner>(FindObjectsInactive.Include);
 #else
@@ -95,6 +94,9 @@ namespace SpaceGame.Input
             miner.ToggleMining(); // kümmert sich um HUD-Meldung & Inventar
         }
 
+        /// <summary>
+        /// F10/M: Pausieren + Management als Single-Set laden (entlädt 10_Game / 10_Game_UI).
+        /// </summary>
         public void OnManagement(InputAction.CallbackContext ctx)
         {
             if (!ctx.performed) return;
@@ -104,10 +106,14 @@ namespace SpaceGame.Input
                 Debug.LogError("[GameHotkeys] SceneRouter.I ist null – Management-Aufruf abgebrochen.");
                 return;
             }
-            // Öffnet deine Management/Research-Ebene additiv
-            SceneRouter.I.ToggleManagement(true).Forget();
+
+            _actions?.GamePlay.Disable();
+            SceneRouter.I.ToManagementOverlaySingle().Forget();
         }
 
+        /// <summary>
+        /// ESC/F11: Pausieren + Pause als Single-Set laden (entlädt 10_Game / 10_Game_UI).
+        /// </summary>
         public void OnPause(InputAction.CallbackContext ctx)
         {
             if (!ctx.performed) return;
@@ -118,18 +124,14 @@ namespace SpaceGame.Input
                 return;
             }
 
-            // Während des Szenenwechsels keine Gameplay-Inputs mehr
             _actions?.GamePlay.Disable();
-
-            // Pause als Single-Szene (Kamera-Übergabe im Router)
-            SceneRouter.I.ToPauseSingle(true).Forget();
+            SceneRouter.I.ToPauseOverlaySingle().Forget();
         }
 
         public void OnQuickSave(InputAction.CallbackContext ctx) { }
         public void OnQuickLoad(InputAction.CallbackContext ctx) { }
-        public void OnNavigation(InputAction.CallbackContext ctx, Vector2 _ignored) { } // falls dein Interface Overloads hat
 
-        /// <summary>Vom Pause-Menü nach Resume aufrufen.</summary>
+        /// <summary>Vom Overlay (Resume) wieder ins Spiel zurück.</summary>
         public void ReenableGamePlay()
         {
             _actions?.GamePlay.Enable();

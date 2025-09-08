@@ -1,7 +1,6 @@
 ﻿// Assets/Scripts/00_Manager/SceneRouter.cs
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using Cysharp.Threading.Tasks;
@@ -21,7 +20,7 @@ public enum AppScene
 /// <summary>
 /// Zentraler Szenenrouter für additiven Flow:
 /// Bootstrap (persistent) -> Splash -> MainMenu -> (Loading -> Game + GameUI)
-/// Während des Spiels: Pause/Research additiv ein-/ausblenden.
+/// Während des Spiels: Pause/Management additiv ODER als Single-Set laden.
 /// </summary>
 public class SceneRouter : MonoBehaviour
 {
@@ -53,7 +52,6 @@ public class SceneRouter : MonoBehaviour
     {
         if (!autoGoToMainMenuOnStart) return;
 
-        // Prüfen, ob außer Bootstrap nichts geladen ist
         bool hasNonBootstrapLoaded = false;
         for (int i = 0; i < SceneManager.sceneCount; i++)
         {
@@ -68,7 +66,6 @@ public class SceneRouter : MonoBehaviour
 
         if (!hasNonBootstrapLoaded)
         {
-            // Let a frame pass to ensure bootstrap objects are initialized
             await UniTask.Yield();
             await ToMainMenu();
         }
@@ -80,24 +77,49 @@ public class SceneRouter : MonoBehaviour
 
     public UniTask ToSplash() => LoadSet(new[] { AppScene.Splash });
     public UniTask ToMainMenu() => LoadSet(new[] { AppScene.MainMenu });
-    //public UniTask ToNewGame() => LoadSet(new[] { AppScene.Loading, AppScene.Game, AppScene.GameUI });
-    //public UniTask ToLoadGame() => LoadSet(new[] { AppScene.Loading, AppScene.Game, AppScene.GameUI });
-
-    // SceneRouter.cs
-    public UniTask ToNewGame() => LoadSet(new[] { AppScene.Loading });
+    public UniTask ToNewGame() => LoadSet(new[] { AppScene.Loading });   // Loader kümmert sich danach um 10_Game + 10_Game_UI
     public UniTask ToLoadGame() => LoadSet(new[] { AppScene.Loading });
 
-
-    /// <summary>Pausen-/Optionsszene additiv ein-/ausblenden.</summary>
+    /// <summary>Additiv: Pausen-/Optionsszene ein-/ausblenden.</summary>
     public UniTask TogglePause(bool on) => ToggleScene(AppScene.Pause, on);
 
-    /// <summary>Management additiv ein-/ausblenden.</summary>
+    /// <summary>Additiv: Management ein-/ausblenden.</summary>
     public UniTask ToggleManagement(bool on) => ToggleScene(AppScene.Management, on);
 
     /// <summary>
-    /// Lädt ein Set von Szenen additiv in Reihenfolge, entlädt alle Nicht-Bootstrap-Szenen vorher.
-    /// Die aktive Szene wird auf das letzte Element gesetzt.
+    /// Nur pausieren (keine Szene laden/entladen).
     /// </summary>
+    public UniTask ToPauseSingle(bool adoptCurrentCamera = true)
+    {
+        Time.timeScale = 0f;
+        return UniTask.CompletedTask;
+    }
+
+    /// <summary>
+    /// Pausiert das Spiel und lädt ein gewünschtes Overlay (Pause oder Management)
+    /// als Single-Set. Dabei werden 10_Game / 10_Game_UI zuverlässig entladen.
+    /// </summary>
+    public async UniTask ToOverlaySingle(AppScene overlay)
+    {
+        // Sicherheit: Nur erlaubte Overlays
+        if (overlay != AppScene.Pause && overlay != AppScene.Management)
+        {
+            Debug.LogWarning($"[SceneRouter] ToOverlaySingle: '{overlay}' ist kein Overlay. Abgebrochen.");
+            return;
+        }
+
+        Time.timeScale = 0f;
+        await LoadSet(new[] { overlay });
+    }
+
+    // Komfort-Wrapper
+    public UniTask ToPauseOverlaySingle() => ToOverlaySingle(AppScene.Pause);
+    public UniTask ToManagementOverlaySingle() => ToOverlaySingle(AppScene.Management);
+
+    // ------------------------------------------------------------------------
+    // Interne Helpers
+    // ------------------------------------------------------------------------
+
     public async UniTask LoadSet(AppScene[] set)
     {
         if (IsBusy || set == null || set.Length == 0) return;
@@ -148,10 +170,6 @@ public class SceneRouter : MonoBehaviour
         }
     }
 
-    // ------------------------------------------------------------------------
-    // Hilfsfunktionen
-    // ------------------------------------------------------------------------
-
     private async UniTask ToggleScene(AppScene scene, bool on)
     {
         if (IsBusy) return;
@@ -198,64 +216,10 @@ public class SceneRouter : MonoBehaviour
         _ => string.Empty
     };
 
-    // SceneRouter.cs – Ergänzung in der Klasse SceneRouter
-    public async UniTask ToPauseSingle(bool adoptCurrentCamera = true)
-    {
-        if (IsBusy) return;
-        IsBusy = true;
-
-        try
-        {
-            // Events informieren (optional)
-            OnBeforeLoadSet?.Invoke(new[] { AppScene.Pause });
-
-            // Zeit anhalten (Physik/FixedUpdate stoppen)
-            Time.timeScale = 0f;
-
-            // Aktuelle Kamera sichern und überlebensfähig machen
-            Camera cam = null;
-            if (adoptCurrentCamera && Camera.main != null)
-            {
-                cam = Camera.main;
-                DontDestroyOnLoad(cam.gameObject);
-            }
-
-            // Pausen-Szene als einzelne Szene laden (Single!)
-            string pauseName = SceneName(AppScene.Pause);
-            await SceneManager.LoadSceneAsync(pauseName, LoadSceneMode.Single).ToUniTask();
-
-            // Kamera in die neu geladene Szene „verschieben“
-            if (cam != null)
-            {
-                var pauseScene = SceneManager.GetSceneByName(pauseName);
-                if (pauseScene.IsValid())
-                    SceneManager.MoveGameObjectToScene(cam.gameObject, pauseScene);
-            }
-
-            // aktive Szene setzen
-            var target = SceneManager.GetSceneByName(pauseName);
-            if (target.IsValid())
-                SceneManager.SetActiveScene(target);
-
-            OnAfterLoadSet?.Invoke(new[] { AppScene.Pause });
-        }
-        finally
-        {
-            IsBusy = false;
-        }
-    }
-
-
-    // Debug-Hilfen im Editor
 #if UNITY_EDITOR
-    [ContextMenu("Editor: To MainMenu")]
-    private void EditorToMainMenu() => ToMainMenu().Forget();
-
-    [ContextMenu("Editor: New Game")]
-    private void EditorToNewGame() => ToNewGame().Forget();
-
-    [ContextMenu("Editor: Load Game")]
-    private void EditorToLoadGame() => ToLoadGame().Forget();
+    [ContextMenu("Editor: To MainMenu")]   private void EditorToMainMenu()  => ToMainMenu().Forget();
+    [ContextMenu("Editor: New Game")]      private void EditorToNewGame()   => ToNewGame().Forget();
+    [ContextMenu("Editor: Load Game")]     private void EditorToLoadGame()  => ToLoadGame().Forget();
 
     [ContextMenu("Editor: Toggle Pause")]
     private void EditorTogglePause()

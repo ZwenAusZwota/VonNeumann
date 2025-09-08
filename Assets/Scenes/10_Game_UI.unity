@@ -211,6 +211,7 @@ GameObject:
   - component: {fileID: 43518987}
   - component: {fileID: 43518986}
   - component: {fileID: 43518989}
+  - component: {fileID: 43518990}
   m_Layer: 5
   m_Name: ScanPanel
   m_TagString: Untagged
@@ -315,6 +316,20 @@ MonoBehaviour:
   closeButton: {fileID: 52720770}
   clampToCanvas: 1
   rememberVisibility: 1
+--- !u!114 &43518990
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 43518984}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e4971eb65eeaf30488f524a872fe8afe, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  panelId: NavPanel
+  root: {fileID: 43518984}
 --- !u!1 &52720768
 GameObject:
   m_ObjectHideFlags: 0
@@ -2567,6 +2582,7 @@ GameObject:
   - component: {fileID: 943324818}
   - component: {fileID: 943324817}
   - component: {fileID: 943324820}
+  - component: {fileID: 943324821}
   m_Layer: 5
   m_Name: InventoryPanel
   m_TagString: Untagged
@@ -2671,6 +2687,20 @@ MonoBehaviour:
   closeButton: {fileID: 2090438204}
   clampToCanvas: 1
   rememberVisibility: 1
+--- !u!114 &943324821
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 943324815}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e4971eb65eeaf30488f524a872fe8afe, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  panelId: NavPanel
+  root: {fileID: 943324815}
 --- !u!1 &1039120453
 GameObject:
   m_ObjectHideFlags: 0

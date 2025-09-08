@@ -7,19 +7,13 @@ using UnityEngine;
 using Cysharp.Threading.Tasks;
 using UnityEngine.AddressableAssets;
 
-/// <summary>
-/// Zentrales Speichersystem (DontDestroyOnLoad).
-/// - JSON-Datei pro Slot unter Application.persistentDataPath/SaveSlots
-/// - Speichert Player + alle registrierten Entities (über WorldRegistry/IRegistrableEntity)
-/// - Lädt Slot: entfernt dynamische Objekte, respawnt aus TypeId (EntityFactory bevorzugt, sonst Addressables)
-/// </summary>
 public class SaveSystem : MonoBehaviour
 {
     public static SaveSystem I { get; private set; }
 
     [Header("Allgemein")]
     [Tooltip("Version des Save-Formats – bei Änderungen erhöhen und ggf. Migration implementieren.")]
-    [SerializeField] private int saveVersion = 1;
+    [SerializeField] private int saveVersion = 2;
 
     [Tooltip("Ordnername relativ zu Application.persistentDataPath.")]
     [SerializeField] private string folderName = "SaveSlots";
@@ -27,12 +21,29 @@ public class SaveSystem : MonoBehaviour
     [Tooltip("Optionaler Default-Slotname (z. B. Autosave).")]
     [SerializeField] private string defaultSlot = "slot_1";
 
+#if UNITY_EDITOR
+    [Header("Editor (optional)")]
+    [Tooltip("Im Editor statt persistentDataPath nach Assets/Saves/ schreiben (leichter auffindbar).")]
+    [SerializeField] private bool useProjectSavesInEditor = true;
+    [SerializeField] private string projectSavesFolder = "Assets/Saves/SaveSlots";
+#endif
+
     public event Action<string> OnBeforeSave;
     public event Action<string> OnAfterSave;
     public event Action<string> OnBeforeLoad;
     public event Action<string> OnAfterLoad;
 
-    private string RootPath => Path.Combine(Application.persistentDataPath, folderName);
+    private string RootPath
+    {
+        get
+        {
+#if UNITY_EDITOR
+            if (useProjectSavesInEditor)
+                return Path.Combine(Application.dataPath.Replace("/Assets",""), projectSavesFolder);
+#endif
+            return Path.Combine(Application.persistentDataPath, folderName);
+        }
+    }
 
     private void Awake()
     {
@@ -68,13 +79,14 @@ public class SaveSystem : MonoBehaviour
             version = saveVersion,
             timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
             player = CapturePlayer(),
-            entities = CaptureEntities()
+            entities = CaptureEntities(),
+            hud = CaptureHUD()
         };
 
         // 2) Serialisieren
         string json = JsonUtility.ToJson(save, false);
 
-        // 3) Atomisch schreiben (Threadpool, damit der Mainthread nicht blockiert)
+        // 3) Atomisch schreiben
         EnsureFolder();
         string path = GetPath(slotId);
         string tmp = path + ".tmp";
@@ -88,7 +100,6 @@ public class SaveSystem : MonoBehaviour
         }
         finally
         {
-            // Zurück auf den Mainthread
             await UniTask.SwitchToMainThread();
         }
 
@@ -96,10 +107,7 @@ public class SaveSystem : MonoBehaviour
         Debug.Log($"[SaveSystem] Gespeichert: {slotId} @ {path}");
     }
 
-    /// <summary>
-    /// Lädt den Spielstand aus dem Slot. Erwartet, dass die Spielszene bereits aktiv ist
-    /// (z. B. via SceneRouter: Loading -> Game + GameUI), da hier nur dynamische Objekte respawnt werden.
-    /// </summary>
+    /// <summary>Lädt den Spielstand aus dem Slot. Erwartet, dass die Spielszene aktiv ist.</summary>
     public async UniTask<bool> LoadAsync(string slotId)
     {
         if (string.IsNullOrWhiteSpace(slotId)) slotId = defaultSlot;
@@ -116,28 +124,19 @@ public class SaveSystem : MonoBehaviour
         // 1) Datei lesen
         string json;
         await UniTask.SwitchToThreadPool();
-        try
-        {
-            json = File.ReadAllText(path);
-        }
-        finally
-        {
-            await UniTask.SwitchToMainThread();
-        }
+        try { json = File.ReadAllText(path); }
+        finally { await UniTask.SwitchToMainThread(); }
 
         // 2) Deserialisieren
         SaveGame save = null;
-        try
-        {
-            save = JsonUtility.FromJson<SaveGame>(json);
-        }
+        try { save = JsonUtility.FromJson<SaveGame>(json); }
         catch (Exception ex)
         {
             Debug.LogError($"[SaveSystem] Fehler beim Lesen des Savegames: {ex}");
             return false;
         }
 
-        // 3) Version prüfen (hier nur Log; echte Migration nach Bedarf implementieren)
+        // 3) Version prüfen
         if (save.version != saveVersion)
             Debug.LogWarning($"[SaveSystem] Save-Version {save.version} != erwartete {saveVersion}. Migration nötig?");
 
@@ -150,19 +149,20 @@ public class SaveSystem : MonoBehaviour
         // 6) Player wiederherstellen
         RestorePlayer(save.player);
 
+        // 7) HUD wiederherstellen
+        RestoreHUD(save.hud);
+
         OnAfterLoad?.Invoke(slotId);
         Debug.Log($"[SaveSystem] Geladen: {slotId}");
         return true;
     }
 
-    /// <summary>Prüft, ob der Slot existiert.</summary>
     public bool HasSlot(string slotId)
     {
         if (string.IsNullOrWhiteSpace(slotId)) slotId = defaultSlot;
         return File.Exists(GetPath(slotId));
     }
 
-    /// <summary>Löscht den angegebenen Slot.</summary>
     public bool DeleteSlot(string slotId)
     {
         if (string.IsNullOrWhiteSpace(slotId)) slotId = defaultSlot;
@@ -172,7 +172,6 @@ public class SaveSystem : MonoBehaviour
         return true;
     }
 
-    /// <summary>Listet alle vorhandenen Slots inkl. Metadaten (Version, Timestamp).</summary>
     public List<SaveSlotInfo> ListSlots()
     {
         EnsureFolder();
@@ -199,7 +198,6 @@ public class SaveSystem : MonoBehaviour
                 lastWriteUtc = File.GetLastWriteTimeUtc(file)
             });
         }
-        // Neueste zuerst
         return infos.OrderByDescending(i => i.lastWriteUtc).ToList();
     }
 
@@ -245,38 +243,26 @@ public class SaveSystem : MonoBehaviour
 
         foreach (var e in registry.All)
         {
-            try
-            {
-                list.Add(e.Capture());
-            }
-            catch (Exception ex)
-            {
-                Debug.LogError($"[SaveSystem] Capture fehlgeschlagen für Entity: {ex}");
-            }
+            try { list.Add(e.Capture()); }
+            catch (Exception ex) { Debug.LogError($"[SaveSystem] Capture fehlgeschlagen für Entity: {ex}"); }
         }
         return list;
     }
 
-    /// <summary>Entfernt alle aktuell registrierten dynamischen Entities aus der Welt.</summary>
     private async UniTask ClearDynamicEntities()
     {
         var registry = WorldRegistryOrNull();
         if (registry == null) return;
 
-        // Snapshot bilden, da beim Destroy die Registry modifiziert wird
         var current = registry.All.ToList();
-
         foreach (var e in current)
         {
             if (e is Component c && c != null && c.gameObject != null)
                 Destroy(c.gameObject);
         }
-
-        // Einen Frame warten, damit Unity die Zerstörung verarbeitet
         await UniTask.Yield();
     }
 
-    /// <summary>Respawnt alle Entities aus dem SaveGame. Bevorzugt EntityFactory, sonst Addressables.</summary>
     private async UniTask RespawnFromSave(SaveGame save)
     {
         if (save.entities == null || save.entities.Count == 0) return;
@@ -291,13 +277,11 @@ public class SaveSystem : MonoBehaviour
 
                 if (hasFactory)
                 {
-                    // Über zentrale Factory spawnen (empfohlen)
                     var factory = EntityFactoryOrNull();
                     reg = await factory.Spawn(data.TypeId, data.Pos, data.Rot);
                 }
                 else
                 {
-                    // Fallback: direkt über Addressables instantiieren
                     var go = await Addressables.InstantiateAsync(data.TypeId, data.Pos, data.Rot).ToUniTask();
                     reg = go.GetComponent<IRegistrableEntity>();
                     if (reg == null)
@@ -313,85 +297,109 @@ public class SaveSystem : MonoBehaviour
         }
     }
 
-    private WorldRegistry WorldRegistryOrNull()
-        => WorldRegistry.I;
+    // ---------- HUD ----------
+    private HUDLayoutSaveData CaptureHUD()
+    {
+        var layout = new HUDLayoutSaveData();
+        var panels = FindAllInterfaces<IHUDPanelSavable>();
+        foreach (var p in panels)
+        {
+            try
+            {
+                var rt = (p as Component).GetComponent<RectTransform>();
+                if (rt == null) continue;
 
-    private EntityFactory EntityFactoryOrNull()
-        => EntityFactory.I;
+                layout.panels.Add(new HUDPanelSaveData
+                {
+                    panelId = p.PanelId,
+                    anchoredPosition = rt.anchoredPosition,
+                    sizeDelta = rt.sizeDelta,
+                    pivot = rt.pivot,
+                    visible = p.IsVisible()
+                });
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[SaveSystem] HUD-Capture fehlgeschlagen ({p?.PanelId}): {ex}");
+            }
+        }
+        return layout;
+    }
 
-    /// <summary>
-    /// Findet die erste Komponente im aktiven Spiel, die ein bestimmtes Interface implementiert.
-    /// Unity erlaubt kein FindObjectOfType mit Interface, daher Workaround.
-    /// </summary>
+    private void RestoreHUD(HUDLayoutSaveData data)
+    {
+        if (data == null || data.panels == null) return;
+
+        var dict = data.panels.ToDictionary(k => k.panelId, v => v);
+        var panels = FindAllInterfaces<IHUDPanelSavable>();
+
+        foreach (var p in panels)
+        {
+            if (!dict.TryGetValue(p.PanelId, out var s)) continue;
+
+            try
+            {
+                var rt = (p as Component).GetComponent<RectTransform>();
+                if (rt == null) continue;
+
+                // Reihenfolge: Größe/Pivot vor Position, damit Layout korrekt gerechnet wird
+                rt.pivot = s.pivot;
+                rt.sizeDelta = s.sizeDelta;
+                rt.anchoredPosition = s.anchoredPosition;
+                p.SetVisible(s.visible);
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[SaveSystem] HUD-Restore fehlgeschlagen ({p?.PanelId}): {ex}");
+            }
+        }
+    }
+
+    private WorldRegistry WorldRegistryOrNull() => WorldRegistry.I;
+    private EntityFactory EntityFactoryOrNull() => EntityFactory.I;
+
     private T FindObjectOfTypeMono<T>() where T : class
     {
-        // Alle MonoBehaviours durchsuchen und erstes Interface-Match zurückgeben
         foreach (var mb in FindObjectsByType<MonoBehaviour>(FindObjectsInactive.Include, FindObjectsSortMode.None))
-        {
             if (mb is T t) return t;
-        }
         return null;
+    }
+
+    private List<T> FindAllInterfaces<T>() where T : class
+    {
+        var list = new List<T>();
+        foreach (var mb in FindObjectsByType<MonoBehaviour>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            if (mb is T t) list.Add(t);
+        return list;
     }
 }
 
 // ==========================================================================================
-// Schnittstellen & DTOs (minimal, damit SaveSystem out-of-the-box lauffähig ist)
-// Du kannst diese bei Bedarf in eigene Dateien auslagern.
+// Schnittstellen & DTOs
 // ==========================================================================================
 
-/// <summary>
-/// Player-Komponente soll dieses Interface implementieren, damit Save/Load funktioniert.
-/// </summary>
 public interface IPlayerSavable
 {
     PlayerSaveData Capture();
     void Restore(PlayerSaveData data);
 }
 
-/// <summary>
-/// Muss von deinen dynamischen Spielobjekten (Miner, Probe, Asteroid, Station, …) implementiert werden.
-/// </summary>
-//public interface IRegistrableEntity
-//{
-//    SerializedGuid Guid { get; }
-//    string TypeId { get; }                 // Addressables-Key / Factory-Key
-//    HUDPayload GetHUDPayload();            // Für HUD (nicht zwingend fürs Speichern nötig)
-//    EntitySaveData Capture();              // Laufzeit-Zustand -> DTO
-//    void Restore(EntitySaveData data);     // DTO -> Laufzeit-Zustand
-//}
-
-///// <summary>
-///// Simple Factory zum Spawnen – sollte es bereits geben. Hier als Singleton erwartet.
-///// </summary>
-//public class EntityFactory : MonoBehaviour
-//{
-//    public static EntityFactory I { get; private set; }
-//    private void Awake()
-//    {
-//        if (I != null && I != this) { Destroy(gameObject); return; }
-//        I = this;
-//        DontDestroyOnLoad(gameObject);
-//    }
-
-//    public async UniTask<IRegistrableEntity> Spawn(string typeId, Vector3 pos, Quaternion rot)
-//    {
-//        // Default: Addressables – kannst du nach Bedarf anpassen (Pooling etc.)
-//        var go = await Addressables.InstantiateAsync(typeId, pos, rot).ToUniTask();
-//        var reg = go.GetComponent<IRegistrableEntity>();
-//        if (reg == null) Debug.LogWarning($"[EntityFactory] Instanz ohne IRegistrableEntity: {typeId}");
-//        return reg;
-//    }
-//}
-
-// -------------------------------- DTOs --------------------------------
+// ---- HUD-Panels ----
+public interface IHUDPanelSavable
+{
+    string PanelId { get; }           // stabiler, eindeutiger Name/Key je Panel
+    bool IsVisible();                 // aktuelle Sichtbarkeit
+    void SetVisible(bool visible);    // Sichtbarkeit setzen (ggf. mit eigener Logik)
+}
 
 [Serializable]
 public class SaveGame
 {
-    public int version = 1;
+    public int version = 2;
     public long timestamp;
     public PlayerSaveData player;
     public List<EntitySaveData> entities = new();
+    public HUDLayoutSaveData hud; // NEU
 }
 
 [Serializable]
@@ -399,11 +407,6 @@ public class PlayerSaveData
 {
     public Vector3 position;
     public Quaternion rotation;
-
-    // Ergänze nach Bedarf:
-    // public float health;
-    // public InventorySaveData inventory;
-    // public string currentScene; ...
 }
 
 [Serializable]
@@ -414,8 +417,22 @@ public class EntitySaveData
     public Vector3 Pos;
     public Quaternion Rot;
     public string StateJson;   // eingebettete JSON des spezifischen Zustands
+}
 
-    // Optional: zusätzliche Felder (Scale, Velocity, CustomFlags …)
+[Serializable]
+public class HUDLayoutSaveData
+{
+    public List<HUDPanelSaveData> panels = new();
+}
+
+[Serializable]
+public class HUDPanelSaveData
+{
+    public string panelId;
+    public Vector2 anchoredPosition;
+    public Vector2 sizeDelta;
+    public Vector2 pivot;
+    public bool visible;
 }
 
 [Serializable]
@@ -423,19 +440,16 @@ public struct HUDPayload
 {
     public string Name;
     public Vector3 Position;
-    // beliebig erweiterbar
 }
 
 [Serializable]
 public struct SerializedGuid
 {
     [SerializeField] private string _value;
-
     public Guid Value => string.IsNullOrEmpty(_value) ? Guid.Empty : Guid.Parse(_value);
     public void Ensure() { if (string.IsNullOrEmpty(_value)) _value = Guid.NewGuid().ToString(); }
 }
 
-/// <summary>Info für Savegame-Auswahl.</summary>
 public struct SaveSlotInfo
 {
     public string slotId;
