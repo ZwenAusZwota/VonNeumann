@@ -1,4 +1,6 @@
+﻿using System.Linq;
 using UnityEngine;
+using SpaceGame.UI; // für DraggableHudPanel
 
 public class HUDPanelRouter : MonoBehaviour
 {
@@ -10,33 +12,95 @@ public class HUDPanelRouter : MonoBehaviour
     [SerializeField] private GameObject inventoryPanel;
     [SerializeField] private GameObject navPanel;
 
-    private void Awake()
-    {
-        // Die zuletzt geladene UI setzt sich als Active.
-        Active = this;
-    }
+    private void Awake() => Active = this;
 
     private void OnDestroy()
     {
         if (Active == this) Active = null;
     }
 
-    // ---- API f�r Hotkeys / andere Systeme ----
-    public void ToggleScan() => Toggle(scanPanel, "ScanPanel");
-    public void ToggleInventory() => Toggle(inventoryPanel, "InventoryPanel");
-    public void ToggleNav() => Toggle(navPanel, "NavPanel");
+    // ---- API für Hotkeys / andere Systeme ----
+    public void ToggleScan() => ToggleEffective(scanPanel, "ScanPanel");
+    public void ToggleInventory() => ToggleEffective(inventoryPanel, "InventoryPanel");
+    public void ToggleNav() => ToggleEffective(navPanel, "NavPanel");
 
-    public void ShowScan(bool on) { if (scanPanel) scanPanel.SetActive(on); }
-    public void ShowInventory(bool on) { if (inventoryPanel) inventoryPanel.SetActive(on); }
-    public void ShowNav(bool on) { if (navPanel) navPanel.SetActive(on); }
+    public void ShowScan(bool on) => EnsureOnState(scanPanel, on, "ScanPanel");
+    public void ShowInventory(bool on) => EnsureOnState(inventoryPanel, on, "InventoryPanel");
+    public void ShowNav(bool on) => EnsureOnState(navPanel, on, "NavPanel");
 
-    private static void Toggle(GameObject go, string nameForLog)
+    /*────────────────────────────────────────────────────────────────*/
+
+    private static void ToggleEffective(GameObject root, string nameForLog)
     {
-        if (!go)
+        if (!root)
         {
             Debug.LogWarning($"[HUDPanelRouter] {nameForLog} ist nicht zugewiesen.");
             return;
         }
-        go.SetActive(!go.activeSelf);
+
+        bool anyChildVisible = HasAnyVisibleChild(root);
+
+        if (anyChildVisible)
+        {
+            // Effektiv sichtbar -> alles schließen
+            CloseAllChildren(root);
+            root.SetActive(false);
+        }
+        else
+        {
+            // Effektiv unsichtbar -> Container an + alle Kinder zeigen
+            root.SetActive(true);
+            ShowAllChildren(root);
+        }
+    }
+
+    private static void EnsureOnState(GameObject root, bool on, string nameForLog)
+    {
+        if (!root)
+        {
+            Debug.LogWarning($"[HUDPanelRouter] {nameForLog} fehlt.");
+            return;
+        }
+
+        if (on)
+        {
+            root.SetActive(true);
+            ShowAllChildren(root);
+        }
+        else
+        {
+            // zuerst Kinder sauber schließen (PlayerPrefs-Flags etc.), dann Container aus
+            CloseAllChildren(root);
+            root.SetActive(false);
+        }
+    }
+
+    private static bool HasAnyVisibleChild(GameObject root)
+    {
+        if (!root || !root.activeSelf) return false;
+        var panels = root.GetComponentsInChildren<DraggableHudPanel>(true);
+        return panels != null && panels.Any(p => p != null && p.gameObject.activeSelf);
+    }
+
+    private static void ShowAllChildren(GameObject root)
+    {
+        var panels = root.GetComponentsInChildren<DraggableHudPanel>(true);
+        if (panels == null) return;
+        foreach (var p in panels)
+        {
+            if (p == null) continue;
+            p.ShowPanel(); // setzt ggf. rememberVisibility=1 und aktiviert das GameObject
+        }
+    }
+
+    private static void CloseAllChildren(GameObject root)
+    {
+        var panels = root.GetComponentsInChildren<DraggableHudPanel>(true);
+        if (panels == null) return;
+        foreach (var p in panels)
+        {
+            if (p == null) continue;
+            p.ClosePanel(); // setzt ggf. rememberVisibility=0 und deaktiviert das GameObject
+        }
     }
 }

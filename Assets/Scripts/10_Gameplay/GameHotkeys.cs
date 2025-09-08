@@ -79,8 +79,20 @@ namespace SpaceGame.Input
         public void OnMining(InputAction.CallbackContext ctx)
         {
             if (!ctx.performed) return;
-            //if (HUDPanelRouter.Active != null) HUDPanelRouter.Active.ToggleNav();
-            //else Debug.LogWarning("[GameHotkeys] Keine aktive HUDPanelRouter-Instanz (10_Game_UI nicht geladen?).");
+
+            // Finde die aktive Sonde (einfach/robust). Optional: durch dein eigenes Player-/Hub-System ersetzen.
+#if UNITY_2023_1_OR_NEWER
+            var miner = Object.FindFirstObjectByType<ProbeMiner>(FindObjectsInactive.Include);
+#else
+            var miner = Object.FindObjectOfType<ProbeMiner>(true);
+#endif
+            if (miner == null)
+            {
+                Debug.LogWarning("[GameHotkeys] Kein ProbeMiner gefunden – Mining nicht möglich.");
+                return;
+            }
+
+            miner.ToggleMining(); // kümmert sich um HUD-Meldung & Inventar
         }
 
         public void OnManagement(InputAction.CallbackContext ctx)

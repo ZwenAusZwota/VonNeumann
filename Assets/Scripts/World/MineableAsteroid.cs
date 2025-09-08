@@ -17,7 +17,10 @@ public class MineableAsteroid : MonoBehaviour
     public SphereCollider navSphereCollider;
 
     [Header("Visual Degradation")]
-    [Tooltip("Minimale visuelle Größe (als Faktor), damit der Asteroid nie auf 0 schrumpft.")]
+    [Tooltip("Optional: Wenn gesetzt, wird NUR diese Transform für die visuelle Größe skaliert (z. B. dein Mesh-Root). Ist sie null, wird das GameObject selbst skaliert.")]
+    public Transform visualRoot;
+
+    [Tooltip("Minimale visuelle Größe (als Faktor), damit der Asteroid nie auf 0 schrumpft, bis er entfernt wird.")]
     [Range(0.05f, 1f)] public float minimumScale = 0.2f;
 
     [Tooltip("Wenn true, verringert sich die visuelle Größe mit abgebauten Einheiten.")]
@@ -35,7 +38,8 @@ public class MineableAsteroid : MonoBehaviour
 
     // Zustand
     private float unitsRemaining;
-    private Vector3 startScale;
+    private Vector3 startScaleRoot;
+    private Vector3 startScaleVisual;
     private bool isMining;
     private AudioSource audioSource;
 
@@ -48,7 +52,14 @@ public class MineableAsteroid : MonoBehaviour
 
     void Awake()
     {
-        if (startScale == Vector3.zero) startScale = transform.localScale;
+        // Anfangsskalen merken (Root + optional VisualRoot)
+        if (startScaleRoot == Vector3.zero) startScaleRoot = transform.localScale;
+
+        if (visualRoot == null)
+        {
+            visualRoot = transform; // fallback: ganze Instanz skalieren
+        }
+        if (startScaleVisual == Vector3.zero) startScaleVisual = visualRoot.localScale;
 
         EnsureNavSphereCollider();   // stellt navSphereCollider bereit
         ApplyNavSphereRadius();      // überträgt navSphereRadiusUU → Collider.radius (lokal)
@@ -81,6 +92,10 @@ public class MineableAsteroid : MonoBehaviour
         if (miningEffect != null && miningEffect.isPlaying) miningEffect.Stop();
         if (audioSource != null && audioSource.isPlaying) audioSource.Stop();
 
+        // Ursprungs-Skalen herstellen
+        transform.localScale = startScaleRoot;
+        if (visualRoot != null) visualRoot.localScale = startScaleVisual;
+
         UpdateVisualScale();
         OnUnitsRemainChanged?.Invoke(unitsRemaining);
     }
@@ -98,8 +113,9 @@ public class MineableAsteroid : MonoBehaviour
         materialId = newMaterialId;
         startUnits = newStartUnits;
 
-        if (transform.localScale != Vector3.zero) startScale = transform.localScale;
-        else if (startScale == Vector3.zero) startScale = Vector3.one;
+        if (transform.localScale != Vector3.zero) startScaleRoot = transform.localScale;
+        if (visualRoot == null) visualRoot = transform;
+        if (visualRoot.localScale != Vector3.zero) startScaleVisual = visualRoot.localScale;
 
         // Nav-Sphäre sicherstellen/aktualisieren
         EnsureNavSphereCollider();
@@ -125,8 +141,10 @@ public class MineableAsteroid : MonoBehaviour
 
         if (IsFullyMined)
         {
-            OnFullyMined?.Invoke();
+            // Reihenfolge: Effekte stoppen -> Event -> entfernen
             StopMining();
+            OnFullyMined?.Invoke();
+            RemoveAsteroid();
         }
 
         OnUnitsMined?.Invoke(granted);
@@ -152,6 +170,8 @@ public class MineableAsteroid : MonoBehaviour
 
     public void StopMining()
     {
+        if (!isMining) return;
+
         OnStopMining?.Invoke();
 
         if (miningEffect != null && miningEffect.isPlaying) miningEffect.Stop();
@@ -160,15 +180,18 @@ public class MineableAsteroid : MonoBehaviour
         isMining = false;
     }
 
-    void UpdateVisualScale()
+    private void UpdateVisualScale()
     {
         if (!visuallyDegrade) return;
 
+        // Anteil Rest (Volumen-Relation) -> Radius skaliert via Kubikwurzel
         float scaleFactor = Mathf.Max(RemainingPercentage, minimumScale);
+        float radiusScale = Mathf.Pow(scaleFactor, 1f / 3f);
 
-        // Realistisch: Volumen ∝ r³ → Radius skaliert mit ∛(scale)
-        float volumeScale = Mathf.Pow(scaleFactor, 1f / 3f);
-        transform.localScale = startScale * volumeScale;
+        if (visualRoot != null)
+            visualRoot.localScale = startScaleVisual * radiusScale;
+        else
+            transform.localScale = startScaleRoot * radiusScale;
 
         // Nav-Sphäre mitführen (Welt-Radius konstant halten)
         ApplyNavSphereRadius();
@@ -224,11 +247,12 @@ public class MineableAsteroid : MonoBehaviour
         // Falls noch kein sinnvoller Welt-Radius vergeben wurde, aus aktueller Größe abschätzen:
         if (navSphereRadiusUU <= 0f)
         {
+            // Wir nehmen den größeren der Achsen; bei VisualRoot-Skalierung bleibt der Root-Scale unverändert.
             float approxDiameter = Mathf.Max(transform.lossyScale.x, Mathf.Max(transform.lossyScale.y, transform.lossyScale.z));
             navSphereRadiusUU = Mathf.Max(0.01f, approxDiameter * 0.5f);
         }
 
-        // SphereCollider.radius ist **lokal** → Welt-Radius / maxLossyScale
+        // SphereCollider.radius ist **lokal** → Welt-Radius / maxLossyScale (Root)
         float scale = Mathf.Max(transform.lossyScale.x, Mathf.Max(transform.lossyScale.y, transform.lossyScale.z));
         float localRadius = Mathf.Max(0.01f, navSphereRadiusUU / Mathf.Max(1e-6f, scale));
 
@@ -239,7 +263,7 @@ public class MineableAsteroid : MonoBehaviour
     /// <summary>
     /// (Für Pool/LOD) Bestimme einen robusten **Welt-Radius** aus der Hierarchie
     /// und synchronisiere anschließend den lokalen Collider-Radius.
-    /// inflateFactor &gt;= 1 vergrößert den ermittelten Radius (Sicherheitsmarge).
+    /// inflateFactor >= 1 vergrößert den ermittelten Radius (Sicherheitsmarge).
     /// </summary>
     public void RecalculateNavSphereRadiusFromHierarchy(float inflateFactor = 1f)
     {
@@ -281,6 +305,20 @@ public class MineableAsteroid : MonoBehaviour
 
         // Collider auf den Welt-Radius abstimmen
         ApplyNavSphereRadius();
+    }
+
+    /* ===================== Entfernen ===================== */
+
+    private void RemoveAsteroid()
+    {
+        // Safety: Collider & Effekte aus
+        if (navSphereCollider != null) navSphereCollider.enabled = false;
+        if (miningEffect != null && miningEffect.isPlaying) miningEffect.Stop();
+        if (audioSource != null && audioSource.isPlaying) audioSource.Stop();
+
+        // Wenn du später ein Pooling verwendest, kannst du hier stattdessen zurück in den Pool geben.
+        // z.B.: var pooled = GetComponent<PooledAsteroid>(); pooled?.Despawn();
+        Destroy(gameObject);
     }
 
     /* ===================== Rendering ===================== */

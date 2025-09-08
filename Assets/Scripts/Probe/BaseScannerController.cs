@@ -45,7 +45,17 @@ public abstract class BaseScannerController : MonoBehaviour
             if (col == null) continue;
             if (ignoreTags != null && ignoreTags.Contains(col.tag)) continue;
 
-            int id = col.GetInstanceID();
+            // 1) Ausgangsobjekt (Rigidbody-Wurzel falls vorhanden)
+            GameObject go = col.attachedRigidbody ? col.attachedRigidbody.gameObject : col.gameObject;
+
+            // 2) >>> Kanonisierung nur für Asteroiden:
+            // Wenn der getroffene Collider ein Kind einer Asteroiden-Hierarchie ist,
+            // auf den Root mit MineableAsteroid hochziehen, damit keine LOD-Clones gelistet werden.
+            var asteroidRoot = go.GetComponentInParent<MineableAsteroid>();
+            if (asteroidRoot != null)
+                go = asteroidRoot.gameObject;
+
+            int id = go.GetInstanceID();
             if (seen.Contains(id)) continue;
             seen.Add(id);
 
@@ -53,10 +63,10 @@ public abstract class BaseScannerController : MonoBehaviour
             {
                 Kind = SystemObject.ObjectKind.ScannedObject,
                 Id = id.ToString(),
-                Name = col.tag,
-                DisplayName = BuildDisplayName(col.transform, origin),
+                Name = go.tag,
+                DisplayName = BuildDisplayName(go.transform, origin),
                 Dto = col,
-                GameObject = col.gameObject
+                GameObject = go
             });
         }
 
