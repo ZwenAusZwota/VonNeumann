@@ -1,34 +1,33 @@
 ﻿// Assets/Scripts/00_Manager/AssetProvider.cs
 using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Threading;
 using UnityEngine;
 using Cysharp.Threading.Tasks;
 using UnityEngine.AddressableAssets;
 using UnityEngine.ResourceManagement.AsyncOperations;
-using UnityEngine.ResourceManagement.ResourceProviders;
 using UnityEngine.ResourceManagement.ResourceLocations;
+using TMPro;
 
-
-/// <summary>
-/// Zentraler Provider für Addressables.
-/// - Einmalige Initialisierung
-/// - Optionales Vorladen von Abhängigkeiten (PreloadCatalog)
-/// - Bequeme Helfer zum Laden, Instanziieren und Freigeben
-/// </summary>
 public class AssetProvider : MonoBehaviour
 {
     public static AssetProvider I { get; private set; }
-
-    /// <summary>Wird true, sobald Addressables erfolgreich initialisiert ist.</summary>
     public bool IsInitialized => _initialized;
 
+    [Tooltip("Dateiname des Logs im Application.persistentDataPath.")]
+    [SerializeField] private string logFileName = "AssetProvider.log";
+
     [Header("Debug")]
-    [Tooltip("Zusätzliche Logs ausgeben.")]
-    [SerializeField] private bool verboseLogs = false;
+    [SerializeField] private bool verboseLogs = true;
 
+    [Header("Optional: Statusausgabe")]
+    [Tooltip("Wird zur Laufzeit vom LoadingScreenController gesetzt.")]
+    [SerializeField] private TextMeshProUGUI statusLabel;
+
+    private static readonly object _logLock = new object();
+    private string _logFilePath;
     private bool _initialized;
-
-    // Für Assets, die du bewusst im Speicher halten willst (Release bei Bedarf).
     private readonly Dictionary<object, AsyncOperationHandle> _retainedAssets = new();
 
     private void Awake()
@@ -38,129 +37,128 @@ public class AssetProvider : MonoBehaviour
         DontDestroyOnLoad(gameObject);
     }
 
-    // =====================================================================================
-    // Initialisierung & Preload
-    // =====================================================================================
-
-    /// <summary>
-    /// Initialisiert Addressables und lädt optional Abhängigkeiten für alle Keys/Labels
-    /// aus dem Katalog in den lokalen Cache (DownloadDependencies).
-    /// Fortschritt (0..1) wird – falls gesetzt – laufend gemeldet.
-    /// </summary>
-    public async UniTask Initialize(PreloadCatalog catalog, IProgress<float> progress = null)
+    /// <summary>UI-Ziel zum Anzeigen der Statusmeldungen setzen oder entfernen (null).</summary>
+    public void SetStatusTarget(TextMeshProUGUI label)
     {
-        // 1) Initialize (nur einmal)
+        statusLabel = label;
+        SafeStatus("[AssetProvider] Statusziel gesetzt.");
+    }
+
+    // =====================================================================
+    // Initialisierung & Preload
+    // =====================================================================
+
+    public async UniTask Initialize(PreloadCatalog catalog, IProgress<float> progress = null, CancellationToken ct = default)
+    {
         if (!_initialized)
         {
-            Log("[AssetProvider] Addressables.InitializeAsync...");
+            SafeStatus("Initialisiere Addressables …");
             AsyncOperationHandle initHandle = default;
             try
             {
                 initHandle = Addressables.InitializeAsync();
-                await initHandle.ToUniTask();
+                await initHandle.ToUniTask(cancellationToken: ct);
                 if (!initHandle.IsValid())
                     throw new Exception("InitializeAsync lieferte ungültigen Handle.");
-
                 _initialized = true;
                 progress?.Report(0f);
-                Log("[AssetProvider] Addressables initialized.");
+                SafeStatus("Addressables initialisiert.");
             }
-            finally
-            {
-                SafeRelease(initHandle);
-            }
+            finally { SafeRelease(initHandle); }
         }
 
-        // 2) Falls kein Katalog oder keine Keys → fertig.
         var keys = (catalog != null && catalog.Keys != null) ? catalog.Keys : new List<string>();
         if (keys.Count == 0)
         {
+            SafeStatus("Kein Preload-Katalog / keine Keys. Überspringe Preload.");
             progress?.Report(1f);
             return;
         }
 
-        // 3) Dependencies pro Key/Label herunterladen und Fortschritt aggregieren
         float each = 1f / keys.Count;
         float acc = 0f;
 
         foreach (var key in keys)
         {
-            // 3a) Prüfen, ob es zu diesem Key/Label überhaupt Locations gibt
-            IList<IResourceLocation> locs = null;
+            ct.ThrowIfCancellationRequested();
+
+            // Locations prüfen
             AsyncOperationHandle<IList<IResourceLocation>> locHandle = default;
+            IList<IResourceLocation> locs = null;
             try
             {
+                SafeStatus($"Prüfe Ressourcen-Orte für '{key}' …");
                 locHandle = Addressables.LoadResourceLocationsAsync((object)key);
-                locs = await locHandle.ToUniTask();
+                locs = await locHandle.ToUniTask(cancellationToken: ct);
             }
             catch (Exception e)
             {
-                Debug.LogWarning($"[AssetProvider] LoadResourceLocationsAsync('{key}') Exception: {e.Message}");
+                Debug.LogWarning($"[AssetProvider] Locations('{key}') warn: {e.Message}");
+                SafeStatus($"Warnung: Konnte Locations für '{key}' nicht ermitteln.");
             }
-            finally
-            {
-                SafeRelease(locHandle);
-            }
+            finally { SafeRelease(locHandle); }
 
             if (locs == null || locs.Count == 0)
             {
-                Debug.LogWarning($"[AssetProvider] Preload-Key/Label '{key}' hat keine Locations. (Falscher Name? Label nicht gesetzt?) – überspringe.");
+                SafeStatus($"Keine Locations für '{key}'. Überspringe.");
                 acc += each; progress?.Report(Mathf.Clamp01(acc));
                 continue;
             }
 
-            // 3b) Dependencies laden (WICHTIG: autoReleaseHandle = false!)
+            // Dependencies laden (mit Fortschritt)
             AsyncOperationHandle depsHandle = default;
             try
             {
+                SafeStatus($"Lade Abhängigkeiten für '{key}' …");
                 depsHandle = Addressables.DownloadDependenciesAsync((object)key, false);
+
+                int lastPct = -1;
                 while (!depsHandle.IsDone)
                 {
-                    progress?.Report(Mathf.Clamp01(acc + depsHandle.PercentComplete * each));
-                    await UniTask.Yield();
+                    ct.ThrowIfCancellationRequested();
+                    var pct = Mathf.Clamp01(depsHandle.PercentComplete);
+                    int ipct = Mathf.RoundToInt(pct * 100f);
+                    if (ipct != lastPct)
+                    {
+                        lastPct = ipct;
+                        SafeStatus($"Lade Abhängigkeiten für '{key}' ({ipct}%) …");
+                    }
+                    progress?.Report(Mathf.Clamp01(acc + pct * each));
+                    await UniTask.Yield(PlayerLoopTiming.Update, ct);
                 }
 
                 if (depsHandle.Status != AsyncOperationStatus.Succeeded)
                     throw new Exception($"DownloadDependenciesAsync fehlgeschlagen: '{key}' (Status: {depsHandle.Status})");
+
+                SafeStatus($"Abhängigkeiten für '{key}' geladen.");
             }
-            finally
-            {
-                // Exakt EIN Release auf den Handle.
-                SafeRelease(depsHandle);
-            }
+            finally { SafeRelease(depsHandle); }
 
             acc += each;
             progress?.Report(Mathf.Clamp01(acc));
         }
 
         progress?.Report(1f);
-        Log("[AssetProvider] Preload done.");
+        SafeStatus("Preload abgeschlossen.");
     }
 
-    /// <summary>
-    /// Ermittelt die Downloadgröße (in Byte) für eine Menge von Keys/Labels.
-    /// </summary>
-    public async UniTask<long> GetDownloadSizeAsync(IEnumerable<string> keys)
+    public async UniTask<long> GetDownloadSizeAsync(IEnumerable<string> keys, CancellationToken ct = default)
     {
         EnsureInitialized();
+        SafeStatus("Ermittle Downloadgröße …");
         var list = new List<string>(keys);
         AsyncOperationHandle<long> handle = default;
         try
         {
             handle = Addressables.GetDownloadSizeAsync(list);
-            var size = await handle.ToUniTask();
+            var size = await handle.ToUniTask(cancellationToken: ct);
+            SafeStatus($"Downloadgröße ermittelt: {size} Byte.");
             return size;
         }
-        finally
-        {
-            SafeRelease(handle);
-        }
+        finally { SafeRelease(handle); }
     }
 
-    /// <summary>
-    /// Lädt Abhängigkeiten für mehrere Keys/Labels in den Cache. Fortschritt optional.
-    /// </summary>
-    public async UniTask DownloadDependenciesAsync(IEnumerable<string> keys, IProgress<float> progress = null)
+    public async UniTask DownloadDependenciesAsync(IEnumerable<string> keys, IProgress<float> progress = null, CancellationToken ct = default)
     {
         EnsureInitialized();
         var list = new List<string>(keys);
@@ -171,23 +169,21 @@ public class AssetProvider : MonoBehaviour
 
         foreach (var key in list)
         {
-            // Optional: Vorab prüfen, ob es Locations gibt
-            IList<IResourceLocation> locs = null;
+            ct.ThrowIfCancellationRequested();
+
             AsyncOperationHandle<IList<IResourceLocation>> locHandle = default;
+            IList<IResourceLocation> locs = null;
             try
             {
+                SafeStatus($"Prüfe Ressourcen-Orte für '{key}' …");
                 locHandle = Addressables.LoadResourceLocationsAsync((object)key);
-                locs = await locHandle.ToUniTask();
+                locs = await locHandle.ToUniTask(cancellationToken: ct);
             }
-            catch { /* ignore */ }
-            finally
-            {
-                SafeRelease(locHandle);
-            }
+            finally { SafeRelease(locHandle); }
 
             if (locs == null || locs.Count == 0)
             {
-                Debug.LogWarning($"[AssetProvider] DownloadDependencies: '{key}' hat keine Locations – übersprungen.");
+                SafeStatus($"Keine Locations für '{key}'. Überspringe Download.");
                 acc += each; progress?.Report(Mathf.Clamp01(acc));
                 continue;
             }
@@ -195,120 +191,98 @@ public class AssetProvider : MonoBehaviour
             AsyncOperationHandle depsHandle = default;
             try
             {
-                // WICHTIG: autoReleaseHandle = false, wir releasen genau 1x selbst
+                SafeStatus($"Lade Abhängigkeiten für '{key}' …");
                 depsHandle = Addressables.DownloadDependenciesAsync((object)key, false);
+
+                int lastPct = -1;
                 while (!depsHandle.IsDone)
                 {
-                    progress?.Report(Mathf.Clamp01(acc + depsHandle.PercentComplete * each));
-                    await UniTask.Yield();
+                    ct.ThrowIfCancellationRequested();
+                    var pct = Mathf.Clamp01(depsHandle.PercentComplete);
+                    int ipct = Mathf.RoundToInt(pct * 100f);
+                    if (ipct != lastPct)
+                    {
+                        lastPct = ipct;
+                        SafeStatus($"Lade Abhängigkeiten für '{key}' ({ipct}%) …");
+                    }
+                    progress?.Report(Mathf.Clamp01(acc + pct * each));
+                    await UniTask.Yield(PlayerLoopTiming.Update, ct);
                 }
+
                 if (depsHandle.Status != AsyncOperationStatus.Succeeded)
                     throw new Exception($"DownloadDependenciesAsync fehlgeschlagen: '{key}' (Status: {depsHandle.Status})");
+
+                SafeStatus($"Abhängigkeiten für '{key}' geladen.");
             }
-            finally
-            {
-                SafeRelease(depsHandle);
-            }
+            finally { SafeRelease(depsHandle); }
 
             acc += each;
             progress?.Report(Mathf.Clamp01(acc));
         }
 
         progress?.Report(1f);
+        SafeStatus("DownloadDependencies abgeschlossen.");
     }
 
-    // =====================================================================================
-    // Laden & Freigeben von Assets
-    // =====================================================================================
+    // =====================================================================
+    // Instanziieren (mit Timeout + PostInit-Frames, framebasiert)
+    // =====================================================================
 
     /// <summary>
-    /// Lädt ein Asset vom Typ T anhand eines Addressables-Keys/Labels.
-    /// Gibt das Asset zurück. Du kannst später <see cref="ReleaseAsset{T}(object, T)"/> aufrufen.
+    /// Instanziiert ein Addressable-Prefab. Bricht nach timeoutSek ab (Default 30s).
+    /// Wartet danach noch 2 Frames (framebasiert, unabhängig von Time.timeScale),
+    /// damit Awake/Start/OnEnable sauber durchlaufen, und meldet „Post-Init ok“.
     /// </summary>
-    public async UniTask<T> LoadAssetAsync<T>(object key)
+    public async UniTask<GameObject> InstantiateAsync(
+        object key,
+        Vector3 position,
+        Quaternion rotation,
+        Transform parent = null,
+        float timeoutSek = 30f,
+        CancellationToken externalCt = default)
     {
         EnsureInitialized();
-        AsyncOperationHandle<T> handle = default;
+        SafeStatus($"Instanziiere '{key}' …");
+
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(externalCt);
+        if (timeoutSek > 0f) cts.CancelAfter(TimeSpan.FromSeconds(timeoutSek));
+
+        GameObject go = null;
+        AsyncOperationHandle<GameObject> handle = default;
         try
         {
-            handle = Addressables.LoadAssetAsync<T>(key);
-            var asset = await handle.ToUniTask();
-            if (handle.Status != AsyncOperationStatus.Succeeded)
-                throw new Exception($"LoadAssetAsync fehlgeschlagen: '{key}' (Status: {handle.Status})");
+            handle = Addressables.InstantiateAsync(key, position, rotation, parent);
+            go = await handle.ToUniTask(cancellationToken: cts.Token);
+            if (handle.Status != AsyncOperationStatus.Succeeded || !go)
+                throw new Exception($"InstantiateAsync fehlgeschlagen: '{key}' (Status: {handle.Status})");
 
-            // Handle bewusst halten – bis ReleaseAsset() aufgerufen wird
-            _retainedAssets[key] = handle;
-            Log($"[AssetProvider] Loaded asset '{key}' ({typeof(T).Name})");
-            return asset;
+            Log($"[AssetProvider] Instantiate '{key}' → {go.name}");
+            SafeStatus($"Instanz '{go.name}' erstellt.");
+
+            // Framebasiert (unabhängig von Time.timeScale):
+            await UniTask.DelayFrame(2, PlayerLoopTiming.Update, cts.Token);
+            SafeStatus($"Instanz '{go.name}' Post-Init ok.");
+            return go;
         }
-        catch
+        catch (OperationCanceledException)
         {
-            // Bei Fehlern Handle freigeben (falls valide)
-            SafeRelease(handle);
-            throw;
+            throw new TimeoutException($"InstantiateAsync timeout nach {timeoutSek:0}s für '{key}'.");
         }
-    }
-
-    /// <summary>
-    /// Gibt ein zuvor mit LoadAssetAsync geladenes Asset wieder frei.
-    /// </summary>
-    public void ReleaseAsset<T>(object key, T asset = default)
-    {
-        if (_retainedAssets.TryGetValue(key, out var handle))
+        finally
         {
-            SafeRelease(handle);
-            _retainedAssets.Remove(key);
-            Log($"[AssetProvider] Released asset handle for '{key}'.");
-        }
-        else
-        {
-            // Notfalls direkt das Asset freigeben (sofern Addressables es kennt)
-            if (asset != null)
-            {
-                try
-                {
-                    Addressables.Release(asset);
-                    Log($"[AssetProvider] Released asset object for '{key}'.");
-                }
-                catch (Exception e)
-                {
-                    Debug.LogWarning($"[AssetProvider] Release(asset) Exception for '{key}': {e.Message}");
-                }
-            }
+            // Nur im Fehlerfall freigeben – bei Erfolg erfolgt das Release via ReleaseInstance(...)
+            if (go == null) SafeRelease(handle);
         }
     }
 
-    // =====================================================================================
-    // Instanziieren & Freigeben von Instanzen
-    // =====================================================================================
+    public UniTask<GameObject> InstantiateAsync(
+        object key,
+        Transform parent = null,
+        bool inWorldSpace = false,
+        float timeoutSek = 30f,
+        CancellationToken externalCt = default)
+        => InstantiateAsync(key, Vector3.zero, Quaternion.identity, parent, timeoutSek, externalCt);
 
-    /// <summary>
-    /// Instanziiert ein Prefab per Addressables und gibt die Instanz zurück.
-    /// Du kannst sie später mit <see cref="ReleaseInstance(GameObject)"/> freigeben.
-    /// </summary>
-    public async UniTask<GameObject> InstantiateAsync(object key, Vector3 position, Quaternion rotation, Transform parent = null)
-    {
-        EnsureInitialized();
-        var go = await Addressables.InstantiateAsync(key, position, rotation, parent).ToUniTask();
-        Log($"[AssetProvider] Instantiate '{key}' → {go.name}");
-        return go;
-    }
-
-    /// <summary>
-    /// Instanziiert ein Prefab per Addressables und gibt die Instanz zurück.
-    /// </summary>
-    public async UniTask<GameObject> InstantiateAsync(object key, Transform parent = null, bool inWorldSpace = false)
-    {
-        EnsureInitialized();
-        var go = await Addressables.InstantiateAsync(key, parent, inWorldSpace).ToUniTask();
-        Log($"[AssetProvider] Instantiate '{key}' → {go.name}");
-        return go;
-    }
-
-    /// <summary>
-    /// Gibt eine per Addressables instanziierte Instanz frei.
-    /// (Nicht mit GameObject.Destroy verwechseln.)
-    /// </summary>
     public void ReleaseInstance(GameObject instance)
     {
         if (!instance) return;
@@ -316,6 +290,7 @@ public class AssetProvider : MonoBehaviour
         {
             Addressables.ReleaseInstance(instance);
             Log($"[AssetProvider] ReleaseInstance → {(instance ? instance.name : "<null>")}");
+            SafeStatus($"Instanz '{(instance ? instance.name : "<null>")}' freigegeben.");
         }
         catch (Exception e)
         {
@@ -323,29 +298,26 @@ public class AssetProvider : MonoBehaviour
         }
     }
 
-    // =====================================================================================
-    // Utilities
-    // =====================================================================================
+    // =====================================================================
+    // Asset-Load Helpers
+    // =====================================================================
 
-    /// <summary>
-    /// Lädt alle Assets zu einem Label in den Speicher (ohne zu instanzieren).
-    /// Praktisch, wenn du bestimmte Assets schnell verfügbar halten willst.
-    /// </summary>
-    public async UniTask<IList<T>> LoadAssetsByLabelAsync<T>(string label, Action<T> onLoadedEach = null)
+    public async UniTask<T> LoadAssetAsync<T>(object key, CancellationToken ct = default)
     {
         EnsureInitialized();
-        AsyncOperationHandle<IList<T>> handle = default;
+        SafeStatus($"Lade Asset '{key}' ({typeof(T).Name}) …");
+        AsyncOperationHandle<T> handle = default;
         try
         {
-            handle = Addressables.LoadAssetsAsync<T>(label, a => onLoadedEach?.Invoke(a), true);
-            var list = await handle.ToUniTask();
+            handle = Addressables.LoadAssetAsync<T>(key);
+            var asset = await handle.ToUniTask(cancellationToken: ct);
             if (handle.Status != AsyncOperationStatus.Succeeded)
-                throw new Exception($"LoadAssetsByLabelAsync fehlgeschlagen: '{label}' (Status: {handle.Status})");
+                throw new Exception($"LoadAssetAsync fehlgeschlagen: '{key}' (Status: {handle.Status})");
 
-            // Handle halten, bis ReleaseLabel() aufgerufen wird
-            _retainedAssets[label] = handle;
-            Log($"[AssetProvider] LoadAssetsByLabel '{label}' → {list?.Count ?? 0} assets");
-            return list;
+            _retainedAssets[key] = handle;
+            Log($"[AssetProvider] Loaded asset '{key}' ({typeof(T).Name})");
+            SafeStatus($"Asset '{key}' geladen.");
+            return asset;
         }
         catch
         {
@@ -354,33 +326,33 @@ public class AssetProvider : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Gibt die mit <see cref="LoadAssetsByLabelAsync{T}"/> geladenen Assets wieder frei.
-    /// </summary>
-    public void ReleaseLabel(string label)
+    public void ReleaseAsset<T>(object key, T asset = default)
     {
-        if (_retainedAssets.TryGetValue(label, out var handle))
+        if (_retainedAssets.TryGetValue(key, out var handle))
         {
             SafeRelease(handle);
-            _retainedAssets.Remove(label);
-            Log($"[AssetProvider] Released label handle '{label}'.");
+            _retainedAssets.Remove(key);
+            Log($"[AssetProvider] Released asset handle for '{key}'.");
+            SafeStatus($"Asset-Handle für '{key}' freigegeben.");
+        }
+        else if (asset != null)
+        {
+            try
+            {
+                Addressables.Release(asset);
+                Log($"[AssetProvider] Released asset object for '{key}'.");
+                SafeStatus($"Asset-Objekt für '{key}' freigegeben.");
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning($"[AssetProvider] Release(asset) warn: {e.Message}");
+            }
         }
     }
 
-    /// <summary>
-    /// Gibt alle vom Provider gehaltenen Asset-Handles frei (vorsichtig einsetzen).
-    /// </summary>
-    public void ReleaseAllRetained()
-    {
-        foreach (var kv in _retainedAssets)
-            SafeRelease(kv.Value);
-        _retainedAssets.Clear();
-        Log("[AssetProvider] Released all retained asset handles.");
-    }
-
-    // =====================================================================================
+    // =====================================================================
     // Internals
-    // =====================================================================================
+    // =====================================================================
 
     private void EnsureInitialized()
     {
@@ -390,6 +362,29 @@ public class AssetProvider : MonoBehaviour
 
     private void Log(string msg)
     {
+        //if (verboseLogs)
+        //{
+            Debug.Log(msg);
+            try
+            {
+                var ts = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
+                var line = $"{ts} {msg}";
+                lock (_logLock)
+                {
+                    EnsureLogFileReady(writeHeader: false);
+                    File.AppendAllText(_logFilePath, line + Environment.NewLine);
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning($"[AssetProvider] Logfile-Write warn: {e.Message}");
+            }
+        //}
+    }
+
+    private void SafeStatus(string msg)
+    {
+        try { if (statusLabel) statusLabel.text = msg; } catch { /* UI evtl. entladen */ }
         if (verboseLogs) Debug.Log(msg);
     }
 
@@ -398,22 +393,37 @@ public class AssetProvider : MonoBehaviour
         if (handle.IsValid())
         {
             try { Addressables.Release(handle); }
-            catch (Exception e) { Debug.LogWarning($"[AssetProvider] SafeRelease (non-generic) warn: {e.Message}"); }
+            catch (Exception e) { Debug.LogWarning($"[AssetProvider] SafeRelease warn: {e.Message}"); }
         }
     }
 
-    private static void SafeRelease<T>(AsyncOperationHandle<T> handle)
+    private void EnsureLogFileReady(bool writeHeader)
     {
-        if (handle.IsValid())
+
+        try
         {
-            try { Addressables.Release(handle); }
-            catch (Exception e) { Debug.LogWarning($"[AssetProvider] SafeRelease<T> warn: {e.Message}"); }
+            var dir = Path.GetDirectoryName(_logFilePath);
+            if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
+                Directory.CreateDirectory(dir);
+
+            if (writeHeader || !File.Exists(_logFilePath))
+            {
+                var header = $"=== AssetProvider Log start {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} ==={Environment.NewLine}";
+                File.AppendAllText(_logFilePath, header);
+            }
+        }
+        catch (Exception e)
+        {
+            Debug.LogWarning($"[AssetProvider] EnsureLogFileReady warn: {e.Message}");
         }
     }
-
 #if UNITY_EDITOR
-    // Kleine Editor-Shortcuts zum Testen
     [ContextMenu("Editor: Release All Retained")]
-    private void EditorReleaseAllRetained() => ReleaseAllRetained();
+    private void EditorReleaseAllRetained()
+    {
+        foreach (var kv in _retainedAssets) SafeRelease(kv.Value);
+        _retainedAssets.Clear();
+        Debug.Log("[AssetProvider] Released all retained asset handles.");
+    }
 #endif
 }

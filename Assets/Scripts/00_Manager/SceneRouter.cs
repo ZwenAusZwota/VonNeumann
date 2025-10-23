@@ -34,6 +34,10 @@ public class SceneRouter : MonoBehaviour
     [Tooltip("Wenn nur Bootstrap geladen ist, automatisch ins MainMenu wechseln.")]
     [SerializeField] private bool autoGoToMainMenuOnStart = false;
 
+    //[Header("Additive UI-Politik")]
+    //[Tooltip("Wenn ein Set die Game-Szene lädt, wird die UI-Szene behalten (falls geladen) bzw. nachgeladen (falls nicht).")]
+    //[SerializeField] private bool keepGameUIWithGame = true;
+
     /// <summary>Verhindert Doppel-Loads.</summary>
     public bool IsBusy { get; private set; }
 
@@ -82,7 +86,6 @@ public class SceneRouter : MonoBehaviour
 
     /// <summary>Additiv: Pausen-/Optionsszene ein-/ausblenden.</summary>
     public UniTask TogglePause(bool on) => ToggleScene(AppScene.Pause, on);
-
     /// <summary>Additiv: Management ein-/ausblenden.</summary>
     public UniTask ToggleManagement(bool on) => ToggleScene(AppScene.Management, on);
 
@@ -96,19 +99,19 @@ public class SceneRouter : MonoBehaviour
     }
 
     /// <summary>
-    /// Pausiert das Spiel und lädt ein gewünschtes Overlay (Pause oder Management)
-    /// als Single-Set. Dabei werden 10_Game / 10_Game_UI zuverlässig entladen.
+    /// Overlay als Single-Set laden. Achtung:
+    /// - Für Pause → Time.timeScale = 0 (echter Freeze).
+    /// - Für Management → Time.timeScale = 1 (kein Freeze; Produktion läuft weiter).
     /// </summary>
     public async UniTask ToOverlaySingle(AppScene overlay)
     {
-        // Sicherheit: Nur erlaubte Overlays
         if (overlay != AppScene.Pause && overlay != AppScene.Management)
         {
             Debug.LogWarning($"[SceneRouter] ToOverlaySingle: '{overlay}' ist kein Overlay. Abgebrochen.");
             return;
         }
 
-        Time.timeScale = 0f;
+        Time.timeScale = (overlay == AppScene.Pause) ? 0f : 1f;
         await LoadSet(new[] { overlay });
     }
 
@@ -129,13 +132,22 @@ public class SceneRouter : MonoBehaviour
         {
             OnBeforeLoadSet?.Invoke(set);
 
+            //bool setContainsGame = Array.Exists(set, s => s == AppScene.Game);
+            //bool setContainsGameUI = Array.Exists(set, s => s == AppScene.GameUI);
+
+            //string uiSceneName = SceneName(AppScene.GameUI);
+
             // 1) Alle nicht-Bootstrap-Szenen entladen
             var toUnload = new List<string>();
             for (int i = 0; i < SceneManager.sceneCount; i++)
             {
                 var s = SceneManager.GetSceneAt(i);
                 if (!s.isLoaded) continue;
-                if (s.name.StartsWith(bootstrapPrefix, StringComparison.OrdinalIgnoreCase)) continue;
+                if (s.name.StartsWith(bootstrapPrefix, StringComparison.OrdinalIgnoreCase)) continue; //Bootstrap-Szene behalten
+
+                // WICHTIG: UI-Szene behalten, wenn Game geladen werden soll und keepGameUIWithGame aktiv ist
+                //if (keepGameUIWithGame && setContainsGame && s.name.Equals(uiSceneName, StringComparison.Ordinal)) continue;
+
                 toUnload.Add(s.name);
             }
             foreach (var name in toUnload)
@@ -156,7 +168,18 @@ public class SceneRouter : MonoBehaviour
                 }
             }
 
-            // 3) Aktive Szene auf die letzte setzen
+            // 2b) Falls Game geladen wird, UI aber nicht im Set war: sicher additiv anfügen
+            //if (keepGameUIWithGame && setContainsGame && !setContainsGameUI)
+            //{
+            //    var uiScene = SceneManager.GetSceneByName(uiSceneName);
+            //    if (!uiScene.IsValid() || !uiScene.isLoaded)
+            //    {
+            //        var op = SceneManager.LoadSceneAsync(uiSceneName, LoadSceneMode.Additive);
+            //        await op.ToUniTask();
+            //    }
+            //}
+
+            // 3) Aktive Szene auf die letzte setzen (Game bleibt ActiveScene, UI bleibt additiv)
             string activeName = SceneName(set[^1]);
             var target = SceneManager.GetSceneByName(activeName);
             if (target.IsValid())
@@ -210,7 +233,7 @@ public class SceneRouter : MonoBehaviour
         AppScene.MainMenu => "02_MainMenu",
         AppScene.Loading => "03_Loading",
         AppScene.Game => "10_Game",
-        AppScene.GameUI => "10_Game_UI",
+        AppScene.GameUI => "10_Game_UI",   // <- konsistenter Name mit Unterstrich
         AppScene.Pause => "11_PauseOptions",
         AppScene.Management => "12_Management",
         _ => string.Empty

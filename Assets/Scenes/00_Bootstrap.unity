@@ -353,6 +353,8 @@ MonoBehaviour:
   saveVersion: 1
   folderName: SaveSlots
   defaultSlot: slot_1
+  useProjectSavesInEditor: 1
+  projectSavesFolder: Assets/Saves/SaveSlots
 --- !u!114 &1428598663
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -449,7 +451,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1f55850cc27482740a9991e8fd107171, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  verboseLogs: 0
+  logFileName: AssetProvider.log
+  verboseLogs: 1
+  statusLabel: {fileID: 0}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
