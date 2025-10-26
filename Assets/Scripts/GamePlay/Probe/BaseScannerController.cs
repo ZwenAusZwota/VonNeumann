@@ -84,14 +84,21 @@ public abstract class BaseScannerController : MonoBehaviour
 
             if (distUnits <= radiusUnits)
             {
+                // Finde den nächstgelegenen Asteroiden im Belt
+                Transform closestAsteroid = belt.GetClosestAsteroid(origin);
+                
+                // Wenn ein Asteroid gefunden wurde, verwende ihn als NavTarget
+                // Ansonsten verwende das Belt selbst als Fallback
+                GameObject targetObject = closestAsteroid != null ? closestAsteroid.gameObject : belt.gameObject;
+                
                 results.Add(new SystemObject
                 {
                     Kind = SystemObject.ObjectKind.ScannedObject,
-                    Id = id.ToString(),
-                    Name = "AsteroidBelt",
-                    DisplayName = BuildDisplayNameForBelt(belt, origin, nearestPoint),
+                    Id = targetObject.GetInstanceID().ToString(),
+                    Name = closestAsteroid != null ? "Asteroid" : "AsteroidBelt",
+                    DisplayName = BuildDisplayNameForBelt(belt, origin, closestAsteroid),
                     Dto = null,
-                    GameObject = belt.gameObject
+                    GameObject = targetObject
                 });
                 seen.Add(id);
             }
@@ -111,13 +118,22 @@ public abstract class BaseScannerController : MonoBehaviour
         return $"{t.tag} — {(int)distKm:N0} km";
     }
 
-    /// <summary> Anzeige für Belts: Distanz zum nächsten Randpunkt. </summary>
-    protected virtual string BuildDisplayNameForBelt(AsteroidBelt belt, Vector3 origin, Vector3 nearestPoint)
+    /// <summary> Anzeige für Belts: Distanz zum nächsten Randpunkt oder Asteroid. </summary>
+    protected virtual string BuildDisplayNameForBelt(AsteroidBelt belt, Vector3 origin, Transform nearestAsteroid)
     {
-        float distUnits = (nearestPoint - origin).magnitude;
-        float distAu = UnitsToAu(distUnits);
-        string range = $"[{belt.innerRadius:0.#}..{belt.outerRadius:0.#} u]";
-        return $"AsteroidBelt — {distAu:0.###} AU (edge) {range}";
+        if (nearestAsteroid != null)
+        {
+            float distUnits = (nearestAsteroid.position - origin).magnitude;
+            float distAu = UnitsToAu(distUnits);
+            return $"Asteroid — {distAu:0.###} AU";
+        }
+        else
+        {
+            float distUnits = BeltNearestDistanceUnits(belt, origin, out Vector3 nearestPoint, out float targetRadius);
+            float distAu = UnitsToAu(distUnits);
+            string range = $"[{belt.innerRadius:0.#}..{belt.outerRadius:0.#} u]";
+            return $"AsteroidBelt — {distAu:0.###} AU (edge) {range}";
+        }
     }
 
     /// <summary>
@@ -170,8 +186,12 @@ public abstract class BaseScannerController : MonoBehaviour
 
         // HUD informieren
         var reg = GetComponent<RegistrableEntity>();
-        if (reg != null && WorldRegistry.I != null)
-            WorldRegistry.I.NotifyChanged(reg.Guid);
+        if (reg != null)
+        {
+            var worldRegistry = ServiceContainer.Instance?.Get<WorldRegistry>();
+            if (worldRegistry != null)
+                worldRegistry.NotifyChanged(reg.Guid);
+        }
     }
 }
 

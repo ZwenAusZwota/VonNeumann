@@ -133,21 +133,20 @@ public class SceneRouter : MonoBehaviour
         {
             OnBeforeLoadSet?.Invoke(set);
 
-            //bool setContainsGame = Array.Exists(set, s => s == AppScene.Game);
-            //bool setContainsGameUI = Array.Exists(set, s => s == AppScene.GameUI);
+            // 1) Alle nicht-Bootstrap-Szenen entladen, die NICHT im gewünschten Set sind
+            var setSceneNames = new HashSet<string>();
+            foreach (var sc in set)
+            {
+                setSceneNames.Add(SceneName(sc));
+            }
 
-            //string uiSceneName = SceneName(AppScene.GameUI);
-
-            // 1) Alle nicht-Bootstrap-Szenen entladen
             var toUnload = new List<string>();
             for (int i = 0; i < SceneManager.sceneCount; i++)
             {
                 var s = SceneManager.GetSceneAt(i);
                 if (!s.isLoaded) continue;
                 if (s.name.StartsWith(bootstrapPrefix, StringComparison.OrdinalIgnoreCase)) continue; //Bootstrap-Szene behalten
-
-                // WICHTIG: UI-Szene behalten, wenn Game geladen werden soll und keepGameUIWithGame aktiv ist
-                //if (keepGameUIWithGame && setContainsGame && s.name.Equals(uiSceneName, StringComparison.Ordinal)) continue;
+                if (setSceneNames.Contains(s.name)) continue; // Szene wird geladen → nicht entladen
 
                 toUnload.Add(s.name);
             }

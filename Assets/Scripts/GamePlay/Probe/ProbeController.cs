@@ -63,7 +63,7 @@ public class ProbeController : MonoBehaviour
         DontDestroyOnLoad(this.gameObject);
 
         rb = GetComponent<Rigidbody>();
-        registry = PlanetRegistry.Instance;
+        registry = ServiceContainer.Instance?.Get<PlanetRegistry>();
         inputController = new InputController();
         autopilot = GetComponent<ProbeAutopilot>();
         miner = GetComponent<ProbeMiner>();
@@ -306,9 +306,10 @@ public class ProbeController : MonoBehaviour
     #region HubRegistry – robuste Registrierung
     void SafeRegisterHub(HubRegistry.HubInfo info)
     {
-        if (HubRegistry.Instance != null)
+        var hubRegistry = ServiceContainer.Instance?.Get<HubRegistry>();
+        if (hubRegistry != null)
         {
-            HubRegistry.Instance.RegisterOrUpdate(info);
+            hubRegistry.RegisterOrUpdate(info);
         }
         else
         {
@@ -319,16 +320,17 @@ public class ProbeController : MonoBehaviour
     IEnumerator RegisterWhenHubReady(HubRegistry.HubInfo info)
     {
         int guard = 0;
-        while (HubRegistry.Instance == null && guard < 300) // ~5 Sek. @60 FPS
+        while (ServiceContainer.Instance?.Get<HubRegistry>() == null && guard < 300) // ~5 Sek. @60 FPS
         {
             guard++;
             yield return null;
         }
 
-        if (HubRegistry.Instance != null)
-            HubRegistry.Instance.RegisterOrUpdate(info);
+        var hubRegistry = ServiceContainer.Instance?.Get<HubRegistry>();
+        if (hubRegistry != null)
+            hubRegistry.RegisterOrUpdate(info);
         else
-            Debug.LogWarning("ProbeController: HubRegistry.Instance blieb null – Registrierung übersprungen.");
+            Debug.LogWarning("ProbeController: HubRegistry blieb null – Registrierung übersprungen.");
     }
     #endregion
 }

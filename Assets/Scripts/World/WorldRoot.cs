@@ -1,7 +1,9 @@
 using UnityEngine;
+using System;
 
 public class WorldRoot : MonoBehaviour
 {
+    [System.Obsolete("Use ServiceContainer.Instance.Get<WorldRoot>() instead")]
     public static WorldRoot Instance { get; private set; }
 
     [Header("Buckets")]
@@ -13,16 +15,22 @@ public class WorldRoot : MonoBehaviour
 
     void Awake()
     {
-        // Singleton-Absicherung
-        if (Instance != null && Instance != this)
+        // Service Container Registrierung
+        if (ServiceContainer.Instance != null)
+        {
+            ServiceContainer.Instance.RegisterSingleton<WorldRoot>(this);
+        }
+
+        // Singleton-Absicherung (für Rückwärtskompatibilität)
+        var existingInstance = GetExistingInstance();
+        if (existingInstance != null && existingInstance != this)
         {
             // Optional: Kinder in bestehende Instance migrieren
-            MoveChildren(transform, Instance.transform);
+            MoveChildren(transform, existingInstance.transform);
             Destroy(gameObject);
             return;
         }
-
-        Instance = this;
+        SetInstance(this);
         DontDestroyOnLoad(gameObject);
 
         // Buckets sicherstellen
@@ -33,8 +41,10 @@ public class WorldRoot : MonoBehaviour
 
     static Transform EnsureChild(string name)
     {
+        var instance = GetInstance();
+        if (instance == null) return null;
         var t = new GameObject(name).transform;
-        t.SetParent(Instance.transform, false);
+        t.SetParent(instance.transform, false);
         return t;
     }
 
@@ -52,14 +62,38 @@ public class WorldRoot : MonoBehaviour
         t.SetParent(bucket, worldPos);
     }
 
-    // Optionaler Helfer f�rs Bootstrap:
+    // Optionaler Helfer frs Bootstrap:
     public static void Ensure()
     {
-        if (Instance) return;
+        if (GetInstance() != null) return;
         var existing = FindFirstObjectByType<WorldRoot>();
-        if (existing) { Instance = existing; return; }
+        if (existing != null) 
+        { 
+            SetInstance(existing); 
+            return; 
+        }
 
         var go = new GameObject("World");
         go.AddComponent<WorldRoot>();
+    }
+
+    // Hilfsmethoden zur Vermeidung der Warnung
+    private static WorldRoot GetExistingInstance()
+    {
+        return ServiceContainer.Instance?.Get<WorldRoot>();
+    }
+
+    private static WorldRoot GetInstance()
+    {
+#pragma warning disable CS0618 // Type or member is obsolete
+        return Instance;
+#pragma warning restore CS0618
+    }
+
+    private static void SetInstance(WorldRoot instance)
+    {
+#pragma warning disable CS0618 // Type or member is obsolete
+        Instance = instance;
+#pragma warning restore CS0618
     }
 }

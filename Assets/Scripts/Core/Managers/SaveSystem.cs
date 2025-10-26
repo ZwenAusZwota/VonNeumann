@@ -12,7 +12,7 @@ public class SaveSystem : MonoBehaviour
     public static SaveSystem I { get; private set; }
 
     [Header("Allgemein")]
-    [Tooltip("Version des Save-Formats – bei Änderungen erhöhen und ggf. Migration implementieren.")]
+    [Tooltip("Version des Save-Formats ï¿½ bei ï¿½nderungen erhï¿½hen und ggf. Migration implementieren.")]
     [SerializeField] private int saveVersion = 2;
 
     [Tooltip("Ordnername relativ zu Application.persistentDataPath.")]
@@ -60,7 +60,7 @@ public class SaveSystem : MonoBehaviour
     }
 
     // --------------------------------------------------------------------------------------
-    // Öffentliche API
+    // ï¿½ffentliche API
     // --------------------------------------------------------------------------------------
 
     public UniTask SaveAsync() => SaveAsync(defaultSlot);
@@ -107,7 +107,7 @@ public class SaveSystem : MonoBehaviour
         Debug.Log($"[SaveSystem] Gespeichert: {slotId} @ {path}");
     }
 
-    /// <summary>Lädt den Spielstand aus dem Slot. Erwartet, dass die Spielszene aktiv ist.</summary>
+    /// <summary>Lï¿½dt den Spielstand aus dem Slot. Erwartet, dass die Spielszene aktiv ist.</summary>
     public async UniTask<bool> LoadAsync(string slotId)
     {
         if (string.IsNullOrWhiteSpace(slotId)) slotId = defaultSlot;
@@ -136,9 +136,9 @@ public class SaveSystem : MonoBehaviour
             return false;
         }
 
-        // 3) Version prüfen
+        // 3) Version prï¿½fen
         if (save.version != saveVersion)
-            Debug.LogWarning($"[SaveSystem] Save-Version {save.version} != erwartete {saveVersion}. Migration nötig?");
+            Debug.LogWarning($"[SaveSystem] Save-Version {save.version} != erwartete {saveVersion}. Migration nï¿½tig?");
 
         // 4) Welt vorbereiten: dynamische Entities entfernen
         await ClearDynamicEntities();
@@ -213,7 +213,7 @@ public class SaveSystem : MonoBehaviour
         var player = FindObjectOfTypeMono<IPlayerSavable>();
         if (player == null)
         {
-            Debug.LogWarning("[SaveSystem] Kein IPlayerSavable gefunden – Player wird nicht gespeichert.");
+            Debug.LogWarning("[SaveSystem] Kein IPlayerSavable gefunden ï¿½ Player wird nicht gespeichert.");
             return null;
         }
         return player.Capture();
@@ -225,7 +225,7 @@ public class SaveSystem : MonoBehaviour
         var player = FindObjectOfTypeMono<IPlayerSavable>();
         if (player == null)
         {
-            Debug.LogWarning("[SaveSystem] Kein IPlayerSavable gefunden – Player kann nicht wiederhergestellt werden.");
+            Debug.LogWarning("[SaveSystem] Kein IPlayerSavable gefunden ï¿½ Player kann nicht wiederhergestellt werden.");
             return;
         }
         player.Restore(data);
@@ -237,14 +237,14 @@ public class SaveSystem : MonoBehaviour
         var registry = WorldRegistryOrNull();
         if (registry == null)
         {
-            Debug.LogWarning("[SaveSystem] WorldRegistry nicht gefunden – es werden keine Entities gespeichert.");
+            Debug.LogWarning("[SaveSystem] WorldRegistry nicht gefunden ï¿½ es werden keine Entities gespeichert.");
             return list;
         }
 
         foreach (var e in registry.All)
         {
             try { list.Add(e.Capture()); }
-            catch (Exception ex) { Debug.LogError($"[SaveSystem] Capture fehlgeschlagen für Entity: {ex}"); }
+            catch (Exception ex) { Debug.LogError($"[SaveSystem] Capture fehlgeschlagen fï¿½r Entity: {ex}"); }
         }
         return list;
     }
@@ -292,7 +292,7 @@ public class SaveSystem : MonoBehaviour
             }
             catch (Exception ex)
             {
-                Debug.LogError($"[SaveSystem] Respawn fehlgeschlagen für {data?.TypeId}: {ex}");
+                Debug.LogError($"[SaveSystem] Respawn fehlgeschlagen fï¿½r {data?.TypeId}: {ex}");
             }
         }
     }
@@ -342,7 +342,7 @@ public class SaveSystem : MonoBehaviour
                 var rt = (p as Component).GetComponent<RectTransform>();
                 if (rt == null) continue;
 
-                // Reihenfolge: Größe/Pivot vor Position, damit Layout korrekt gerechnet wird
+                // Reihenfolge: Grï¿½ï¿½e/Pivot vor Position, damit Layout korrekt gerechnet wird
                 rt.pivot = s.pivot;
                 rt.sizeDelta = s.sizeDelta;
                 rt.anchoredPosition = s.anchoredPosition;
@@ -355,8 +355,8 @@ public class SaveSystem : MonoBehaviour
         }
     }
 
-    private WorldRegistry WorldRegistryOrNull() => WorldRegistry.I;
-    private EntityFactory EntityFactoryOrNull() => EntityFactory.I;
+    private WorldRegistry WorldRegistryOrNull() => ServiceContainer.Instance?.Get<WorldRegistry>();
+    private EntityFactory EntityFactoryOrNull() => ServiceContainer.Instance?.Get<EntityFactory>();
 
     private T FindObjectOfTypeMono<T>() where T : class
     {

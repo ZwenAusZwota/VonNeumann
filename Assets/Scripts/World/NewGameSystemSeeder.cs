@@ -33,15 +33,16 @@ public class NewGameSystemSeeder : MonoBehaviour
     private async void Start()
     {
         EnsureWorldRoot();
-        if (WorldRoot.Instance == null)
+        var worldRoot = ServiceContainer.Instance?.Get<WorldRoot>();
+        if (worldRoot == null)
         {
             Debug.LogError("[Seeder] Keine WorldRoot verfügbar. Abbruch.");
             return;
         }
 
         // Wenn bereits etwas existiert, nicht nochmal ein ganzes System bauen:
-        if (WorldRoot.Instance.starRoot.childCount > 0 ||
-            WorldRoot.Instance.planetsRoot.childCount > 0)
+        if (worldRoot.starRoot.childCount > 0 ||
+            worldRoot.planetsRoot.childCount > 0)
         {
             Debug.Log("[Seeder] Welt existiert bereits – Erzeugung übersprungen.");
             return;
@@ -74,16 +75,19 @@ public class NewGameSystemSeeder : MonoBehaviour
 
     private void EnsureWorldRoot()
     {
-        if (WorldRoot.Instance != null) return;
+        var worldRoot = ServiceContainer.Instance?.Get<WorldRoot>();
+        if (worldRoot != null) return;
 
         if (worldRootGO != null)
         {
             var wr = worldRootGO.GetComponent<WorldRoot>();
             if (wr == null) wr = worldRootGO.AddComponent<WorldRoot>();
-            if (WorldRoot.Instance == null)
+            var existingWorldRoot = ServiceContainer.Instance?.Get<WorldRoot>();
+            if (existingWorldRoot == null)
             {
                 WorldRoot.Ensure();
-                if (WorldRoot.Instance == null)
+                var createdWorldRoot = ServiceContainer.Instance?.Get<WorldRoot>();
+                if (createdWorldRoot == null)
                 {
                     DontDestroyOnLoad(worldRootGO);
                 }
@@ -168,7 +172,8 @@ public class NewGameSystemSeeder : MonoBehaviour
             var type = ClassifyPlanetType(aAU, hzInnerAU, hzOuterAU, snowLineAU);
             var pDto = MakePlanetDto(star, $"P{i + 1}", aAU, type);
             var go = planetGenerator.CreatePlanet(pDto);
-            WorldRoot.Instance.Attach(go.transform, WorldRoot.Category.Planet, worldPos: false);
+            var worldRoot = ServiceContainer.Instance?.Get<WorldRoot>();
+            worldRoot?.Attach(go.transform, WorldRoot.Category.Planet, worldPos: false);
             int moonCount =
                 (type == PlanetType.GasGiant) ? UnityEngine.Random.Range(2, 7)
               : (type == PlanetType.Water || type == PlanetType.Rocky || type == PlanetType.Habitable) ? UnityEngine.Random.Range(0, 3)
@@ -264,9 +269,10 @@ public class NewGameSystemSeeder : MonoBehaviour
     private UniTask<AsteroidBelt> CreateOrAdoptAsteroidBeltAsync(StarDto star)
     {
         // Wenn schon ein Belt existiert, optional nichts mehr erzeugen
-        if (skipIfBeltExists && WorldRoot.Instance?.beltsRoot != null && WorldRoot.Instance.beltsRoot.childCount > 0)
+        var worldRoot = ServiceContainer.Instance?.Get<WorldRoot>();
+        if (skipIfBeltExists && worldRoot?.beltsRoot != null && worldRoot.beltsRoot.childCount > 0)
         {
-            var existing = WorldRoot.Instance.beltsRoot.GetChild(0).GetComponent<AsteroidBelt>();
+            var existing = worldRoot.beltsRoot.GetChild(0).GetComponent<AsteroidBelt>();
             if (existing != null) return UniTask.FromResult(existing);
         }
 
@@ -276,7 +282,7 @@ public class NewGameSystemSeeder : MonoBehaviour
         if (tpl != null)
         {
             // Template in WorldRoot einhängen und produktiv schalten
-            WorldRoot.Instance.Attach(tpl.transform, WorldRoot.Category.Belt, worldPos: false);
+            worldRoot?.Attach(tpl.transform, WorldRoot.Category.Belt, worldPos: false);
             tpl.templateOnly = false; // jetzt selbst spawnen lassen
             return UniTask.FromResult(tpl);
         }
@@ -293,7 +299,7 @@ public class NewGameSystemSeeder : MonoBehaviour
             outer_radius_km = AU2Km(beltCenAU + beltHalfWidthAU)
         };
         var beltGo = planetGenerator.CreateAsteroidBelt(beltDto); // erzeugt neuen Belt
-        WorldRoot.Instance.Attach(beltGo.transform, WorldRoot.Category.Belt, worldPos: false);
+        worldRoot?.Attach(beltGo.transform, WorldRoot.Category.Belt, worldPos: false);
         return UniTask.FromResult(beltGo.GetComponent<AsteroidBelt>());
     }
 
@@ -340,7 +346,7 @@ public class NewGameSystemSeeder : MonoBehaviour
         sig.showAsSystemObject = true;
 
         if (registerInRegistry)
-            PlanetRegistry.Instance?.RegisterProbe(probe.transform);
+            ServiceContainer.Instance?.Get<PlanetRegistry>()?.RegisterProbe(probe.transform);
 
         return probe;
     }

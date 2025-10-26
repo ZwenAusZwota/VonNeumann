@@ -113,7 +113,7 @@ public class PlanetGenerator : MonoBehaviour
         body.AddComponent<ScanSignature>();
 
         // 7) Registry
-        PlanetRegistry.Instance?.RegisterPlanet(body.transform);
+        ServiceContainer.Instance?.Get<PlanetRegistry>()?.RegisterPlanet(body.transform);
 
         if (showDebugInfo)
         {
@@ -258,7 +258,7 @@ public class PlanetGenerator : MonoBehaviour
         //    Debug.Log($"Asteroid Belt {dto.name} created at {distanceAU:F2} AU (inner {asteroidBelt.innerRadius * PlanetScale.KM_PER_UNIT / 149_597_870.7f:F2} AU, outer {asteroidBelt.outerRadius * PlanetScale.KM_PER_UNIT / 149_597_870.7f:F2} AU)");
         //}
 
-        PlanetRegistry.Instance?.RegisterAsteroidBelt(belt.transform);
+        ServiceContainer.Instance?.Get<PlanetRegistry>()?.RegisterAsteroidBelt(belt.transform);
         return belt;
     }
 

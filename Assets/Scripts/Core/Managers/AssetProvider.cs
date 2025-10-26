@@ -16,7 +16,9 @@ public class AssetProvider : MonoBehaviour
     public bool IsInitialized => _initialized;
 
     [Tooltip("Dateiname des Logs im Application.persistentDataPath.")]
+#pragma warning disable CS0414 // Field is assigned but never used (may be used by future features)
     [SerializeField] private string logFileName = "AssetProvider.log";
+#pragma warning restore CS0414
 
     [Header("Debug")]
     [SerializeField] private bool verboseLogs = true;

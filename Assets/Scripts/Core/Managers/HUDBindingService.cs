@@ -52,7 +52,8 @@ public class HUDBindingService : MonoBehaviour
     {
         if (!autoBindToRegistry) return;
 
-        if (WorldRegistry.I == null)
+        var worldRegistry = ServiceContainer.Instance?.Get<WorldRegistry>();
+        if (worldRegistry == null)
         {
             if (waitForRegistrySeconds > 0f)
             {
@@ -60,7 +61,7 @@ public class HUDBindingService : MonoBehaviour
                 cts.CancelAfter(TimeSpan.FromSeconds(waitForRegistrySeconds));
                 try
                 {
-                    await UniTask.WaitUntil(() => WorldRegistry.I != null, cancellationToken: cts.Token);
+                    await UniTask.WaitUntil(() => ServiceContainer.Instance?.Get<WorldRegistry>() != null, cancellationToken: cts.Token);
                 }
                 catch (OperationCanceledException)
                 {
@@ -70,11 +71,12 @@ public class HUDBindingService : MonoBehaviour
             }
             else
             {
-                await UniTask.WaitUntil(() => WorldRegistry.I != null);
+                await UniTask.WaitUntil(() => ServiceContainer.Instance?.Get<WorldRegistry>() != null);
             }
+            worldRegistry = ServiceContainer.Instance?.Get<WorldRegistry>();
         }
 
-        BindToRegistry(WorldRegistry.I);
+        BindToRegistry(worldRegistry);
         InitialSyncFromRegistry();
     }
 
@@ -98,7 +100,7 @@ public class HUDBindingService : MonoBehaviour
     public void UnbindFromRegistry()
     {
         if (!_isBound) return;
-        var reg = WorldRegistry.I;
+        var reg = ServiceContainer.Instance?.Get<WorldRegistry>();
         if (reg != null)
         {
             reg.OnEntityAdded -= HandleEntityAdded;
@@ -112,7 +114,7 @@ public class HUDBindingService : MonoBehaviour
     {
         _items.Clear();
 
-        var reg = WorldRegistry.I;
+        var reg = ServiceContainer.Instance?.Get<WorldRegistry>();
         if (reg != null)
         {
             foreach (var e in reg.All)
@@ -167,7 +169,7 @@ public class HUDBindingService : MonoBehaviour
         }
         else
         {
-            var reg = WorldRegistry.I;
+            var reg = ServiceContainer.Instance?.Get<WorldRegistry>();
             if (reg != null && reg.TryGet(id, out var entity))
             {
                 var fresh = BuildItem(entity);

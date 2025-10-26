@@ -25,7 +25,6 @@ public class FabricatorController : MonoBehaviour
     public event Action<ProductBlueprint, float, IReadOnlyList<ProductBlueprint>> QueueUpdated;
     public event Action<ProductBlueprint> ProductionStarted;
     public event Action<ProductBlueprint, bool> ProductionCompleted;
-    public event Action<ProductBlueprint> ProductionWaitingForResources;
 
     /* ---------- Initialisierung ---------- */
     private void Awake()

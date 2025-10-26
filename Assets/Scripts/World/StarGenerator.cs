@@ -47,7 +47,9 @@ public class StarGenerator : MonoBehaviour
         starGO.tag = "Star";
         starGO.name = string.IsNullOrWhiteSpace(dto.name) ? "Star" : dto.name;
         //starGO.transform.SetParent(transform, false);
-        starGO.transform.SetParent(WorldRoot.Instance.starRoot, false);
+        var worldRoot = ServiceContainer.Instance?.Get<WorldRoot>();
+        if (worldRoot != null)
+            starGO.transform.SetParent(worldRoot.starRoot, false);
         starGO.transform.localPosition = Vector3.zero;
 
         if (removeCollider)
@@ -100,7 +102,7 @@ public class StarGenerator : MonoBehaviour
         light.range = Mathf.Max(1f, lightRangeUnits * sizeMultiplier);
 
         // ---------- 5) Registrierung ------------------------------------
-        PlanetRegistry.Instance?.RegisterStar(starGO.transform);
+        ServiceContainer.Instance?.Get<PlanetRegistry>()?.RegisterStar(starGO.transform);
 
         return starGO;
     }

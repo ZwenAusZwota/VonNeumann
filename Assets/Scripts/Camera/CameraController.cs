@@ -367,7 +367,7 @@ public class CameraController : MonoBehaviour
     private void CheckForNearbyObjects()
     {
         // Optional: only if a registry exists in your project
-        var registry = PlanetRegistry.Instance;
+        var registry = ServiceContainer.Instance?.Get<PlanetRegistry>();
         if (registry == null) return;
 
         Transform closestObject = null;

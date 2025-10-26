@@ -1,26 +1,33 @@
 // Assets/Scripts/Bootstrap/HubRegistryBootstrap.cs
 using UnityEngine;
 
-[DefaultExecutionOrder(-10000)] // sehr früh, noch vor den meisten Awakes
+[DefaultExecutionOrder(-10000)] // sehr frh, noch vor den meisten Awakes
 public class HubRegistryBootstrap : MonoBehaviour
 {
-    [Tooltip("Objekt über Szenenwechsel behalten.")]
+    [Tooltip("Objektber Szenenwechsel behalten.")]
     public bool dontDestroyOnLoad = true;
 
     void Awake()
     {
         Ensure();
-        if (dontDestroyOnLoad) DontDestroyOnLoad(HubRegistry.Instance.gameObject);
+        var hubRegistry = ServiceContainer.Instance?.Get<HubRegistry>();
+        if (dontDestroyOnLoad && hubRegistry != null) 
+            DontDestroyOnLoad(hubRegistry.gameObject);
     }
 
-    /// <summary>Kann überall aufgerufen werden, um eine vorhandene HubRegistry sicherzustellen.</summary>
+    /// <summary>Kannberall aufgerufen werden, um eine vorhandene HubRegistry sicherzustellen.</summary>
     public static void Ensure()
     {
-        if (HubRegistry.Instance != null) return;
+        // Versuche Service Container zu nutzen
+        var existingFromContainer = ServiceContainer.Instance?.Get<HubRegistry>();
+        if (existingFromContainer != null) return;
 
+        // Fallback: Suche nach vorhandenem HubRegistry
+        var existing = FindFirstObjectByType<HubRegistry>();
+        if (existing != null) return;
+
+        // Erstelle neue HubRegistry
         var go = new GameObject("HubRegistry");
-        // Wichtig: Deine bestehende HubRegistry-Klasse muss ein MonoBehaviour sein,
-        // das in Awake o.ä. 'Instance = this' setzt.
         go.AddComponent<HubRegistry>();
     }
 }

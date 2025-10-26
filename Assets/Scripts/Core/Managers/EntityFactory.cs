@@ -9,37 +9,50 @@ using UnityEngine.AddressableAssets;
 /// Zentrale Factory zum Instanziieren und Recyclen (Pooling) von Entities.
 /// - Standardweg ist Addressables anhand eines typeId-Keys.
 /// - Erstellt pro typeId einen einfachen Pool (Stack).
-/// - Sorgt für frische GUIDs bei neuen Instanzen, damit WorldRegistry keine Duplikate sieht.
-/// - Registriert Entities sauber (RegisterNow/UnregisterNow), unabhängig davon, ob sie aus Pool oder frisch sind.
+/// - Sorgt fï¿½r frische GUIDs bei neuen Instanzen, damit WorldRegistry keine Duplikate sieht.
+/// - Registriert Entities sauber (RegisterNow/UnregisterNow), unabhï¿½ngig davon, ob sie aus Pool oder frisch sind.
 /// </summary>
 public class EntityFactory : MonoBehaviour
 {
+    [System.Obsolete("Use ServiceContainer.Instance.Get<EntityFactory>() instead")]
     public static EntityFactory I { get; private set; }
 
     [Header("Pooling")]
-    [Tooltip("Pooling standardmäßig beim Spawn benutzen.")]
+    [Tooltip("Pooling standardmï¿½ï¿½ig beim Spawn benutzen.")]
     [SerializeField] private bool usePoolingByDefault = true;
 
     [Tooltip("Optional: Anzahl an Prewarm-Instanzen (pro typeId), falls PrewarmAll benutzt wird.")]
     [SerializeField] private int defaultPrewarmCount = 0;
 
-    [Tooltip("Types, die beim Start automatisch vorgewärmt werden (falls defaultPrewarmCount > 0).")]
+    [Tooltip("Types, die beim Start automatisch vorgewï¿½rmt werden (falls defaultPrewarmCount > 0).")]
     [SerializeField] private List<string> prewarmTypeIds = new();
 
     [Header("Organisation")]
-    [Tooltip("Eltern-Transform für gepoolte (inaktive) Instanzen.")]
+    [Tooltip("Eltern-Transform fï¿½r gepoolte (inaktive) Instanzen.")]
     [SerializeField] private Transform poolRoot;
 
     // --- Pools: typeId -> Stack<GameObject> ---
     private readonly Dictionary<string, Stack<GameObject>> _pools = new();
 
-    // --- Buchhaltung: um Double-Despawn o. ä. zu erkennen (optional) ---
+    // --- Buchhaltung: um Double-Despawn o. ï¿½. zu erkennen (optional) ---
     private readonly HashSet<GameObject> _inPool = new();
 
     private void Awake()
     {
-        if (I != null && I != this) { Destroy(gameObject); return; }
-        I = this;
+        // Service Container Registrierung
+        if (ServiceContainer.Instance != null)
+        {
+            ServiceContainer.Instance.RegisterSingleton<EntityFactory>(this);
+        }
+
+        // Singleton-Absicherung (fr Rckwrtskompatibilitt)
+        var existingInstance = GetExistingInstance();
+        if (existingInstance != null && existingInstance != this) 
+        { 
+            Destroy(gameObject); 
+            return; 
+        }
+        SetInstance(this);
         DontDestroyOnLoad(gameObject);
 
         if (poolRoot == null)
@@ -67,7 +80,7 @@ public class EntityFactory : MonoBehaviour
     // =====================================================================================
 
     /// <summary>
-    /// Spawnt eine Entität anhand des Addressables-typeId.
+    /// Spawnt eine Entitï¿½t anhand des Addressables-typeId.
     /// - Nutzt Pooling (Default) oder frische Instanzierung.
     /// - Position/Rotation/Parent werden gesetzt.
     /// - Stellt sicher, dass die Instanz einen frischen GUID-Satz hat und korrekt in der WorldRegistry registriert wird.
@@ -112,7 +125,7 @@ public class EntityFactory : MonoBehaviour
         // 1) Direkt nach Instanziierung ist das GO aktiv und wurde evtl. schon registriert (OnEnable).
         //    Wir wollen einen FRISCHEN GUID-Satz. Daher:
         reg?.UnregisterNow();           // altes (ggf. doppeltes) Mapping aus Registry entfernen
-        AssignFreshGuids(go);           // neue GUIDs für alle GuidProvider im Hierarchie-Ast
+        AssignFreshGuids(go);           // neue GUIDs fï¿½r alle GuidProvider im Hierarchie-Ast
         if (reg != null) reg.SetTypeId(typeId); // sicherstellen, dass TypeId korrekt gesetzt ist
 
         // (GO ist aktiv) -> erneut registrieren
@@ -122,7 +135,7 @@ public class EntityFactory : MonoBehaviour
     }
 
     /// <summary>
-    /// Gibt eine Instanz in den Pool zurück (oder zerstört sie, falls Pooling nicht aktiv sein soll).
+    /// Gibt eine Instanz in den Pool zurï¿½ck (oder zerstï¿½rt sie, falls Pooling nicht aktiv sein soll).
     /// </summary>
     public void Despawn(IRegistrableEntity entity, bool? usePooling = null)
     {
@@ -131,7 +144,7 @@ public class EntityFactory : MonoBehaviour
     }
 
     /// <summary>
-    /// Gibt eine Instanz in den Pool zurück (oder zerstört sie), anhand des GameObjects.
+    /// Gibt eine Instanz in den Pool zurï¿½ck (oder zerstï¿½rt sie), anhand des GameObjects.
     /// </summary>
     public void Despawn(GameObject go, string typeId, bool? usePooling = null)
     {
@@ -143,7 +156,7 @@ public class EntityFactory : MonoBehaviour
 
         if (pooling)
         {
-            // Inaktiv schalten, an PoolRoot hängen und zurücklegen
+            // Inaktiv schalten, an PoolRoot hï¿½ngen und zurï¿½cklegen
             go.SetActive(false);
             go.transform.SetParent(poolRoot, false);
             Push(typeId, go);
@@ -156,7 +169,7 @@ public class EntityFactory : MonoBehaviour
     }
 
     /// <summary>
-    /// Wärmt den Pool für ein typeId vor (legt count Instanzen inaktiv ab).
+    /// Wï¿½rmt den Pool fï¿½r ein typeId vor (legt count Instanzen inaktiv ab).
     /// </summary>
     public async UniTask Prewarm(string typeId, int count)
     {
@@ -169,12 +182,12 @@ public class EntityFactory : MonoBehaviour
             var go = await Addressables.InstantiateAsync(typeId).ToUniTask();
             var reg = go.GetComponent<RegistrableEntity>();
 
-            // Registrierungen rückgängig machen, frische GUIDs zuweisen:
+            // Registrierungen rï¿½ckgï¿½ngig machen, frische GUIDs zuweisen:
             reg?.UnregisterNow();
             AssignFreshGuids(go);
             if (reg != null) reg.SetTypeId(typeId);
 
-            // Deaktivieren und in Pool hängen
+            // Deaktivieren und in Pool hï¿½ngen
             go.SetActive(false);
             go.transform.SetParent(poolRoot, false);
 
@@ -184,7 +197,7 @@ public class EntityFactory : MonoBehaviour
     }
 
     /// <summary>
-    /// Leert den Pool für ein bestimmtes typeId und gibt alle Addressables-Instanzen frei.
+    /// Leert den Pool fï¿½r ein bestimmtes typeId und gibt alle Addressables-Instanzen frei.
     /// </summary>
     public void ClearPool(string typeId)
     {
@@ -216,7 +229,7 @@ public class EntityFactory : MonoBehaviour
         _pools.Clear();
     }
 
-    /// <summary>Aktuelle Poolgröße für typeId.</summary>
+    /// <summary>Aktuelle Poolgrï¿½ï¿½e fï¿½r typeId.</summary>
     public int GetPoolCount(string typeId)
         => _pools.TryGetValue(typeId, out var stack) ? stack.Count : 0;
 
@@ -265,5 +278,18 @@ public class EntityFactory : MonoBehaviour
             // ForceNewGuid() ist in unserer GuidProvider-Implementierung zur Laufzeit nutzbar.
             gp.ForceNewGuid();
         }
+    }
+
+    // Hilfsmethoden zur Vermeidung der Warnung
+    private static EntityFactory GetExistingInstance()
+    {
+        return ServiceContainer.Instance?.Get<EntityFactory>();
+    }
+
+    private static void SetInstance(EntityFactory instance)
+    {
+#pragma warning disable CS0618 // Type or member is obsolete
+        I = instance;
+#pragma warning restore CS0618
     }
 }

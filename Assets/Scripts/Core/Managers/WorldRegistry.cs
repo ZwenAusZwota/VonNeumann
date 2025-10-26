@@ -5,10 +5,11 @@ using UnityEngine;
 
 /// <summary>
 /// Zentrale Registrierung aller interaktiven Spielobjekte.
-/// Wird am AppRoot (00_Bootstrap) betrieben und überlebt Szenenwechsel.
+/// Wird am AppRoot (00_Bootstrap) betrieben und berlebt Szenenwechsel.
 /// </summary>
 public class WorldRegistry : MonoBehaviour
 {
+    [System.Obsolete("Use ServiceContainer.Instance.Get<WorldRegistry>() instead")]
     public static WorldRegistry I { get; private set; }
 
     private readonly Dictionary<Guid, IRegistrableEntity> _entities = new();
@@ -24,9 +25,35 @@ public class WorldRegistry : MonoBehaviour
 
     private void Awake()
     {
-        if (I != null && I != this) { Destroy(gameObject); return; }
-        I = this;
+        // Service Container Registrierung
+        if (ServiceContainer.Instance != null)
+        {
+            ServiceContainer.Instance.RegisterSingleton<WorldRegistry>(this);
+        }
+
+        // Singleton-Absicherung (fr Rckwrtskompatibilitt)
+        // Verwende Hilfsmethoden, um Warnung zu vermeiden
+        var existingInstance = GetExistingInstance();
+        if (existingInstance != null && existingInstance != this) 
+        { 
+            Destroy(gameObject); 
+            return; 
+        }
+        SetInstance(this);
         DontDestroyOnLoad(gameObject);
+    }
+
+    // Hilfsmethoden zur Vermeidung der Warnung
+    private static WorldRegistry GetExistingInstance()
+    {
+        return ServiceContainer.Instance?.Get<WorldRegistry>();
+    }
+
+    private static void SetInstance(WorldRegistry instance)
+    {
+#pragma warning disable CS0618 // Type or member is obsolete
+        I = instance;
+#pragma warning restore CS0618
     }
 
     /// <summary>All currently registered entities.</summary>

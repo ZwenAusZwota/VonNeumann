@@ -92,7 +92,8 @@ public class ServiceContainer : MonoBehaviour
             }
         }
         
-        Debug.LogWarning($"[ServiceContainer] Service not found: {type.Name}");
+        // Keine Warnung mehr - viele Services können optional sein oder erst später erstellt werden
+        // Debug.LogWarning($"[ServiceContainer] Service not found: {type.Name}");
         return null;
     }
 

@@ -6,26 +6,49 @@ using UnityEngine;
 [DisallowMultipleComponent]
 public class HubRegistry : MonoBehaviour
 {
+    [System.Obsolete("Use ServiceContainer.Instance.Get<HubRegistry>() instead")]
     public static HubRegistry Instance { get; private set; }
 
     private void Awake()
     {
-        if (Instance == null)
+        // Service Container Registrierung
+        if (ServiceContainer.Instance != null)
         {
-            Instance = this;
+            ServiceContainer.Instance.RegisterSingleton<HubRegistry>(this);
+        }
+
+        // Singleton-Absicherung (fr Rckwrtskompatibilitt)
+        // Verwende private field direkt, um Warnung zu vermeiden
+        var existingInstance = GetExistingInstance();
+        if (existingInstance == null)
+        {
+            SetInstance(this);
             DontDestroyOnLoad(gameObject);
         }
-        else
+        else if (existingInstance != this)
         {
             // Doppeltes Exemplar vermeiden
             Destroy(gameObject);
         }
     }
 
+    // Hilfsmethoden zur Vermeidung der Warnung
+    private static HubRegistry GetExistingInstance()
+    {
+        return ServiceContainer.Instance?.Get<HubRegistry>();
+    }
+
+    private static void SetInstance(HubRegistry instance)
+    {
+#pragma warning disable CS0618 // Type or member is obsolete
+        Instance = instance;
+#pragma warning restore CS0618
+    }
+
     [Serializable]
     public class HubInfo
     {
-        public string Id;             // stabile ID (GUID o.ä.)
+        public string Id;             // stabile ID (GUID o.ï¿½.)
         public string DisplayName;    // z.B. "Sonde-01" / "Fabrik-Beta"
         public string Kind;           // "Probe", "Factory", ...
         public Vector3 LastKnownPos;  // optional
@@ -41,13 +64,13 @@ public class HubRegistry : MonoBehaviour
     {
         if (info == null || string.IsNullOrWhiteSpace(info.Id))
         {
-            Debug.LogWarning("HubRegistry.RegisterOrUpdate: ungültige HubInfo.");
+            Debug.LogWarning("HubRegistry.RegisterOrUpdate: ungï¿½ltige HubInfo.");
             return;
         }
         _byId[info.Id] = info;
     }
 
-    /// <summary>Komfortliste für UI (Id + Label "DisplayName (Kind)")</summary>
+    /// <summary>Komfortliste fï¿½r UI (Id + Label "DisplayName (Kind)")</summary>
     public List<(string id, string label)> GetOptions()
     {
         var list = new List<(string, string)>();
@@ -63,7 +86,8 @@ public class HubRegistry : MonoBehaviour
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
     private static void AutoCreate()
     {
-        if (Instance == null)
+        var existing = ServiceContainer.Instance?.Get<HubRegistry>();
+        if (existing == null)
         {
             var go = new GameObject("HubRegistry");
             go.AddComponent<HubRegistry>(); // Awake setzt Instance & DontDestroyOnLoad

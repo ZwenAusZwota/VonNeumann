@@ -2,9 +2,9 @@ using System;
 using UnityEngine;
 
 /// <summary>
-/// Basis-Implementierung für registrierbare Entities.
-/// - Stabile GUID über GuidProvider
-/// - TypeId für Addressables/Factory
+/// Basis-Implementierung fï¿½r registrierbare Entities.
+/// - Stabile GUID ï¿½ber GuidProvider
+/// - TypeId fï¿½r Addressables/Factory
 /// - Optionale Zustands-Provider-Komponente (IRegistrableStateProvider)
 /// </summary>
 [DisallowMultipleComponent]
@@ -14,14 +14,14 @@ public class RegistrableEntity : MonoBehaviour, IRegistrableEntity
     [Header("Identity")]
     [SerializeField] private GuidProvider guidProvider;
 
-    [Tooltip("Addressables-/Factory-Key zum Respawn dieser Entität.")]
+    [Tooltip("Addressables-/Factory-Key zum Respawn dieser Entitï¿½t.")]
     [SerializeField] private string typeId;
 
     [Header("Behaviour")]
     [Tooltip("Beim Aktivieren automatisch in WorldRegistry registrieren.")]
     [SerializeField] private bool autoRegister = true;
 
-    [Tooltip("Beim Zerstören automatisch aus WorldRegistry entfernen.")]
+    [Tooltip("Beim Zerstï¿½ren automatisch aus WorldRegistry entfernen.")]
     [SerializeField] private bool autoUnregisterOnDestroy = true;
 
     [Header("State (optional)")]
@@ -73,7 +73,8 @@ public class RegistrableEntity : MonoBehaviour, IRegistrableEntity
         }
 
         // Nach Wiederherstellung HUD informieren
-        if (WorldRegistry.I != null) WorldRegistry.I.NotifyChanged(Guid);
+        var worldRegistry = ServiceContainer.Instance?.Get<WorldRegistry>();
+        if (worldRegistry != null) worldRegistry.NotifyChanged(Guid);
     }
 
     // ------------- Unity lifecycle -------------
@@ -107,19 +108,27 @@ public class RegistrableEntity : MonoBehaviour, IRegistrableEntity
 
     protected virtual void OnEnable()
     {
-        if (autoRegister && WorldRegistry.I != null)
-            WorldRegistry.I.Register(this);
+        if (autoRegister)
+        {
+            var worldRegistry = ServiceContainer.Instance?.Get<WorldRegistry>();
+            if (worldRegistry != null)
+                worldRegistry.Register(this);
+        }
     }
 
     protected virtual void OnDisable()
     {
-        // Nichts – das Objekt könnte nur temporär disabled sein
+        // Nichts ï¿½ das Objekt kï¿½nnte nur temporï¿½r disabled sein
     }
 
     protected virtual void OnDestroy()
     {
-        if (autoUnregisterOnDestroy && WorldRegistry.I != null)
-            WorldRegistry.I.Unregister(this);
+        if (autoUnregisterOnDestroy)
+        {
+            var worldRegistry = ServiceContainer.Instance?.Get<WorldRegistry>();
+            if (worldRegistry != null)
+                worldRegistry.Unregister(this);
+        }
     }
 
     // ------------- Convenience -------------
@@ -130,19 +139,21 @@ public class RegistrableEntity : MonoBehaviour, IRegistrableEntity
     /// <summary>Manuelles Registrieren (falls autoRegister aus ist).</summary>
     public void RegisterNow()
     {
-        if (WorldRegistry.I != null) WorldRegistry.I.Register(this);
+        var worldRegistry = ServiceContainer.Instance?.Get<WorldRegistry>();
+        if (worldRegistry != null) worldRegistry.Register(this);
     }
 
     /// <summary>Manuelles Deregistrieren (falls autoUnregister aus ist).</summary>
     public void UnregisterNow()
     {
-        if (WorldRegistry.I != null) WorldRegistry.I.Unregister(this);
+        var worldRegistry = ServiceContainer.Instance?.Get<WorldRegistry>();
+        if (worldRegistry != null) worldRegistry.Unregister(this);
     }
 }
 
 /// <summary>
 /// Optionales Interface, das ein separates State-Component implementieren kann.
-/// So können spezialisierte Entitäten ihren Zustand selbst in/aus JSON serialisieren.
+/// So kï¿½nnen spezialisierte Entitï¿½ten ihren Zustand selbst in/aus JSON serialisieren.
 /// </summary>
 public interface IRegistrableStateProvider
 {

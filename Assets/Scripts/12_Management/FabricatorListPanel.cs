@@ -14,8 +14,12 @@ public class FabricatorListPanel : MonoBehaviour
         foreach (Transform c in listContainer) Destroy(c.gameObject);
         // TODO: hole die Fabrikatoren aus deinem FabricatorManager / HubRegistry (Kind==Factory)
         List<HubRegistry.HubInfo> fabs = new();
-        foreach (var h in HubRegistry.Instance.All())
-            if (h.Kind == "Factory") fabs.Add(h);
+        var hubRegistry = ServiceContainer.Instance?.Get<HubRegistry>();
+        if (hubRegistry != null)
+        {
+            foreach (var h in hubRegistry.All())
+                if (h.Kind == "Factory") fabs.Add(h);
+        }
 
         foreach (var f in fabs)
         {

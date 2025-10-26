@@ -6,6 +6,7 @@ using SpaceGame.Core.Managers;
 /// Zentrales Event-System für das VonNeumann-Sonde Bobiverse-Spiel.
 /// Ersetzt alle fragmentierten Event-Systeme durch eine einheitliche Lösung.
 /// </summary>
+#pragma warning disable CS0414 // Field is assigned but never used (Events may be used by future features)
 public static class GameEvents
 {
     // ==================== HUD Events ====================
@@ -191,3 +192,4 @@ public class InventoryItem
     public float volume;
     public string displayName;
 }
+#pragma warning restore CS0414

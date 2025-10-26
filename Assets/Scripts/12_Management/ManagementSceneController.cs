@@ -14,7 +14,9 @@ public class ManagementSceneController : MonoBehaviour
     [SerializeField] GameObject fabPanel;  // optional: Fabrikatorliste
 
     [Header("Optional: Reflection-Fallback nutzen, falls kein UnityEvent gesetzt ist.")]
+#pragma warning disable CS0414 // Field is assigned but never used (may be used by future features)
     [SerializeField] private bool useReflectionFallback = true;
+#pragma warning restore CS0414
 
     private bool _isBusy;
 

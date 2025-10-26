@@ -1,9 +1,11 @@
 ﻿// Assets/Scripts/Core/PlanetRegistry.cs
 using System.Collections.Generic;
 using UnityEngine;
+using System;
 
 public class PlanetRegistry : MonoBehaviour
 {
+    [System.Obsolete("Use ServiceContainer.Instance.Get<PlanetRegistry>() instead")]
     public static PlanetRegistry Instance { get; private set; }
 
     public Transform Star { get; private set; }
@@ -26,8 +28,20 @@ public class PlanetRegistry : MonoBehaviour
     /* --------------------------------------------------------------- */
     void Awake()
     {
-        if (Instance != null && Instance != this) { Destroy(gameObject); return; }
-        Instance = this;
+        // Service Container Registrierung
+        if (ServiceContainer.Instance != null)
+        {
+            ServiceContainer.Instance.RegisterSingleton<PlanetRegistry>(this);
+        }
+
+        // Singleton-Absicherung (für Rückwärtskompatibilität)
+        var existingInstance = GetExistingInstance();
+        if (existingInstance != null && existingInstance != this) 
+        { 
+            Destroy(gameObject); 
+            return; 
+        }
+        SetInstance(this);
         DontDestroyOnLoad(gameObject);
     }
 
@@ -64,5 +78,16 @@ public class PlanetRegistry : MonoBehaviour
         if (Star != null) SortObjects();
     }
 
+    // Hilfsmethoden zur Vermeidung der Warnung
+    private static PlanetRegistry GetExistingInstance()
+    {
+        return ServiceContainer.Instance?.Get<PlanetRegistry>();
+    }
 
+    private static void SetInstance(PlanetRegistry instance)
+    {
+#pragma warning disable CS0618 // Type or member is obsolete
+        Instance = instance;
+#pragma warning restore CS0618
+    }
 }

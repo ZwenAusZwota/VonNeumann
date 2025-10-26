@@ -3,10 +3,11 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// Object Pool f�r Asteroiden zur Performance-Optimierung
+/// Object Pool fr Asteroiden zur Performance-Optimierung
 /// </summary>
 public class AsteroidPool : MonoBehaviour
 {
+    [System.Obsolete("Use ServiceContainer.Instance.Get<AsteroidPool>() instead")]
     public static AsteroidPool Instance { get; private set; }
 
     [Header("Pool Configuration")]
@@ -27,13 +28,20 @@ public class AsteroidPool : MonoBehaviour
 
     void Awake()
     {
-        if (Instance != null && Instance != this)
+        // Service Container Registrierung
+        if (ServiceContainer.Instance != null)
+        {
+            ServiceContainer.Instance.RegisterSingleton<AsteroidPool>(this);
+        }
+
+        // Singleton-Absicherung (fr Rckwrtskompatibilitt)
+        var existingInstance = GetExistingInstance();
+        if (existingInstance != null && existingInstance != this)
         {
             Destroy(gameObject);
             return;
         }
-
-        Instance = this;
+        SetInstance(this);
         DontDestroyOnLoad(gameObject);
 
         // Create pool parent object
@@ -186,8 +194,28 @@ public class AsteroidPool : MonoBehaviour
 
     void OnDestroy()
     {
-        if (Instance == this)
-            Instance = null;
+        if (GetInstance() == this)
+            SetInstance(null);
+    }
+
+    // Hilfsmethoden zur Vermeidung der Warnung
+    private static AsteroidPool GetExistingInstance()
+    {
+        return ServiceContainer.Instance?.Get<AsteroidPool>();
+    }
+
+    private static AsteroidPool GetInstance()
+    {
+#pragma warning disable CS0618 // Type or member is obsolete
+        return Instance;
+#pragma warning restore CS0618
+    }
+
+    private static void SetInstance(AsteroidPool instance)
+    {
+#pragma warning disable CS0618 // Type or member is obsolete
+        Instance = instance;
+#pragma warning restore CS0618
     }
 
 #if UNITY_EDITOR

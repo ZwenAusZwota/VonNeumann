@@ -66,12 +66,12 @@ ServiceContainer.Instance.RegisterFactory<MyService>(() =>
 - [ ] AssetProvider → Service Container
 
 ### **Phase 3: World Services**
-- [ ] WorldRoot → Service Container
-- [ ] PlanetRegistry → Service Container
-- [ ] AsteroidPool → Service Container
-- [ ] HubRegistry → Service Container
-- [ ] WorldRegistry → Service Container
-- [ ] EntityFactory → Service Container
+- [x] WorldRoot → Service Container
+- [x] PlanetRegistry → Service Container
+- [x] AsteroidPool → Service Container
+- [x] HubRegistry → Service Container
+- [x] WorldRegistry → Service Container
+- [x] EntityFactory → Service Container
 
 ### **Phase 4: Gameplay Services**
 - [ ] MiningTaskManager → Service Container

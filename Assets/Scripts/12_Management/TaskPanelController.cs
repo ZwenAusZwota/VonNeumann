@@ -36,12 +36,12 @@ namespace SpaceGame.UI
         [SerializeField] Button btnAdd;
 
 
-        // interner Index: Dropoff-Einträge
+        // interner Index: Dropoff-Eintrï¿½ge
         readonly List<Transform> _dropoffTargets = new();
 
         void OnEnable()
         {
-            // Dropdowns initialisieren, wenn Panel geöffnet wird
+            // Dropdowns initialisieren, wenn Panel geï¿½ffnet wird
             BuildModeDropdown();
             BuildRegionDropdown();
             BuildDropoffDropdown();
@@ -81,7 +81,7 @@ namespace SpaceGame.UI
         {
             dropdownRegion.ClearOptions();
             dropdownRegion.AddOptions(new List<string> { "Any", "AsteroidBelt", "GasGiant" });
-            dropdownRegion.value = 1; // häufigster Fall
+            dropdownRegion.value = 1; // hï¿½ufigster Fall
         }
 
         void BuildDropoffDropdown()
@@ -89,7 +89,8 @@ namespace SpaceGame.UI
             dropdownDropoff.ClearOptions();
             _dropoffTargets.Clear();
 
-            var options = HubRegistry.Instance?.GetOptions();
+            var hubRegistry = ServiceContainer.Instance?.Get<HubRegistry>();
+            var options = hubRegistry?.GetOptions();
             var labels = new List<string>();
 
             if (options != null && options.Count > 0)
@@ -99,8 +100,8 @@ namespace SpaceGame.UI
                     labels.Add(label);
                     // Im Management-Screen haben wir keine echten Transforms:
                     // Stattdessen speichern wir die Hub-ID in einer parallelen Liste als "Fake-Transform".
-                    // Lösung: wir legen ein Dummy-Transform NICHT an, sondern speichern die ID temporär.
-                    // -> Ergänze unten: _dropoffHubIds parallel tracken.
+                    // Lï¿½sung: wir legen ein Dummy-Transform NICHT an, sondern speichern die ID temporï¿½r.
+                    // -> Ergï¿½nze unten: _dropoffHubIds parallel tracken.
                 }
             }
             else
@@ -175,19 +176,20 @@ namespace SpaceGame.UI
 
             //var task = MiningTaskManager.Instance.CreateTask(
                 //name, mode, region, wanted, dropoff, loop, scanRadius, rescan, miners);
-            var (hubId, hubLabel) = HubRegistry.Instance.GetOptions()[dropdownDropoff.value];
+            var hubRegistry = ServiceContainer.Instance?.Get<HubRegistry>();
+            var (hubId, hubLabel) = hubRegistry?.GetOptions()[dropdownDropoff.value] ?? (string.Empty, string.Empty);
             var task = MiningTaskManager.Instance.CreateTask(
                 name, mode, region, wanted, null /*DropoffHub*/, loop, scanRadius, rescan, miners);
             task.DropoffHubId = hubId;
 
-            // Formular zurücksetzen (optional)
+            // Formular zurï¿½cksetzen (optional)
             if (inputName) inputName.text = "";
             inputForm.SetActive(false);
         }
 
         void CloseForm()
         {
-            // Formular zurücksetzen (optional)
+            // Formular zurï¿½cksetzen (optional)
             if (inputName) inputName.text = "";
             inputForm.SetActive(false);
         }
@@ -202,7 +204,7 @@ namespace SpaceGame.UI
         {
             if (MiningTaskManager.Instance == null) return;
 
-            // Children löschen
+            // Children lï¿½schen
             foreach (Transform c in listContainer) Destroy(c.gameObject);
 
             var tasks = MiningTaskManager.Instance.GetAll();

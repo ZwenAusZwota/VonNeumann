@@ -120,7 +120,6 @@ public class FabricatorPanelController : MonoBehaviour
         boundFab.QueueUpdated += OnQueueUpdated;
         boundFab.ProductionStarted += OnProductionStarted;
         boundFab.ProductionCompleted += OnProductionCompleted;
-        boundFab.ProductionWaitingForResources += OnWaitingForResources;
 
         boundFab.ForceRefreshUI();
     }
@@ -133,7 +132,6 @@ public class FabricatorPanelController : MonoBehaviour
         boundFab.QueueUpdated -= OnQueueUpdated;
         boundFab.ProductionStarted -= OnProductionStarted;
         boundFab.ProductionCompleted -= OnProductionCompleted;
-        boundFab.ProductionWaitingForResources -= OnWaitingForResources;
 
         boundFab = null;
 
@@ -326,7 +324,6 @@ public class FabricatorPanelController : MonoBehaviour
     /* ---------- Production Events (optional nutzbar) ---------- */
     private void OnProductionStarted(ProductBlueprint bp) { /* optional UI Effekte */ }
     private void OnProductionCompleted(ProductBlueprint bp, bool stored) { /* optional Meldungen */ }
-    private void OnWaitingForResources(ProductBlueprint bp) { /* optional Hinweis */ }
 
     /* ---------- Utilities ---------- */
     private void ClearTemplates()
