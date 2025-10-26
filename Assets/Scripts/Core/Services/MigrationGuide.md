@@ -74,9 +74,9 @@ ServiceContainer.Instance.RegisterFactory<MyService>(() =>
 - [x] EntityFactory → Service Container
 
 ### **Phase 4: Gameplay Services**
-- [ ] MiningTaskManager → Service Container
-- [ ] ProbeController → Service Container
-- [ ] FabricatorController → Service Container
+- [x] MiningTaskManager → Service Container
+- [x] ProbeController → Nicht migriert (kein Singleton, sondern Spawnable Entity)
+- [x] FabricatorController → Nicht migriert (kein Singleton, sondern Spawnable Entity)
 
 ### **Phase 5: Event System Integration**
 - [ ] HUDMessageBus → GameEvents

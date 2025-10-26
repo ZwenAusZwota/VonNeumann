@@ -47,8 +47,9 @@ namespace SpaceGame.UI
             BuildDropoffDropdown();
             BuildResourceChecklist();
 
-            if (MiningTaskManager.Instance != null)
-                MiningTaskManager.Instance.TasksChanged += RefreshList;
+            var taskManager = ServiceContainer.Instance?.Get<MiningTaskManager>();
+            if (taskManager != null)
+                taskManager.TasksChanged += RefreshList;
 
             RefreshList();
 
@@ -61,8 +62,9 @@ namespace SpaceGame.UI
 
         void OnDisable()
         {
-            if (MiningTaskManager.Instance != null)
-                MiningTaskManager.Instance.TasksChanged -= RefreshList;
+            var taskManager = ServiceContainer.Instance?.Get<MiningTaskManager>();
+            if (taskManager != null)
+                taskManager.TasksChanged -= RefreshList;
 
             btnAdd.onClick.RemoveAllListeners();
             btnCreate.onClick.RemoveAllListeners();
@@ -138,7 +140,8 @@ namespace SpaceGame.UI
 
         void CreateTaskFromForm()
         {
-            if (MiningTaskManager.Instance == null) return;
+            var taskManager = ServiceContainer.Instance?.Get<MiningTaskManager>();
+            if (taskManager == null) return;
 
             string name = inputName != null ? inputName.text : "";
             var mode = dropdownMode.value == 0 ? SearchMode.Any : SearchMode.Specific;
@@ -174,22 +177,20 @@ namespace SpaceGame.UI
             int miners = ParseInt(inputPreferredMiners, 1);
             bool loop = toggleLoop != null ? toggleLoop.isOn : true;
 
-            //var task = MiningTaskManager.Instance.CreateTask(
-                //name, mode, region, wanted, dropoff, loop, scanRadius, rescan, miners);
             var hubRegistry = ServiceContainer.Instance?.Get<HubRegistry>();
             var (hubId, hubLabel) = hubRegistry?.GetOptions()[dropdownDropoff.value] ?? (string.Empty, string.Empty);
-            var task = MiningTaskManager.Instance.CreateTask(
+            var task = taskManager.CreateTask(
                 name, mode, region, wanted, null /*DropoffHub*/, loop, scanRadius, rescan, miners);
             task.DropoffHubId = hubId;
 
-            // Formular zur�cksetzen (optional)
+            // Formular zurcksetzen (optional)
             if (inputName) inputName.text = "";
             inputForm.SetActive(false);
         }
 
         void CloseForm()
         {
-            // Formular zur�cksetzen (optional)
+            // Formular zurcksetzen (optional)
             if (inputName) inputName.text = "";
             inputForm.SetActive(false);
         }
@@ -202,12 +203,13 @@ namespace SpaceGame.UI
 
         void RefreshList()
         {
-            if (MiningTaskManager.Instance == null) return;
+            var taskManager = ServiceContainer.Instance?.Get<MiningTaskManager>();
+            if (taskManager == null) return;
 
-            // Children l�schen
+            // Children lschen
             foreach (Transform c in listContainer) Destroy(c.gameObject);
 
-            var tasks = MiningTaskManager.Instance.GetAll();
+            var tasks = taskManager.GetAll();
             foreach (var t in tasks)
             {
                 var item = Instantiate(listItemPrefab, listContainer);
@@ -217,7 +219,9 @@ namespace SpaceGame.UI
 
         void OnClickDelete(MiningTask t)
         {
-            MiningTaskManager.Instance.RemoveTask(t.TaskId);
+            var taskManager = ServiceContainer.Instance?.Get<MiningTaskManager>();
+            if (taskManager != null)
+                taskManager.RemoveTask(t.TaskId);
         }
     }
 

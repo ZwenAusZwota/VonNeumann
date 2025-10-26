@@ -6,12 +6,13 @@ using UnityEngine;
 namespace SpaceGame.Mining
 {
     /// <summary>
-    /// Zentraler Speicher/Orchestrator für Tasks (UI-nahe Ebene).
-    /// Kümmert sich zunächst nur um Anlegen/Löschen/Events.
-    /// Später: Persistenz, Zuweisungen, Telemetrie.
+    /// Zentraler Speicher/Orchestrator fÃ¼r Tasks (UI-nahe Ebene).
+    /// KÃ¼mmert sich zunÃ¤chst nur um Anlegen/LÃ¶schen/Events.
+    /// SpÃ¤ter: Persistenz, Zuweisungen, Telemetrie.
     /// </summary>
     public class MiningTaskManager : MonoBehaviour
     {
+        [System.Obsolete("Use ServiceContainer.Instance.Get<MiningTaskManager>() instead")]
         public static MiningTaskManager Instance { get; private set; }
 
         // TaskId -> Task
@@ -21,13 +22,34 @@ namespace SpaceGame.Mining
 
         void Awake()
         {
-            if (Instance != null && Instance != this)
+            // Service Container Registrierung
+            if (ServiceContainer.Instance != null)
             {
-                Destroy(gameObject);
-                return;
+                ServiceContainer.Instance.RegisterSingleton<MiningTaskManager>(this);
             }
-            Instance = this;
+
+            // Singleton-Absicherung (fÃ¼r RÃ¼ckwÃ¤rtskompatibilitÃ¤t)
+            var existingInstance = GetExistingInstance();
+            if (existingInstance != null && existingInstance != this) 
+            { 
+                Destroy(gameObject); 
+                return; 
+            }
+            SetInstance(this);
             DontDestroyOnLoad(gameObject);
+        }
+
+        // Hilfsmethoden zur Vermeidung der Warnung
+        private static MiningTaskManager GetExistingInstance()
+        {
+            return ServiceContainer.Instance?.Get<MiningTaskManager>();
+        }
+
+        private static void SetInstance(MiningTaskManager instance)
+        {
+#pragma warning disable CS0618 // Type or member is obsolete
+            Instance = instance;
+#pragma warning restore CS0618
         }
 
         public IReadOnlyList<MiningTask> GetAll() => _tasks.Values.ToList();
@@ -74,6 +96,6 @@ namespace SpaceGame.Mining
         public MiningTask GetById(string taskId)
             => _tasks.TryGetValue(taskId, out var t) ? t : null;
 
-        // Platzhalter für später: Assign/Unassign Miner, Persistenz etc.
+        // Platzhalter fï¿½r spï¿½ter: Assign/Unassign Miner, Persistenz etc.
     }
 }
