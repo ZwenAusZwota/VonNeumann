@@ -34,7 +34,7 @@ public class ManagementSceneController : MonoBehaviour
 #if UNITY_2023_1_OR_NEWER
         return UnityEngine.Object.FindFirstObjectByType<SpaceGame.Input.GameHotkeys>(UnityEngine.FindObjectsInactive.Include);
 #else
-        return UnityEngine.Object.FindObjectOfType<SpaceGame.Input.GameHotkeys>();
+        return UnityEngine.Object.FindFirstObjectByType<SpaceGame.Input.GameHotkeys>();
 #endif
     }
 
@@ -44,7 +44,7 @@ public class ManagementSceneController : MonoBehaviour
         var objs = Resources.FindObjectsOfTypeAll(type);
         return (objs != null && objs.Length > 0) ? objs[0] : null;
 #else
-        return UnityEngine.Object.FindObjectOfType(type);
+        return UnityEngine.Object.FindFirstObjectByType(type);
 #endif
     }
 

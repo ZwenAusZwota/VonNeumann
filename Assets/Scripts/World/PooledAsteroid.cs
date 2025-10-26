@@ -2,8 +2,8 @@
 using UnityEngine;
 
 /// <summary>
-/// Komponente für gepoolte/verwaltete Asteroiden mit Low/High-LOD-Visuals.
-/// Berechnet nach LOD-Erzeugung einen sicheren Nav-Radius über alle Kinder-Renderer/Collider.
+/// Komponente fï¿½r gepoolte/verwaltete Asteroiden mit Low/High-LOD-Visuals.
+/// Berechnet nach LOD-Erzeugung einen sicheren Nav-Radius ï¿½ber alle Kinder-Renderer/Collider.
 /// </summary>
 public class PooledAsteroid : MonoBehaviour
 {
@@ -18,13 +18,13 @@ public class PooledAsteroid : MonoBehaviour
     [Tooltip("Instanz des High-Detail-Kindobjekts (deaktiviert bis Swap)")]
     public GameObject highInstance;
 
-    [Tooltip("Zieltransform (z. B. Sonde) für den Distanz-Swap")]
+    [Tooltip("Zieltransform (z. B. Sonde) fï¿½r den Distanz-Swap")]
     public Transform proximityTarget;
 
     [Tooltip("Abstand (Unity-Units), ab dem High angezeigt wird")]
     public float swapDistanceUU = 150f;
 
-    [Tooltip("Hysterese (Unity-Units) – zurück zu Low, wenn Distanz > swap + hysteresis")]
+    [Tooltip("Hysterese (Unity-Units) ï¿½ zurï¿½ck zu Low, wenn Distanz > swap + hysteresis")]
     public float swapHysteresisUU = 25f;
 
     [Tooltip("Detail-Instanz bereits bei Spawn erzeugen (deaktiviert)?")]
@@ -41,7 +41,7 @@ public class PooledAsteroid : MonoBehaviour
         RebuildCaches();
     }
 
-    /// <summary>Erzeugt/konfiguriert die Visuals. Kann mehrfach für Reuse gerufen werden.</summary>
+    /// <summary>Erzeugt/konfiguriert die Visuals. Kann mehrfach fï¿½r Reuse gerufen werden.</summary>
     public void InitializeLOD(
         GameObject lowPrefab,
         GameObject highPrefab,
@@ -103,7 +103,7 @@ public class PooledAsteroid : MonoBehaviour
         if (mine != null) mine.RecalculateNavSphereRadiusFromHierarchy(1.1f);
     }
 
-    /// <summary>Wird vom Belt für Culling aufgerufen.</summary>
+    /// <summary>Wird vom Belt fï¿½r Culling aufgerufen.</summary>
     public void SetVisible(bool visible)
     {
         if (isVisible == visible) return;
@@ -118,7 +118,7 @@ public class PooledAsteroid : MonoBehaviour
             foreach (var c in colliders) if (c) c.enabled = visible;
     }
 
-    /// <summary>Rebuild von Renderer/Collider-Listen nach LOD-Änderungen.</summary>
+    /// <summary>Rebuild von Renderer/Collider-Listen nach LOD-ï¿½nderungen.</summary>
     public void RebuildCaches()
     {
         renderers = GetComponentsInChildren<Renderer>(true);
@@ -127,14 +127,22 @@ public class PooledAsteroid : MonoBehaviour
 
     void Update()
     {
-        // Alle 0.2s prüfen
+        // Alle 0.2s prï¿½fen
         if (Time.time < nextCheckTime) return;
         nextCheckTime = Time.time + 0.2f;
 
         // Wenn kein Ziel, versuchen eines zu finden (Tag "Probe")
         if (proximityTarget == null)
         {
-            var probe = GameObject.FindGameObjectWithTag("Probe");
+            GameObject probe = null;
+            try
+            {
+                probe = GameObject.FindGameObjectWithTag("Probe");
+            }
+            catch (UnityException ex)
+            {
+                Debug.LogWarning($"[PooledAsteroid] Tag 'Probe' ist nicht definiert: {ex.Message}");
+            }
             if (probe) proximityTarget = probe.transform;
             if (proximityTarget == null) return; // noch kein Ziel, bleib Low
         }
@@ -155,7 +163,7 @@ public class PooledAsteroid : MonoBehaviour
 
         if (highActive && d > (swapDistanceUU + swapHysteresisUU))
         {
-            // zurück auf LOW
+            // zurï¿½ck auf LOW
             if (highInstance) highInstance.SetActive(false);
             if (lowInstance) lowInstance.SetActive(true);
             highActive = false;
@@ -173,15 +181,15 @@ public class PooledAsteroid : MonoBehaviour
         EnsureAnyCollider(highInstance);
         highInstance.SetActive(false);
 
-        // >>> NEU: Nachladen von High kann Größe ändern -> Radius neu bestimmen
+        // >>> NEU: Nachladen von High kann Grï¿½ï¿½e ï¿½ndern -> Radius neu bestimmen
         var mine = GetComponent<MineableAsteroid>();
         if (mine != null) mine.RecalculateNavSphereRadiusFromHierarchy(1.1f);
     }
 
-    /// <summary>Für Pool-Reuse oder manuelles Zurücksetzen.</summary>
+    /// <summary>Fï¿½r Pool-Reuse oder manuelles Zurï¿½cksetzen.</summary>
     public void ResetAsteroid()
     {
-        // Sichtbarkeit zurücksetzen
+        // Sichtbarkeit zurï¿½cksetzen
         SetVisible(true);
 
         // LOD-Instanzen entfernen (wir wollen saubere Neu-Initialisierung)
@@ -196,7 +204,7 @@ public class PooledAsteroid : MonoBehaviour
         // wieder frisches Caching, aktuell nur Parent
         RebuildCaches();
 
-        // Rücksetzen von Transform-Basiswerten
+        // Rï¿½cksetzen von Transform-Basiswerten
         transform.localScale = Vector3.one;
         transform.rotation = Quaternion.identity;
     }
@@ -204,7 +212,7 @@ public class PooledAsteroid : MonoBehaviour
     // Getter
     public bool IsVisible => isVisible;
 
-    // Hilfsfunktionen (Tagging/Collider für LOD-Kinder)
+    // Hilfsfunktionen (Tagging/Collider fï¿½r LOD-Kinder)
     private static void SetTagRecursively(GameObject go, string tag)
     {
         if (go == null) return;
@@ -216,11 +224,11 @@ public class PooledAsteroid : MonoBehaviour
     private static void EnsureAnyCollider(GameObject go)
     {
         if (go == null) return;
-        // Wenn im gesamten Hierarchiebaum kein Collider existiert, füge einen SphereCollider am Root hinzu.
+        // Wenn im gesamten Hierarchiebaum kein Collider existiert, fï¿½ge einen SphereCollider am Root hinzu.
         if (go.GetComponentInChildren<Collider>(true) == null)
         {
             var sc = go.AddComponent<SphereCollider>();
-            sc.isTrigger = false; // für Scan/Annäherung ausreichend
+            sc.isTrigger = false; // fï¿½r Scan/Annï¿½herung ausreichend
             sc.radius = 0.5f;     // skaliert mit Transform.localScale
         }
     }

@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 81138e1edcf782748a692fb19efc72b7, type: 3}
   m_Name: Iron
   m_EditorClassIdentifier: 
-  id: iron
+  id: Iron
   displayName: Eisen
   icon: {fileID: 0}
   volumePerUnit: 0.5

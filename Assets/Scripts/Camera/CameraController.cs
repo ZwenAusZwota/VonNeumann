@@ -57,6 +57,7 @@ public class CameraController : MonoBehaviour
     [Tooltip("Maus-Inversion für Y-Achse")]
     public bool invertY = false;
 
+
     [Header("Weltraum-Navigation")]
     [Tooltip("Automatisch auf nahe Objekte fokussieren (falls Registry vorhanden).")]
     public bool autoFocusNearbyObjects = true;
@@ -97,6 +98,7 @@ public class CameraController : MonoBehaviour
     private float targetDistance;
     private Vector3 velocityOffset;
     private bool isTransitioning = false;
+    
 
     private void Awake()
     {
@@ -178,8 +180,16 @@ public class CameraController : MonoBehaviour
         // 3) Über Tag
         foreach (var t in candidateTags)
         {
-            var tagged = GameObject.FindGameObjectsWithTag(t).FirstOrDefault();
-            if (tagged != null) { SetTarget(tagged.transform); return; }
+            try
+            {
+                var tagged = GameObject.FindGameObjectsWithTag(t).FirstOrDefault();
+                if (tagged != null) { SetTarget(tagged.transform); return; }
+            }
+            catch (UnityException ex)
+            {
+                Debug.LogWarning($"[CameraController] Tag '{t}' ist nicht definiert: {ex.Message}");
+                continue;
+            }
         }
 
         // 4) Über Namen-Heuristik
@@ -213,7 +223,6 @@ public class CameraController : MonoBehaviour
         {
             if (Mouse.current != null && Mouse.current.rightButton.isPressed)
             {
-                followTarget = false;
                 Vector2 mouseDelta = ctx.ReadValue<Vector2>() * mouseSensitivity;
 
                 yaw += mouseDelta.x;
@@ -226,11 +235,12 @@ public class CameraController : MonoBehaviour
 
         controls.Camera.RightClick.started += _ =>
         {
-            followTarget = false;
+            StartFreeLookTransition();
             Cursor.lockState = CursorLockMode.Locked;
         };
         controls.Camera.RightClick.canceled += _ =>
         {
+            EndFreeLookTransition();
             Cursor.lockState = CursorLockMode.None;
         };
 
@@ -289,8 +299,6 @@ public class CameraController : MonoBehaviour
     {
         if (target == null) return;
 
-        Vector3 desiredPosition;
-
         if (followTarget)
         {
             // Folge-Modus: Kamera folgt der Sonden-Rotation (Yaw-orientiert)
@@ -299,28 +307,29 @@ public class CameraController : MonoBehaviour
 
             Quaternion targetRotation = Quaternion.LookRotation(flatFwd, Vector3.up);
             transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, Time.deltaTime * targetTransitionSpeed);
-            desiredPosition = target.position + transform.rotation * currentOffset;
+            
+            Vector3 desiredPosition = target.position + transform.rotation * currentOffset;
+            
+            if (preventCollision)
+            {
+                desiredPosition = CheckCollision(target.position, desiredPosition);
+            }
+
+            if (isTransitioning)
+            {
+                transform.position = Vector3.SmoothDamp(transform.position, desiredPosition, ref velocityOffset, 1f / Mathf.Max(0.01f, targetTransitionSpeed));
+                if (Vector3.Distance(transform.position, desiredPosition) < 0.1f)
+                    isTransitioning = false;
+            }
+            else
+            {
+                transform.position = desiredPosition;
+            }
         }
         else
         {
-            // Freilook-Modus: Freie Rotation um das Ziel
-            desiredPosition = target.position + transform.rotation * Vector3.back * currentDistance;
-        }
-
-        if (preventCollision)
-        {
-            desiredPosition = CheckCollision(target.position, desiredPosition);
-        }
-
-        if (isTransitioning)
-        {
-            transform.position = Vector3.SmoothDamp(transform.position, desiredPosition, ref velocityOffset, 1f / Mathf.Max(0.01f, targetTransitionSpeed));
-            if (Vector3.Distance(transform.position, desiredPosition) < 0.1f)
-                isTransitioning = false;
-        }
-        else
-        {
-            transform.position = desiredPosition;
+            // Freilook-Modus: Kamera behält ihre Position bei und rotiert nur um sich selbst
+            // Position wird nicht geändert, nur die Rotation wird durch ApplyFreeRotation() aktualisiert
         }
     }
 
@@ -437,6 +446,29 @@ public class CameraController : MonoBehaviour
 
     public float GetCurrentDistance() => currentDistance;
     public bool IsFollowing() => followTarget;
+
+    // ==================== Freilook-Übergang ====================
+
+    private void StartFreeLookTransition()
+    {
+        // Initialisiere Freilook-Winkel basierend auf aktueller Kamera-Rotation
+        Vector3 forward = transform.forward;
+        yaw = Mathf.Atan2(forward.x, forward.z) * Mathf.Rad2Deg;
+        pitch = Mathf.Asin(forward.y) * Mathf.Rad2Deg;
+        
+        // Sofort in Freilook-Modus wechseln
+        followTarget = false;
+    }
+
+    private void EndFreeLookTransition()
+    {
+        // Zurück zum Folge-Modus
+        followTarget = true;
+        
+        // Sanfter Übergang zurück zur Standard-Position
+        ResetToDefaultView();
+    }
+
 
     private void OnDrawGizmosSelected()
     {

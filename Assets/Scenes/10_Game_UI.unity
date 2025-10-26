@@ -1674,17 +1674,23 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 474bcb49853aa07438625e644c072ee6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  m_Version: 3
   m_UsePipelineSettings: 1
   m_AdditionalLightsShadowResolutionTier: 2
-  m_LightLayerMask: 1
-  m_RenderingLayers: 1
   m_CustomShadowLayers: 0
-  m_ShadowLayerMask: 1
-  m_ShadowRenderingLayers: 1
   m_LightCookieSize: {x: 1, y: 1}
   m_LightCookieOffset: {x: 0, y: 0}
   m_SoftShadowQuality: 0
+  m_RenderingLayersMask:
+    serializedVersion: 0
+    m_Bits: 1
+  m_ShadowRenderingLayersMask:
+    serializedVersion: 0
+    m_Bits: 1
+  m_Version: 4
+  m_LightLayerMask: 1
+  m_ShadowLayerMask: 1
+  m_RenderingLayers: 1
+  m_ShadowRenderingLayers: 1
 --- !u!1 &655978799
 GameObject:
   m_ObjectHideFlags: 0
@@ -1838,12 +1844,16 @@ MonoBehaviour:
   m_GameObject: {fileID: 659946606}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f47a4ac14eff2884bb53cb205e2ef86e, type: 3}
+  m_Script: {fileID: 11500000, guid: d983317f43f82864ca4e26bfc97474ae, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  scanPanel: {fileID: 43518984}
-  inventoryPanel: {fileID: 943324815}
-  navPanel: {fileID: 1814150290}
+  panelConfigs:
+  - panelId: ScanPanel
+    panelObject: {fileID: 43518984}
+  - panelId: InventoryPanel
+    panelObject: {fileID: 943324815}
+  - panelId: NavPanel
+    panelObject: {fileID: 1814150290}
 --- !u!1 &672408488
 GameObject:
   m_ObjectHideFlags: 0
@@ -2093,6 +2103,8 @@ SpriteRenderer:
   m_RayTracingAccelStructBuildFlagsOverride: 0
   m_RayTracingAccelStructBuildFlags: 1
   m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
@@ -2114,6 +2126,7 @@ SpriteRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
@@ -4535,6 +4548,50 @@ MonoBehaviour:
   btnAutopilotLabel: {fileID: 326462811}
   colorActive: {r: 0.17, g: 0.73, b: 0.35, a: 1}
   colorInactive: {r: 0.5245282, g: 0.5245282, b: 0.5245282, a: 1}
+--- !u!1 &1819739767
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1819739769}
+  - component: {fileID: 1819739768}
+  m_Layer: 0
+  m_Name: EventSystemCleaner
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1819739768
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1819739767}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 728fccf27183ed947804630079ca6aa8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::EventSystemCleaner
+--- !u!4 &1819739769
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1819739767}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1884122814
 GameObject:
   m_ObjectHideFlags: 0
@@ -5335,3 +5392,4 @@ SceneRoots:
   - {fileID: 421689881}
   - {fileID: 659946610}
   - {fileID: 1735301210}
+  - {fileID: 1819739769}

@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
-using SpaceGame.UI; // für HUDMessageBus
+using SpaceGame.UI; // fï¿½r HUDMessageBus
 
 [DisallowMultipleComponent]
 public class HUDMessageLogUI : MonoBehaviour
@@ -56,12 +56,12 @@ public class HUDMessageLogUI : MonoBehaviour
         if (messageItemTemplate != null) return;
 
         // Erzeuge ein deaktiviertes Template neben dieser Komponente (nicht im Content),
-        // davon wird dann für jeden Eintrag eine Instanz UNTER dem Content erzeugt.
+        // davon wird dann fï¿½r jeden Eintrag eine Instanz UNTER dem Content erzeugt.
         var go = new GameObject("MessageTemplate", typeof(RectTransform));
         go.transform.SetParent(transform, false);
 
         var tmp = go.AddComponent<TextMeshProUGUI>(); // WICHTIG: Konkreter Typ, nicht TMP_Text-Abstract
-        tmp.enableWordWrapping = true;
+        tmp.textWrappingMode = TextWrappingModes.Normal;
         tmp.fontSize = 12;
         tmp.color = Color.white;
         tmp.margin = new Vector4(6, 2, 6, 2);
@@ -77,7 +77,7 @@ public class HUDMessageLogUI : MonoBehaviour
 
         if (!content)
         {
-            Debug.LogWarning("[HUDMessageLogUI] Kein Content zugewiesen – Nachricht wird verworfen.");
+            Debug.LogWarning("[HUDMessageLogUI] Kein Content zugewiesen ï¿½ Nachricht wird verworfen.");
             return;
         }
 
@@ -115,6 +115,6 @@ public class HUDMessageLogUI : MonoBehaviour
         }
     }
 
-    // Optionale öffentliche API (z.B. Testbutton im Editor)
+    // Optionale ï¿½ffentliche API (z.B. Testbutton im Editor)
     public void PostTest(string text) => HUDMessageBus.Post(text);
 }

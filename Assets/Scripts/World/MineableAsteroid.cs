@@ -2,6 +2,19 @@
 using UnityEngine;
 using System;
 
+/// <summary>
+/// Verschiedene Modi für die visuelle Schrumpfung von Asteroiden
+/// </summary>
+public enum ShrinkingMode
+{
+    /// <summary>Lineare Schrumpfung - gleichmäßige Größenänderung (realistischer)</summary>
+    Linear,
+    /// <summary>Volumen-basierte Schrumpfung - mathematisch korrekte Kubikwurzel-Skalierung</summary>
+    Volume,
+    /// <summary>Quadratische Schrumpfung - Kompromiss zwischen Linear und Volume</summary>
+    Quadratic
+}
+
 [RequireComponent(typeof(Transform))]
 public class MineableAsteroid : MonoBehaviour
 {
@@ -26,6 +39,13 @@ public class MineableAsteroid : MonoBehaviour
     [Tooltip("Wenn true, verringert sich die visuelle Größe mit abgebauten Einheiten.")]
     public bool visuallyDegrade = true;
 
+    [Header("Shrinking Behavior")]
+    [Tooltip("Art der Schrumpfung: Linear = gleichmäßige Größenänderung, Volume = mathematisch korrekte Volumen-Skalierung")]
+    public ShrinkingMode shrinkingMode = ShrinkingMode.Linear;
+
+    [Tooltip("Geschwindigkeit der visuellen Schrumpfung (1.0 = sofort, 0.1 = sehr langsam)")]
+    [Range(0.1f, 2.0f)] public float shrinkingSpeed = 1.0f;
+
     [Header("Mining")]
     [Tooltip("Einheiten pro Sekunde, die beim Mining maximal entnommen werden.")]
     public float maxExtractPerSecond = 20f;
@@ -42,6 +62,7 @@ public class MineableAsteroid : MonoBehaviour
     private Vector3 startScaleVisual;
     private bool isMining;
     private AudioSource audioSource;
+    private Vector3 targetScale; // Ziel-Skalierung für sanfte Übergänge
 
     // Events
     public event Action<float> OnUnitsMined;           // Einheiten die abgebaut wurden
@@ -95,6 +116,9 @@ public class MineableAsteroid : MonoBehaviour
         // Ursprungs-Skalen herstellen
         transform.localScale = startScaleRoot;
         if (visualRoot != null) visualRoot.localScale = startScaleVisual;
+        
+        // Ziel-Skalierung auf Anfangswert setzen
+        targetScale = (visualRoot != null) ? startScaleVisual : startScaleRoot;
 
         UpdateVisualScale();
         OnUnitsRemainChanged?.Invoke(unitsRemaining);
@@ -106,6 +130,23 @@ public class MineableAsteroid : MonoBehaviour
     public float UnitsRemaining => unitsRemaining;
     public float StartUnits => startUnits;
     public string MaterialId => materialId;
+
+    /// <summary>
+    /// Ändert den Schrumpfungsmodus zur Laufzeit
+    /// </summary>
+    public void SetShrinkingMode(ShrinkingMode newMode)
+    {
+        shrinkingMode = newMode;
+        UpdateVisualScale(); // Sofortige Aktualisierung der visuellen Darstellung
+    }
+
+    /// <summary>
+    /// Ändert die Schrumpfungsgeschwindigkeit zur Laufzeit
+    /// </summary>
+    public void SetShrinkingSpeed(float newSpeed)
+    {
+        shrinkingSpeed = Mathf.Clamp(newSpeed, 0.1f, 2.0f);
+    }
 
     /// <summary>(Re-)Konfiguration über den Pool/Spawner.</summary>
     public void Configure(string newMaterialId, float newStartUnits)
@@ -184,17 +225,55 @@ public class MineableAsteroid : MonoBehaviour
     {
         if (!visuallyDegrade) return;
 
-        // Anteil Rest (Volumen-Relation) -> Radius skaliert via Kubikwurzel
-        float scaleFactor = Mathf.Max(RemainingPercentage, minimumScale);
-        float radiusScale = Mathf.Pow(scaleFactor, 1f / 3f);
+        // Berechne die Ziel-Skalierung basierend auf dem Schrumpfungsmodus
+        float scaleFactor = CalculateScaleFactor();
+        
+        // Bestimme die Ziel-Skalierung
+        Vector3 baseScale = (visualRoot != null) ? startScaleVisual : startScaleRoot;
+        targetScale = baseScale * scaleFactor;
 
-        if (visualRoot != null)
-            visualRoot.localScale = startScaleVisual * radiusScale;
-        else
-            transform.localScale = startScaleRoot * radiusScale;
+        // Sofortige Anwendung der Skalierung (für sofortige Reaktion)
+        ApplyScale(targetScale);
 
         // Nav-Sphäre mitführen (Welt-Radius konstant halten)
         ApplyNavSphereRadius();
+    }
+
+    /// <summary>
+    /// Berechnet den Skalierungsfaktor basierend auf dem gewählten Schrumpfungsmodus
+    /// </summary>
+    private float CalculateScaleFactor()
+    {
+        float remainingPercentage = Mathf.Max(RemainingPercentage, minimumScale);
+        
+        switch (shrinkingMode)
+        {
+            case ShrinkingMode.Linear:
+                // Lineare Schrumpfung - gleichmäßige Größenänderung
+                return remainingPercentage;
+                
+            case ShrinkingMode.Volume:
+                // Volumen-basierte Schrumpfung - mathematisch korrekte Kubikwurzel
+                return Mathf.Pow(remainingPercentage, 1f / 3f);
+                
+            case ShrinkingMode.Quadratic:
+                // Quadratische Schrumpfung - Kompromiss zwischen Linear und Volume
+                return Mathf.Pow(remainingPercentage, 1f / 2f);
+                
+            default:
+                return remainingPercentage;
+        }
+    }
+
+    /// <summary>
+    /// Wendet die Skalierung auf das entsprechende Transform an
+    /// </summary>
+    private void ApplyScale(Vector3 scale)
+    {
+        if (visualRoot != null)
+            visualRoot.localScale = scale;
+        else
+            transform.localScale = scale;
     }
 
     void Update()

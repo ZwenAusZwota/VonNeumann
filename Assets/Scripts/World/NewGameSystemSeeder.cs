@@ -138,7 +138,7 @@ public class NewGameSystemSeeder : MonoBehaviour
         return Mathf.Clamp(t, 2500f, 35000f);
     }
 
-    private async UniTask GeneratePlanets(StarDto star)
+    private UniTask GeneratePlanets(StarDto star)
     {
         float sqrtL = Mathf.Sqrt(Mathf.Max(0.05f, star.luminosity_solar));
         float hzInnerAU = 0.95f * sqrtL;
@@ -175,6 +175,8 @@ public class NewGameSystemSeeder : MonoBehaviour
               : 0;
             CreateMoons(go.transform, moonCount, type);
         }
+        
+        return UniTask.CompletedTask;
     }
 
     enum PlanetType { Rocky, Water, Habitable, IceGiant, GasGiant }
@@ -259,13 +261,13 @@ public class NewGameSystemSeeder : MonoBehaviour
     static float AU2Km(float au) => au * 149_597_870.7f;
 
     // ------------------- Belt-Erzeugung -------------------
-    private async UniTask<AsteroidBelt> CreateOrAdoptAsteroidBeltAsync(StarDto star)
+    private UniTask<AsteroidBelt> CreateOrAdoptAsteroidBeltAsync(StarDto star)
     {
         // Wenn schon ein Belt existiert, optional nichts mehr erzeugen
         if (skipIfBeltExists && WorldRoot.Instance?.beltsRoot != null && WorldRoot.Instance.beltsRoot.childCount > 0)
         {
             var existing = WorldRoot.Instance.beltsRoot.GetChild(0).GetComponent<AsteroidBelt>();
-            if (existing != null) return existing;
+            if (existing != null) return UniTask.FromResult(existing);
         }
 
         // Wenn ein Template zugewiesen/gefunden wurde: dieses verwenden (und aktivieren)
@@ -276,7 +278,7 @@ public class NewGameSystemSeeder : MonoBehaviour
             // Template in WorldRoot einhängen und produktiv schalten
             WorldRoot.Instance.Attach(tpl.transform, WorldRoot.Category.Belt, worldPos: false);
             tpl.templateOnly = false; // jetzt selbst spawnen lassen
-            return tpl;
+            return UniTask.FromResult(tpl);
         }
 
         // Fallback: via PlanetGenerator erzeugen (wie bisher)
@@ -292,7 +294,7 @@ public class NewGameSystemSeeder : MonoBehaviour
         };
         var beltGo = planetGenerator.CreateAsteroidBelt(beltDto); // erzeugt neuen Belt
         WorldRoot.Instance.Attach(beltGo.transform, WorldRoot.Category.Belt, worldPos: false);
-        return beltGo.GetComponent<AsteroidBelt>();
+        return UniTask.FromResult(beltGo.GetComponent<AsteroidBelt>());
     }
 
     // ------------------- Probe-Spawn im Belt -------------------

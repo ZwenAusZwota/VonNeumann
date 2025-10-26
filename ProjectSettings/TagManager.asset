@@ -13,6 +13,7 @@ TagManager:
   - Probe
   - MiningBeam
   - Asteroid_HighDef
+  - Ship
   layers:
   - Default
   - TransparentFX

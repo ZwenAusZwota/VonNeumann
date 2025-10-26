@@ -67,18 +67,18 @@ public class LoadingScreenController : MonoBehaviour
                 .WaitUntil(() => SceneRouter.I != null && !SceneRouter.I.IsBusy)
                 .TimeoutWithoutException(TimeSpan.FromSeconds(Mathf.Max(1f, routerWaitTimeoutSeconds)));
 
-            //if (!routerReady || SceneRouter.I == null)
-            //{
-            //    // Fallback ohne Router: Game Single, UI additiv
-            //    SetStatus("Kein SceneRouter – lade Spiel direkt …");
-            //    await LoadSingle(gameSceneName);
+            if (!routerReady || SceneRouter.I == null)
+            {
+                // Fallback ohne Router: Game Single, UI additiv
+                SetStatus("Kein SceneRouter – lade Spiel direkt …");
+                await LoadSingle("10_Game");
 
-            //    //SetStatus("Lade Benutzeroberfläche (additiv) …");
-            //    //await EnsureAdditiveLoaded(uiSceneName);
+                SetStatus("Lade Benutzeroberfläche (additiv) …");
+                await EnsureAdditiveLoaded("10_Game_UI");
 
-            //    SetStatus("Fertig. Viel Spaß!");
-            //    return;
-            //}
+                SetStatus("Fertig. Viel Spaß!");
+                return;
+            }
 
             await UniTask.Yield(); // Frame warten, damit Router-Ready-Status stabil ist.
 
@@ -151,7 +151,7 @@ public class LoadingScreenController : MonoBehaviour
         go.transform.SetParent(transform, false);
 
         var tmp = go.AddComponent<TextMeshProUGUI>(); // WICHTIG: Konkreter Typ, nicht TMP_Text-Abstract
-        tmp.enableWordWrapping = true;
+        tmp.textWrappingMode = TextWrappingModes.Normal;
         tmp.fontSize = 12;
         tmp.color = Color.white;
         tmp.margin = new Vector4(6, 2, 6, 2);
