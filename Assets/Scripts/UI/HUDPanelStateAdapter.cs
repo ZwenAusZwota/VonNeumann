@@ -5,9 +5,16 @@ using UnityEngine;
 public class HUDPanelStateAdapter : MonoBehaviour, IHUDPanelSavable
 {
     [SerializeField] private string panelId = "NavPanel";   // <- je Panel individuell setzen
-    [SerializeField] private GameObject root;               // optional: eigener Root für Sichtbarkeit
+    [SerializeField] private GameObject root;               // optional: eigener Root fï¿½r Sichtbarkeit
 
     public string PanelId => panelId;
+
+    private void Awake()
+    {
+        root ??= gameObject;
+        if (string.IsNullOrWhiteSpace(panelId))
+            panelId = gameObject.name;
+    }
 
     private void Reset()
     {

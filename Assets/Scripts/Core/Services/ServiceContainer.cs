@@ -9,25 +9,45 @@ using UnityEngine;
 public class ServiceContainer : MonoBehaviour
 {
     private static ServiceContainer _instance;
+    private static bool _isShuttingDown;
     private Dictionary<Type, object> _services = new();
     private Dictionary<Type, Func<object>> _factories = new();
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    private static void ResetStatics()
+    {
+        _instance = null;
+        _isShuttingDown = false;
+    }
 
     public static ServiceContainer Instance
     {
         get
         {
-            if (_instance == null)
-            {
-                var go = new GameObject("ServiceContainer");
-                _instance = go.AddComponent<ServiceContainer>();
-                DontDestroyOnLoad(go);
-            }
+            if (_isShuttingDown)
+                return null;
+
+            if (_instance != null)
+                return _instance;
+
+            if (!Application.isPlaying)
+                return null;
+
+            var go = new GameObject("ServiceContainer");
+            _instance = go.AddComponent<ServiceContainer>();
+            DontDestroyOnLoad(go);
             return _instance;
         }
     }
 
     private void Awake()
     {
+        if (_isShuttingDown)
+        {
+            Destroy(gameObject);
+            return;
+        }
+
         if (_instance != null && _instance != this)
         {
             Destroy(gameObject);
@@ -35,6 +55,22 @@ public class ServiceContainer : MonoBehaviour
         }
         _instance = this;
         DontDestroyOnLoad(gameObject);
+    }
+
+    private void OnApplicationQuit()
+    {
+        _isShuttingDown = true;
+    }
+
+    private void OnDestroy()
+    {
+        if (_instance != this)
+            return;
+
+        // Vor _instance = null setzen, damit OnDestroy-Handler anderer Objekte
+        // keinen neuen ServiceContainer mehr erzeugen.
+        _isShuttingDown = true;
+        _instance = null;
     }
 
     // ==================== Service Registration ====================
@@ -65,6 +101,9 @@ public class ServiceContainer : MonoBehaviour
     /// <summary>Service abrufen</summary>
     public T Get<T>() where T : class
     {
+        if (_isShuttingDown)
+            return null;
+
         var type = typeof(T);
         
         // 1. Prüfe Singleton-Services
@@ -84,7 +123,7 @@ public class ServiceContainer : MonoBehaviour
         // 3. Versuche automatische Registrierung für MonoBehaviour-Services
         if (typeof(MonoBehaviour).IsAssignableFrom(type))
         {
-            var existing = FindFirstObjectByType(type) as T;
+            var existing = FindAnyObjectByType(type) as T;
             if (existing != null)
             {
                 RegisterSingleton(existing);
@@ -100,6 +139,9 @@ public class ServiceContainer : MonoBehaviour
     /// <summary>Service abrufen oder erstellen</summary>
     public T GetOrCreate<T>() where T : class
     {
+        if (_isShuttingDown)
+            return null;
+
         var service = Get<T>();
         if (service == null)
         {
@@ -164,12 +206,12 @@ public static class ServiceExtensions
     /// <summary>Service direkt abrufen (Kurzform)</summary>
     public static T GetService<T>(this MonoBehaviour caller) where T : class
     {
-        return ServiceContainer.Instance.Get<T>();
+        return ServiceContainer.Instance?.Get<T>();
     }
 
     /// <summary>Service abrufen oder erstellen (Kurzform)</summary>
     public static T GetOrCreateService<T>(this MonoBehaviour caller) where T : class
     {
-        return ServiceContainer.Instance.GetOrCreate<T>();
+        return ServiceContainer.Instance?.GetOrCreate<T>();
     }
 }

@@ -278,7 +278,7 @@ public class NewGameSystemSeeder : MonoBehaviour
 
         // Wenn ein Template zugewiesen/gefunden wurde: dieses verwenden (und aktivieren)
         AsteroidBelt tpl = beltTemplate;
-        if (tpl == null) tpl = FindFirstObjectByType<AsteroidBelt>(FindObjectsInactive.Include);
+        if (tpl == null) tpl = FindAnyObjectByType<AsteroidBelt>(FindObjectsInactive.Include);
         if (tpl != null)
         {
             // Template in WorldRoot einhängen und produktiv schalten

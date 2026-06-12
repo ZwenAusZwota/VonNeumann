@@ -18,7 +18,7 @@ public class ImmediateEventSystemFix : MonoBehaviour
 
     private void FixEventSystems()
     {
-        EventSystem[] allEventSystems = FindObjectsByType<EventSystem>(FindObjectsSortMode.None);
+        EventSystem[] allEventSystems = FindObjectsByType<EventSystem>();
         
         Debug.Log($"[ImmediateEventSystemFix] Gefunden: {allEventSystems.Length} EventSystems");
         

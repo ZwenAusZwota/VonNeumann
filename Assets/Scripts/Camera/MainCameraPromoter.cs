@@ -31,7 +31,7 @@ public class MainCameraPromoter : MonoBehaviour
 
     void Start()
     {
-        PromoteAsMain(); // Falls OnEnable zu früh war, hier nochmal
+        PromoteAsMain(); // Falls OnEnable zu frï¿½h war, hier nochmal
     }
 
     void OnSceneLoaded(Scene scene, LoadSceneMode mode)
@@ -57,20 +57,30 @@ public class MainCameraPromoter : MonoBehaviour
         self.enabled = true;
         if (selfListener) selfListener.enabled = true;
 
-        // Alle anderen Kameras deaktivieren und entmainen
-        var cams = FindObjectsByType<Camera>(FindObjectsInactive.Include, FindObjectsSortMode.None);
-        foreach (var cam in cams)
+        // Alle anderen Kameras in geladenen Szenen deaktivieren und entmainen
+        for (int i = 0; i < SceneManager.sceneCount; i++)
         {
-            if (cam == self) continue;
+            var scene = SceneManager.GetSceneAt(i);
+            if (!scene.isLoaded) continue;
 
-            // Tag entfernen, Kamera und AudioListener ausschalten
-            if (cam.CompareTag("MainCamera"))
-                cam.tag = "Untagged";
-
-            cam.enabled = false;
-
-            var al = cam.GetComponent<AudioListener>();
-            if (al) al.enabled = false;
+            foreach (var root in scene.GetRootGameObjects())
+            {
+                foreach (var cam in root.GetComponentsInChildren<Camera>(true))
+                    DemoteCamera(cam);
+            }
         }
+    }
+
+    void DemoteCamera(Camera cam)
+    {
+        if (cam == null || cam == self) return;
+
+        if (cam.CompareTag("MainCamera"))
+            cam.tag = "Untagged";
+
+        cam.enabled = false;
+
+        var al = cam.GetComponent<AudioListener>();
+        if (al) al.enabled = false;
     }
 }

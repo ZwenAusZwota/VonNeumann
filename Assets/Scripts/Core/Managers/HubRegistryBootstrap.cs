@@ -23,7 +23,7 @@ public class HubRegistryBootstrap : MonoBehaviour
         if (existingFromContainer != null) return;
 
         // Fallback: Suche nach vorhandenem HubRegistry
-        var existing = FindFirstObjectByType<HubRegistry>();
+        var existing = FindAnyObjectByType<HubRegistry>();
         if (existing != null) return;
 
         // Erstelle neue HubRegistry

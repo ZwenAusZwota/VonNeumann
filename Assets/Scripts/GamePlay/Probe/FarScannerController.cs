@@ -5,6 +5,7 @@ using UnityEngine;
 [RequireComponent(typeof(RegistrableEntity))]
 public class FarScannerController : BaseScannerController
 {
+    private readonly HashSet<MineableAsteroid> _asteroidScratch = new();
     [Header("FarScan – Voreinstellung (AU)")]
     [Tooltip("Sinnvoll für Systeme/weite Umgebung. Beispiel: 10 AU.")]
     public float defaultFarAU = 10.0f;
@@ -19,6 +20,74 @@ public class FarScannerController : BaseScannerController
     private void Reset()
     {
         scanRadiusAU = defaultFarAU;
+    }
+
+    public override void PerformScan()
+    {
+        float radiusUnits = AuToUnits(scanRadiusAU);
+        Vector3 origin = transform.position;
+
+        var results = new List<SystemObject>(128);
+        var seen = new HashSet<EntityId>();
+
+        CollectColliderHits(origin, radiusUnits, results, seen, includeAsteroids: false);
+        CollectNearestAsteroidBeltHit(origin, radiusUnits, results, seen);
+        ScanOrbiterHelper.GroupOrbitersUnderPlanets(results, origin);
+
+        Publish(results);
+    }
+
+    private void CollectNearestAsteroidBeltHit(
+        Vector3 origin,
+        float radiusUnits,
+        List<SystemObject> results,
+        HashSet<EntityId> seen)
+    {
+        MineableAsteroid nearestAsteroid = null;
+        float nearestDistUnits = float.MaxValue;
+
+        _asteroidScratch.Clear();
+        foreach (var asteroid in FindObjectsByType<MineableAsteroid>())
+        {
+            if (asteroid == null) continue;
+            if (!_asteroidScratch.Add(asteroid)) continue;
+
+            var go = asteroid.gameObject;
+            if (IsPartOfScanningProbe(go)) continue;
+
+            float distUnits = (go.transform.position - origin).magnitude;
+            if (distUnits > radiusUnits || distUnits >= nearestDistUnits) continue;
+
+            nearestAsteroid = asteroid;
+            nearestDistUnits = distUnits;
+        }
+
+        if (nearestAsteroid != null)
+        {
+            var belt = nearestAsteroid.GetComponentInParent<AsteroidBelt>();
+            var targetGo = belt != null ? belt.gameObject : nearestAsteroid.gameObject;
+            var beltId = targetGo.GetEntityId();
+            if (!seen.Contains(beltId))
+            {
+                results.Add(new SystemObject
+                {
+                    Kind = SystemObject.ObjectKind.AsteroidBelt,
+                    Id = beltId.ToString(),
+                    Name = "AsteroidBelt",
+                    DisplayName = belt != null
+                        ? BuildDisplayNameForBelt(belt, origin, nearestAsteroid.transform)
+                        : BuildDisplayName(nearestAsteroid.transform, origin),
+                    Dto = belt,
+                    GameObject = targetGo,
+                    RequiresNearScan = false
+                });
+                seen.Add(beltId);
+                seen.Add(nearestAsteroid.gameObject.GetEntityId());
+                return;
+            }
+        }
+
+        CollectBeltHits(origin, radiusUnits, results, seen);
     }
 
     /// <summary>

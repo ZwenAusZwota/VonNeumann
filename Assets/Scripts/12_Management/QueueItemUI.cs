@@ -50,8 +50,12 @@ public class QueueItemUI : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndD
             txtEta.gameObject.SetActive(true);
             txtEta.text = FormatEta(timeRemaining);
         }
-        if (btnRemove) btnRemove.interactable = true; // Entfernen des laufenden Jobs erlaubt → bricht ab
-        if (btnRemove) btnRemove.onClick.AddListener(RemoveSelf);
+        if (btnRemove)
+        {
+            btnRemove.interactable = true;
+            btnRemove.onClick.RemoveAllListeners();
+            btnRemove.onClick.AddListener(RemoveSelf);
+        }
     }
 
     // Normales Item in der Warteschlange (Index >= 1)

@@ -1,5 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.SceneManagement;
+using SpaceGame.UI;
 
 namespace SpaceGame.Core.Managers
 {
@@ -14,25 +16,41 @@ namespace SpaceGame.Core.Managers
         
         private Dictionary<string, GameObject> _panels = new();
         private Dictionary<string, bool> _panelStates = new();
+        private bool _initialized;
 
         private void Awake()
         {
-            // Registriere bei GameEvents
             GameEvents.OnPanelToggled += HandlePanelToggle;
             GameEvents.OnScanPanelToggled += HandleScanPanelToggle;
-        }
-
-        private void Start()
-        {
-            // Initialisiere Panels
+            SceneManager.sceneLoaded += OnSceneLoaded;
             InitializePanels();
         }
 
         private void OnDestroy()
         {
-            // Deregistriere von GameEvents
             GameEvents.OnPanelToggled -= HandlePanelToggle;
             GameEvents.OnScanPanelToggled -= HandleScanPanelToggle;
+            SceneManager.sceneLoaded -= OnSceneLoaded;
+        }
+
+        private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+        {
+            if (!scene.name.Contains("Game_UI", System.StringComparison.OrdinalIgnoreCase))
+                return;
+
+            RefreshPanels();
+        }
+
+        private void EnsureInitialized()
+        {
+            if (_initialized) return;
+            InitializePanels();
+        }
+
+        public void RefreshPanels()
+        {
+            _initialized = false;
+            InitializePanels();
         }
 
         private void InitializePanels()
@@ -40,54 +58,99 @@ namespace SpaceGame.Core.Managers
             _panels.Clear();
             _panelStates.Clear();
 
-            // Suche nach HUDPanelStateAdapter Komponenten
-            var adapters = FindObjectsByType<HUDPanelStateAdapter>(FindObjectsSortMode.None);
+            foreach (var config in panelConfigs)
+            {
+                if (string.IsNullOrWhiteSpace(config.panelId)) continue;
+
+                GameObject panel = config.panelObject != null
+                    ? config.panelObject
+                    : ResolvePanelObject(config.panelId);
+                if (panel == null) continue;
+
+                RegisterPanel(config.panelId, panel, applySavedLayout: true);
+                Debug.Log($"[UIPanelManager] Registered configured panel: {config.panelId}");
+            }
+
+            var adapters = FindObjectsByType<HUDPanelStateAdapter>(FindObjectsInactive.Include);
             foreach (var adapter in adapters)
             {
                 string panelId = adapter.PanelId;
-                GameObject panel = adapter.gameObject;
-                
-                _panels[panelId] = panel;
-                _panelStates[panelId] = adapter.IsVisible();
-                
+                if (string.IsNullOrWhiteSpace(panelId) || _panels.ContainsKey(panelId))
+                    continue;
+
+                RegisterPanel(panelId, adapter.gameObject, applySavedLayout: false);
                 Debug.Log($"[UIPanelManager] Registered panel: {panelId} (visible: {adapter.IsVisible()})");
             }
 
-            // Suche nach konfigurierten Panels
-            foreach (var config in panelConfigs)
+            HudPanelThemeApplier.ApplyToAllUnder(transform);
+            _initialized = true;
+        }
+
+        private void RegisterPanel(string panelId, GameObject panel, bool applySavedLayout)
+        {
+            _panels[panelId] = panel;
+
+            if (applySavedLayout)
             {
-                if (config.panelObject != null && !_panels.ContainsKey(config.panelId))
-                {
-                    _panels[config.panelId] = config.panelObject;
-                    _panelStates[config.panelId] = config.panelObject.activeSelf;
-                    
-                    Debug.Log($"[UIPanelManager] Registered configured panel: {config.panelId}");
-                }
+                var draggable = panel.GetComponent<DraggableHudPanel>();
+                if (draggable == null)
+                    draggable = panel.GetComponentInChildren<DraggableHudPanel>(true);
+                draggable?.ApplyInitialLayoutFromSave();
             }
+
+            _panelStates[panelId] = IsPanelObjectVisible(panel);
+        }
+
+        private GameObject ResolvePanelObject(string panelId)
+        {
+            foreach (var adapter in FindObjectsByType<HUDPanelStateAdapter>(FindObjectsInactive.Include))
+            {
+                if (adapter.PanelId == panelId)
+                    return adapter.gameObject;
+            }
+
+            var named = GameObject.Find(panelId);
+            if (named != null)
+                return named;
+
+            foreach (var t in GetComponentsInChildren<Transform>(true))
+            {
+                if (t.name == panelId)
+                    return t.gameObject;
+            }
+
+            return null;
+        }
+
+        private static bool IsPanelObjectVisible(GameObject panel)
+        {
+            var adapter = panel.GetComponent<HUDPanelStateAdapter>();
+            return adapter != null ? adapter.IsVisible() : panel.activeSelf;
         }
 
         private void HandlePanelToggle(string panelId, bool isVisible)
         {
-            if (_panels.TryGetValue(panelId, out var panel))
-            {
-                // Verwende HUDPanelStateAdapter falls vorhanden
-                var adapter = panel.GetComponent<HUDPanelStateAdapter>();
-                if (adapter != null)
-                {
-                    adapter.SetVisible(isVisible);
-                }
-                else
-                {
-                    panel.SetActive(isVisible);
-                }
-                
-                _panelStates[panelId] = isVisible;
-                Debug.Log($"[UIPanelManager] Panel {panelId} set to {(isVisible ? "visible" : "hidden")}");
-            }
-            else
+            if (!TryGetPanel(panelId, out var panel))
             {
                 Debug.LogWarning($"[UIPanelManager] Panel {panelId} not found!");
+                return;
             }
+
+            SetPanelVisible(panel, isVisible);
+            _panelStates[panelId] = isVisible;
+            Debug.Log($"[UIPanelManager] Panel {panelId} set to {(isVisible ? "visible" : "hidden")}");
+        }
+
+        private static void SetPanelVisible(GameObject panel, bool isVisible)
+        {
+            var adapter = panel.GetComponent<HUDPanelStateAdapter>();
+            if (adapter == null)
+                adapter = panel.GetComponentInChildren<HUDPanelStateAdapter>(true);
+
+            if (adapter != null)
+                adapter.SetVisible(isVisible);
+            else
+                panel.SetActive(isVisible);
         }
 
         /// <summary>
@@ -95,18 +158,8 @@ namespace SpaceGame.Core.Managers
         /// </summary>
         public void TogglePanelViaEvent(string panelId)
         {
-            if (_panels.TryGetValue(panelId, out var panel))
-            {
-                bool currentState = IsPanelVisible(panelId);
-                bool newState = !currentState;
-                
-                Debug.Log($"[UIPanelManager] Toggling panel {panelId} via event from {currentState} to {newState}");
-                HandlePanelToggle(panelId, newState);
-            }
-            else
-            {
+            if (!TryTogglePanel(panelId))
                 Debug.LogWarning($"[UIPanelManager] Panel {panelId} not found for event toggling!");
-            }
         }
 
         private void HandleScanPanelToggle(bool isVisible)
@@ -119,19 +172,38 @@ namespace SpaceGame.Core.Managers
         /// </summary>
         public void TogglePanel(string panelId)
         {
-            if (_panels.TryGetValue(panelId, out var panel))
-            {
-                // Ermittle den aktuellen Zustand des Panels
-                bool currentState = IsPanelVisible(panelId);
-                bool newState = !currentState;
-                
-                Debug.Log($"[UIPanelManager] Toggling panel {panelId} from {currentState} to {newState}");
-                HandlePanelToggle(panelId, newState);
-            }
-            else
-            {
+            if (!TryTogglePanel(panelId))
                 Debug.LogWarning($"[UIPanelManager] Panel {panelId} not found for toggling!");
+        }
+
+        public bool TryTogglePanel(string panelId)
+        {
+            EnsureInitialized();
+            if (!TryGetPanel(panelId, out _))
+            {
+                RefreshPanels();
+                if (!TryGetPanel(panelId, out _))
+                    return false;
             }
+
+            bool currentState = IsPanelVisible(panelId);
+            bool newState = !currentState;
+            Debug.Log($"[UIPanelManager] Toggling panel {panelId} from {currentState} to {newState}");
+            HandlePanelToggle(panelId, newState);
+            return true;
+        }
+
+        private bool TryGetPanel(string panelId, out GameObject panel)
+        {
+            if (_panels.TryGetValue(panelId, out panel) && panel != null)
+                return true;
+
+            panel = ResolvePanelObject(panelId);
+            if (panel == null)
+                return false;
+
+            RegisterPanel(panelId, panel, applySavedLayout: false);
+            return true;
         }
 
         /// <summary>
@@ -166,10 +238,7 @@ namespace SpaceGame.Core.Managers
         /// <summary>
         /// Panel-Status zurücksetzen
         /// </summary>
-        public void ResetPanelStates()
-        {
-            InitializePanels();
-        }
+        public void ResetPanelStates() => RefreshPanels();
 
         [System.Serializable]
         public class PanelConfig

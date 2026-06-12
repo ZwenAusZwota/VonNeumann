@@ -1969,7 +1969,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 2097978268}
-  - component: {fileID: 2097978269}
   m_Layer: 0
   m_Name: Bootstrap
   m_TagString: Untagged
@@ -1992,26 +1991,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &2097978269
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2097978266}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 11013f281dfaa07418492401418bcfb0, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  catalog: {fileID: 11400000, guid: 812efa8c37d10a0489856eac346a0ef6, type: 2}
-  progressBar: {fileID: 1146672912}
-  percentLabel: {fileID: 2295295}
-  txtStatus: {fileID: 0}
-  scrollRect: {fileID: 0}
-  content: {fileID: 0}
-  messageItemTemplate: {fileID: 0}
-  routerWaitTimeoutSeconds: 10
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

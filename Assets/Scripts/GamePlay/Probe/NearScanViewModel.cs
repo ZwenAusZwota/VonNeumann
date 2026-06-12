@@ -11,7 +11,6 @@ public class NearScanViewModel : MonoBehaviour, IScanResultsReceiver
 
     public void SetResults(List<SystemObject> entries)
     {
-        _latest.Clear();
-        if (entries != null) _latest.AddRange(entries);
+        ScanResultsMerger.Merge(_latest, entries, fromNearScan: true);
     }
 }

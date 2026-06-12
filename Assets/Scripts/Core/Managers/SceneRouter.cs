@@ -4,8 +4,6 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using Cysharp.Threading.Tasks;
-using UnityEngine.EventSystems;
-
 public enum AppScene
 {
     Bootstrap,
@@ -19,13 +17,28 @@ public enum AppScene
 }
 
 /// <summary>
-/// Zentraler Szenenrouter für additiven Flow:
+/// Zentraler Szenenrouter fr additiven Flow:
 /// Bootstrap (persistent) -> Splash -> MainMenu -> (Loading -> Game + GameUI)
-/// Während des Spiels: Pause/Management additiv ODER als Single-Set laden.
+/// Whrend des Spiels: Pause/Management additiv ODER als Single-Set laden.
 /// </summary>
 public class SceneRouter : MonoBehaviour
 {
-    public static SceneRouter I { get; private set; }
+    private static SceneRouter _instance;
+
+    public static SceneRouter I
+    {
+        get
+        {
+            if (_instance != null)
+                return _instance;
+
+            return CreateFallbackInstance();
+        }
+        private set => _instance = value;
+    }
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    private static void ResetStatics() => _instance = null;
 
     [Header("Erkennung von Bootstrap-Szenen")]
     [Tooltip("Alle Szenen, deren Name mit diesem Prefix beginnt, werden beim Wechsel NICHT entladen.")]
@@ -36,7 +49,7 @@ public class SceneRouter : MonoBehaviour
     [SerializeField] private bool autoGoToMainMenuOnStart = false;
 
     //[Header("Additive UI-Politik")]
-    //[Tooltip("Wenn ein Set die Game-Szene lädt, wird die UI-Szene behalten (falls geladen) bzw. nachgeladen (falls nicht).")]
+    //[Tooltip("Wenn ein Set die Game-Szene ldt, wird die UI-Szene behalten (falls geladen) bzw. nachgeladen (falls nicht).")]
     //[SerializeField] private bool keepGameUIWithGame = true;
 
     /// <summary>Verhindert Doppel-Loads.</summary>
@@ -48,9 +61,53 @@ public class SceneRouter : MonoBehaviour
 
     private void Awake()
     {
-        if (I != null && I != this) { Destroy(gameObject); return; }
-        I = this;
+        if (_instance != null && _instance != this)
+        {
+            // Laufzeit-Fallback (nur SceneRouter-GO) weicht dem Bootstrap-AppRoot.
+            if (IsRuntimeFallback(_instance) && !IsRuntimeFallback(this))
+            {
+                Destroy(_instance.gameObject);
+            }
+            else
+            {
+                Destroy(gameObject);
+                return;
+            }
+        }
+
+        _instance = this;
         DontDestroyOnLoad(gameObject);
+    }
+
+    private static bool IsRuntimeFallback(SceneRouter router)
+    {
+        return router != null && router.gameObject.name == nameof(SceneRouter);
+    }
+
+    private void OnDestroy()
+    {
+        if (_instance == this)
+            _instance = null;
+    }
+
+    /// <summary>
+    /// Liefert den Singleton-SceneRouter (erzeugt bei Bedarf einen persistenten Fallback).
+    /// </summary>
+    public static SceneRouter EnsureInstance() => I;
+
+    private static SceneRouter CreateFallbackInstance()
+    {
+        var existing = UnityEngine.Object.FindAnyObjectByType<SceneRouter>(FindObjectsInactive.Include);
+        if (existing != null)
+        {
+            _instance = existing;
+            if (existing.gameObject.scene.name != "DontDestroyOnLoad")
+                DontDestroyOnLoad(existing.gameObject);
+            return existing;
+        }
+
+        var go = new GameObject(nameof(SceneRouter));
+        return go.AddComponent<SceneRouter>();
     }
 
     private async void Start()
@@ -77,12 +134,12 @@ public class SceneRouter : MonoBehaviour
     }
 
     // ------------------------------------------------------------------------
-    // Öffentliche API
+    // ffentliche API
     // ------------------------------------------------------------------------
 
     public UniTask ToSplash() => LoadSet(new[] { AppScene.Splash });
     public UniTask ToMainMenu() => LoadSet(new[] { AppScene.MainMenu });
-    public UniTask ToNewGame() => LoadSet(new[] { AppScene.Loading });   // Loader kümmert sich danach um 10_Game + 10_Game_UI
+    public UniTask ToNewGame() => LoadSet(new[] { AppScene.Loading });   // Loader kmmert sich danach um 10_Game + 10_Game_UI
     public UniTask ToLoadGame() => LoadSet(new[] { AppScene.Loading });
 
     /// <summary>Additiv: Pausen-/Optionsszene ein-/ausblenden.</summary>
@@ -101,8 +158,8 @@ public class SceneRouter : MonoBehaviour
 
     /// <summary>
     /// Overlay als Single-Set laden. Achtung:
-    /// - Für Pause → Time.timeScale = 0 (echter Freeze).
-    /// - Für Management → Time.timeScale = 1 (kein Freeze; Produktion läuft weiter).
+    /// - Fr Pause ? Time.timeScale = 0 (echter Freeze).
+    /// - Fr Management ? Time.timeScale = 1 (kein Freeze; Produktion luft weiter).
     /// </summary>
     public async UniTask ToOverlaySingle(AppScene overlay)
     {
@@ -133,42 +190,45 @@ public class SceneRouter : MonoBehaviour
         {
             OnBeforeLoadSet?.Invoke(set);
 
-            // 1) Alle nicht-Bootstrap-Szenen entladen, die NICHT im gewünschten Set sind
             var setSceneNames = new HashSet<string>();
             foreach (var sc in set)
-            {
                 setSceneNames.Add(SceneName(sc));
-            }
 
-            var toUnload = new List<string>();
-            for (int i = 0; i < SceneManager.sceneCount; i++)
-            {
-                var s = SceneManager.GetSceneAt(i);
-                if (!s.isLoaded) continue;
-                if (s.name.StartsWith(bootstrapPrefix, StringComparison.OrdinalIgnoreCase)) continue; //Bootstrap-Szene behalten
-                if (setSceneNames.Contains(s.name)) continue; // Szene wird geladen → nicht entladen
-
-                toUnload.Add(s.name);
-            }
-            foreach (var name in toUnload)
-            {
-                var op = SceneManager.UnloadSceneAsync(name);
-                if (op != null) await op.ToUniTask();
-            }
-
-            // 2) Gewünschte Szenen in Reihenfolge laden (additiv)
+            // 1) Ziel-Szenen ZUERST laden  sonst wrde beim Entladen der letzten Spielszene
+            //    (z. B. nur 10_Game + 10_Game_UI geladen) Unity einen Fehler werfen.
             foreach (var sc in set)
             {
                 string name = SceneName(sc);
                 var scene = SceneManager.GetSceneByName(name);
                 if (!scene.isLoaded)
-                {
-                    var op = SceneManager.LoadSceneAsync(name, LoadSceneMode.Additive);
-                    await op.ToUniTask();
-                }
+                    await EventSystemCleaner.LoadSceneAdditiveAsync(name);
             }
 
-            // 2b) Falls Game geladen wird, UI aber nicht im Set war: sicher additiv anfügen
+            // 2) Nicht bentigte Szenen entladen (Bootstrap und Ziel-Set bleiben)
+            var toUnload = new List<string>();
+            for (int i = 0; i < SceneManager.sceneCount; i++)
+            {
+                var s = SceneManager.GetSceneAt(i);
+                if (!s.isLoaded) continue;
+                if (s.name.StartsWith(bootstrapPrefix, StringComparison.OrdinalIgnoreCase)) continue;
+                if (setSceneNames.Contains(s.name)) continue;
+
+                toUnload.Add(s.name);
+            }
+
+            foreach (var name in toUnload)
+            {
+                if (!CanUnloadScene(name))
+                {
+                    Debug.LogWarning($"[SceneRouter] berspringe Entladen von '{name}'  mindestens eine Szene muss geladen bleiben.");
+                    continue;
+                }
+
+                var op = SceneManager.UnloadSceneAsync(name);
+                if (op != null) await op.ToUniTask();
+            }
+
+            // 2b) Falls Game geladen wird, UI aber nicht im Set war: sicher additiv anfgen
             //if (keepGameUIWithGame && setContainsGame && !setContainsGameUI)
             //{
             //    var uiScene = SceneManager.GetSceneByName(uiSceneName);
@@ -187,13 +247,28 @@ public class SceneRouter : MonoBehaviour
 
             OnAfterLoadSet?.Invoke(set);
             
-            // EventSystem-Konflikte bereinigen
-            CleanupEventSystems();
+            EventSystemCleaner.EnsureSingleEventSystem();
         }
         finally
         {
             IsBusy = false;
         }
+    }
+
+    private static bool CanUnloadScene(string sceneName)
+    {
+        int loadedCount = 0;
+        for (int i = 0; i < SceneManager.sceneCount; i++)
+        {
+            if (SceneManager.GetSceneAt(i).isLoaded)
+                loadedCount++;
+        }
+
+        if (loadedCount <= 1)
+            return false;
+
+        var target = SceneManager.GetSceneByName(sceneName);
+        return target.IsValid() && target.isLoaded;
     }
 
     private async UniTask ToggleScene(AppScene scene, bool on)
@@ -210,14 +285,14 @@ public class SceneRouter : MonoBehaviour
                 IsBusy = true;
                 try
                 {
-                    await SceneManager.LoadSceneAsync(name, LoadSceneMode.Additive).ToUniTask();
+                    await EventSystemCleaner.LoadSceneAdditiveAsync(name);
                 }
                 finally { IsBusy = false; }
             }
         }
         else
         {
-            if (sc.isLoaded)
+            if (sc.isLoaded && CanUnloadScene(name))
             {
                 IsBusy = true;
                 try
@@ -263,48 +338,4 @@ public class SceneRouter : MonoBehaviour
         ToggleManagement(!sc.isLoaded).Forget();
     }
 #endif
-
-    /// <summary>
-    /// Bereinigt doppelte EventSystems nach dem Laden von Szenen
-    /// </summary>
-    private void CleanupEventSystems()
-    {
-        EventSystem[] allEventSystems = FindObjectsByType<EventSystem>(FindObjectsSortMode.None);
-        
-        if (allEventSystems.Length <= 1) return; // Kein Konflikt
-        
-        Debug.LogWarning($"[SceneRouter] {allEventSystems.Length} EventSystems gefunden - bereinige Duplikate");
-        
-        // Finde das primäre EventSystem (das erste oder das aus der aktiven Szene)
-        EventSystem primaryEventSystem = null;
-        string activeSceneName = SceneManager.GetActiveScene().name;
-        
-        // Bevorzuge EventSystem aus der aktiven Szene
-        foreach (var eventSystem in allEventSystems)
-        {
-            if (eventSystem.gameObject.scene.name == activeSceneName)
-            {
-                primaryEventSystem = eventSystem;
-                break;
-            }
-        }
-        
-        // Falls keines in der aktiven Szene gefunden wurde, nimm das erste
-        if (primaryEventSystem == null)
-        {
-            primaryEventSystem = allEventSystems[0];
-        }
-        
-        // Deaktiviere alle anderen EventSystems
-        foreach (var eventSystem in allEventSystems)
-        {
-            if (eventSystem != primaryEventSystem)
-            {
-                eventSystem.gameObject.SetActive(false);
-                Debug.Log($"[SceneRouter] EventSystem deaktiviert: {eventSystem.name} in Szene {eventSystem.gameObject.scene.name}");
-            }
-        }
-        
-        Debug.Log($"[SceneRouter] Primäres EventSystem: {primaryEventSystem.name} in Szene {primaryEventSystem.gameObject.scene.name}");
-    }
 }

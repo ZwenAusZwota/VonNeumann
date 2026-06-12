@@ -5,70 +5,79 @@ using UnityEditor.SceneManagement;
 using UnityEngine.SceneManagement;
 
 /// <summary>
-/// Editor-Script, das automatisch EventSystemCleaner zu Szenen mit EventSystems hinzufügt
+/// Entfernt Szenen-EventSystems (ein globales wird zur Laufzeit erzeugt) und hält Guards als Fallback.
 /// </summary>
 [InitializeOnLoad]
 public static class EventSystemCleanerSetup
 {
+    private const string BootstrapSceneName = "00_Bootstrap";
+
     static EventSystemCleanerSetup()
     {
-        // Registriere Callback für Szenenwechsel
         EditorSceneManager.sceneOpened += OnSceneOpened;
     }
 
     private static void OnSceneOpened(Scene scene, OpenSceneMode mode)
     {
-        // Prüfe, ob die Szene EventSystems hat
-        EventSystem[] eventSystems = Object.FindObjectsByType<EventSystem>(FindObjectsSortMode.None);
-        
-        if (eventSystems.Length > 0)
-        {
-            // Prüfe, ob bereits ein EventSystemCleaner existiert
-            EventSystemCleaner existingCleaner = Object.FindFirstObjectByType<EventSystemCleaner>();
-            
-            if (existingCleaner == null)
-            {
-                // Erstelle einen EventSystemCleaner
-                GameObject cleanerGO = new GameObject("EventSystemCleaner");
-                cleanerGO.AddComponent<EventSystemCleaner>();
-                
-                // Markiere die Szene als geändert
-                EditorSceneManager.MarkSceneDirty(scene);
-                
-                Debug.Log($"[EventSystemCleanerSetup] EventSystemCleaner zu Szene '{scene.name}' hinzugefügt");
-            }
-        }
+        EnsureCleanerInBootstrap(scene);
     }
 
-    [MenuItem("Tools/Add EventSystemCleaner to All Scenes")]
-    public static void AddEventSystemCleanerToAllScenes()
+    [MenuItem("Tools/Fix EventSystems In All Scenes")]
+    public static void FixEventSystemsInAllScenes()
     {
         string[] sceneGuids = AssetDatabase.FindAssets("t:Scene");
-        
+        int removed = 0;
+        int cleanersAdded = 0;
+
         foreach (string guid in sceneGuids)
         {
             string scenePath = AssetDatabase.GUIDToAssetPath(guid);
-            Scene scene = EditorSceneManager.OpenScene(scenePath, OpenSceneMode.Additive);
-            
-            EventSystem[] eventSystems = Object.FindObjectsByType<EventSystem>(FindObjectsSortMode.None);
-            
-            if (eventSystems.Length > 0)
-            {
-                EventSystemCleaner existingCleaner = Object.FindFirstObjectByType<EventSystemCleaner>();
-                
-                if (existingCleaner == null)
-                {
-                    GameObject cleanerGO = new GameObject("EventSystemCleaner");
-                    cleanerGO.AddComponent<EventSystemCleaner>();
-                    EditorSceneManager.MarkSceneDirty(scene);
-                    
-                    Debug.Log($"[EventSystemCleanerSetup] EventSystemCleaner zu Szene '{scene.name}' hinzugefügt");
-                }
-            }
-            
-            EditorSceneManager.CloseScene(scene, true);
+            Scene scene = EditorSceneManager.OpenScene(scenePath, OpenSceneMode.Single);
+
+            if (EnsureCleanerInBootstrap(scene))
+                cleanersAdded++;
+
+            removed += RemoveSceneEventSystems(scene);
+            EditorSceneManager.SaveScene(scene);
         }
-        
-        Debug.Log("[EventSystemCleanerSetup] EventSystemCleaner zu allen Szenen mit EventSystems hinzugefügt");
+
+        Debug.Log($"[EventSystemCleanerSetup] {removed} EventSystem(s) entfernt, {cleanersAdded} Cleaner in Bootstrap ergänzt.");
+    }
+
+    private static bool EnsureCleanerInBootstrap(Scene scene)
+    {
+        if (!scene.IsValid() || !scene.name.StartsWith("00_", System.StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        if (Object.FindAnyObjectByType<EventSystemCleaner>() != null)
+            return false;
+
+        var cleanerGo = new GameObject("EventSystemCleaner");
+        cleanerGo.AddComponent<EventSystemCleaner>();
+        EditorSceneManager.MarkSceneDirty(scene);
+        return true;
+    }
+
+    private static int RemoveSceneEventSystems(Scene scene)
+    {
+        if (!scene.IsValid())
+            return 0;
+
+        var eventSystems = Object.FindObjectsByType<EventSystem>(FindObjectsInactive.Include);
+        int removed = 0;
+
+        foreach (var eventSystem in eventSystems)
+        {
+            if (eventSystem == null)
+                continue;
+
+            Object.DestroyImmediate(eventSystem.gameObject);
+            removed++;
+        }
+
+        if (removed > 0)
+            EditorSceneManager.MarkSceneDirty(scene);
+
+        return removed;
     }
 }

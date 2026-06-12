@@ -39,7 +39,7 @@ namespace SpaceGame.Core.Managers
             if (isInitialized) return;
 
             // Finde das erste verfügbare EventSystem
-            primaryEventSystem = FindFirstObjectByType<EventSystem>();
+            primaryEventSystem = FindAnyObjectByType<EventSystem>();
             
             if (primaryEventSystem != null)
             {
@@ -74,7 +74,7 @@ namespace SpaceGame.Core.Managers
         public void OnSceneLoaded()
         {
             // Prüfe auf doppelte EventSystems
-            EventSystem[] allEventSystems = FindObjectsByType<EventSystem>(FindObjectsSortMode.None);
+            EventSystem[] allEventSystems = FindObjectsByType<EventSystem>();
             
             if (allEventSystems.Length > 1)
             {
@@ -127,7 +127,7 @@ namespace SpaceGame.Core.Managers
         [ContextMenu("Cleanup EventSystems")]
         public void ManualCleanup()
         {
-            EventSystem[] allEventSystems = FindObjectsByType<EventSystem>(FindObjectsSortMode.None);
+            EventSystem[] allEventSystems = FindObjectsByType<EventSystem>();
             CleanupDuplicateEventSystems(allEventSystems);
         }
 

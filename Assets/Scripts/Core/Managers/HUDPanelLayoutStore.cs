@@ -11,7 +11,12 @@ namespace SpaceGame.UI
         public string panelId;
         public float x;
         public float y;
+        public float width;
+        public float height;
+        public bool hasCustomSize;
         public bool visible = true;
+
+        public bool HasSavedSize => hasCustomSize && width > 0f && height > 0f;
     }
 
     /// <summary>
@@ -69,6 +74,20 @@ namespace SpaceGame.UI
                 panelId = panelId,
                 x = position.x,
                 y = position.y,
+                visible = visible
+            });
+        }
+
+        public static void Save(string panelId, Vector2 position, Vector2 size, bool visible)
+        {
+            Save(new DraggableHudPanelState
+            {
+                panelId = panelId,
+                x = position.x,
+                y = position.y,
+                width = size.x,
+                height = size.y,
+                hasCustomSize = true,
                 visible = visible
             });
         }

@@ -16,8 +16,7 @@ public class MainMenuController : MonoBehaviour
     [SerializeField] private GameObject optionsPanel;
     [SerializeField] private TextMeshProUGUI continueDetailsLabel; // z. B. "Stand: 2025-08-30 14:33"
 
-    [Header("Save/Flow")]
-    [SerializeField] private string defaultSlotId = "slot_1";
+    // Save/Flow: Lädt automatisch den neuesten Spielstand
 
     void Start()
     {
@@ -52,16 +51,62 @@ public class MainMenuController : MonoBehaviour
 
     private async UniTask OnContinueClicked()
     {
-        if (!SaveSystem.I.HasSlot(defaultSlotId)) { RefreshContinueUI(); return; }
+        // Versuche zuerst autosave, dann fallback
+        string slotToLoad = GetMostRecentSaveSlot();
+        
+        if (string.IsNullOrEmpty(slotToLoad))
+        {
+            Debug.LogWarning("[MainMenu] Kein Spielstand zum Laden gefunden.");
+            RefreshContinueUI();
+            return;
+        }
 
         SetInteractable(false);
         try
         {
             // Ladepfad: Loading -> Game + GameUI, dann Save laden
             await SceneRouter.I.ToLoadGame();
-            await SaveSystem.I.LoadAsync(defaultSlotId);
+            var saveSystem = ServiceContainer.Instance?.Get<SaveSystem>();
+            if (saveSystem == null)
+            {
+                Debug.LogError("[MainMenu] SaveSystem nicht verfügbar!");
+                return;
+            }
+            
+            bool success = await saveSystem.LoadAsync(slotToLoad);
+            
+            if (!success)
+            {
+                Debug.LogError($"[MainMenu] Fehler beim Laden von Slot: {slotToLoad}");
+                HUDMessageBus.Post("Fehler beim Laden des Spielstands!");
+            }
         }
-        finally { SetInteractable(true); }
+        catch (Exception ex)
+        {
+            Debug.LogError($"[MainMenu] Exception beim Laden: {ex}");
+            HUDMessageBus.Post("Fehler beim Laden!");
+        }
+        finally
+        {
+            SetInteractable(true);
+        }
+    }
+    
+    /// <summary>
+    /// Gibt den Slot mit dem neuesten Timestamp zurück
+    /// </summary>
+    private string GetMostRecentSaveSlot()
+    {
+        var saveSystem = ServiceContainer.Instance?.Get<SaveSystem>();
+        if (saveSystem == null) return null;
+        
+        var slots = saveSystem.ListSlots();
+        if (slots == null || slots.Count == 0) return null;
+        
+        // Sortiere nach Timestamp (neueste zuerst)
+        slots.Sort((a, b) => b.timestamp.CompareTo(a.timestamp));
+        
+        return slots[0].slotId;
     }
 
     private void OnOptionsClicked()
@@ -81,27 +126,41 @@ public class MainMenuController : MonoBehaviour
     // ----------------- UI Helpers -----------------
     private void RefreshContinueUI()
     {
-        bool has = SaveSystem.I != null && SaveSystem.I.HasSlot(defaultSlotId);
-        if (btnContinue) btnContinue.interactable = has;
+        var saveSystem = ServiceContainer.Instance?.Get<SaveSystem>();
+        if (saveSystem == null)
+        {
+            if (btnContinue) btnContinue.interactable = false;
+            if (continueDetailsLabel) continueDetailsLabel.text = "SaveSystem nicht verfügbar";
+            return;
+        }
+        
+        var slots = saveSystem.ListSlots();
+        bool hasAnySave = slots != null && slots.Count > 0;
+        
+        if (btnContinue) btnContinue.interactable = hasAnySave;
 
         if (continueDetailsLabel)
         {
-            if (!has)
+            if (!hasAnySave)
             {
                 continueDetailsLabel.text = "Kein Spielstand gefunden";
             }
             else
             {
-                var info = SaveSystem.I.ListSlots().FirstOrDefault(s => s.slotId == defaultSlotId);
-                if (info.timestamp > 0)
+                // Zeige neuesten Spielstand
+                slots.Sort((a, b) => b.timestamp.CompareTo(a.timestamp));
+                var newest = slots[0];
+                
+                if (newest.timestamp > 0)
                 {
                     // Unix → lokale Zeit
-                    var dt = DateTimeOffset.FromUnixTimeSeconds(info.timestamp).LocalDateTime;
-                    continueDetailsLabel.text = $"Stand: {dt:yyyy-MM-dd HH:mm}";
+                    var dt = DateTimeOffset.FromUnixTimeSeconds(newest.timestamp).LocalDateTime;
+                    string slotName = newest.slotId == "autosave" ? "Auto-Save" : newest.slotId;
+                    continueDetailsLabel.text = $"{slotName} - {dt:yyyy-MM-dd HH:mm}";
                 }
                 else
                 {
-                    continueDetailsLabel.text = "Stand: unbekannt";
+                    continueDetailsLabel.text = $"{newest.slotId} - Stand: unbekannt";
                 }
             }
         }
@@ -110,7 +169,12 @@ public class MainMenuController : MonoBehaviour
     private void SetInteractable(bool on)
     {
         if (btnNewGame) btnNewGame.interactable = on;
-        if (btnContinue) btnContinue.interactable = on && (SaveSystem.I?.HasSlot(defaultSlotId) ?? false);
+        
+        // Continue nur wenn mindestens ein Save vorhanden ist
+        var saveSystem = ServiceContainer.Instance?.Get<SaveSystem>();
+        bool hasAnySave = saveSystem != null && saveSystem.ListSlots().Count > 0;
+        if (btnContinue) btnContinue.interactable = on && hasAnySave;
+        
         if (btnOptions) btnOptions.interactable = on;
         if (btnQuit) btnQuit.interactable = on;
     }

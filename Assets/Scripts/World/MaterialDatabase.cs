@@ -55,7 +55,7 @@ public class MaterialDatabase : MonoBehaviour
     {
         if (_initialized) return;
 
-        var db = FindFirstObjectByType<MaterialDatabase>();
+        var db = FindAnyObjectByType<MaterialDatabase>();
         List<MaterialSO> list;
         if (db != null && db.materials != null && db.materials.Count > 0)
             list = db.materials;

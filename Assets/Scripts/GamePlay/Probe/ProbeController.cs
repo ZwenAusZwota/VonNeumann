@@ -57,22 +57,16 @@ public class ProbeController : MonoBehaviour
     public event Action AutoPilotStopped;
     public event Action<string> StatusUpdated;
 
+    private bool _inputBound;
+
     void Awake()
     {
-        // Wichtig: Sonde bleibt beim Szenenwechsel bestehen
-        DontDestroyOnLoad(this.gameObject);
-
-        rb = GetComponent<Rigidbody>();
-        registry = ServiceContainer.Instance?.Get<PlanetRegistry>();
-        inputController = new InputController();
-        autopilot = GetComponent<ProbeAutopilot>();
-        miner = GetComponent<ProbeMiner>();
-        inventory = GetComponent<InventoryController>();
+        DontDestroyOnLoad(gameObject);
+        EnsureInitialized();
 
         transform.localScale = Vector3.one * spawnScale;
         rb.maxAngularVelocity = maxDegPerSec * Mathf.Deg2Rad * 1.5f;
 
-        // ⚠️ Robust: Registrierung erst, wenn HubRegistry.Instance verfügbar ist
         var hubInfo = new HubRegistry.HubInfo
         {
             Id = "probe01",
@@ -83,25 +77,92 @@ public class ProbeController : MonoBehaviour
         SafeRegisterHub(hubInfo);
     }
 
-
     void OnEnable()
     {
-        inputController.Probe.Enable();
+        EnsureInitialized();
+        BindInput();
+        BindComponentEvents();
+    }
+
+    void OnDisable()
+    {
+        UnbindInput();
+        UnbindComponentEvents();
+    }
+
+    private void OnDestroy()
+    {
+        UnbindInput();
+        UnbindComponentEvents();
+
+        if (inputController != null)
+        {
+            inputController.Dispose();
+            inputController = null;
+        }
+    }
+
+    private void EnsureInitialized()
+    {
+        rb ??= GetComponent<Rigidbody>();
+        registry ??= ServiceContainer.Instance?.Get<PlanetRegistry>();
+        autopilot ??= GetComponent<ProbeAutopilot>();
+        miner ??= GetComponent<ProbeMiner>();
+        inventory ??= GetComponent<InventoryController>();
+        inputController ??= new InputController();
+    }
+
+    private void BindInput()
+    {
+        if (_inputBound || inputController?.Probe == null)
+        {
+            if (inputController?.Probe == null)
+                Debug.LogError("[ProbeController] InputController.Probe nicht verfügbar.");
+            return;
+        }
+
+        var map = inputController.Probe;
+        map.Enable();
+
+        map.Rotate.performed += OnRotatePerformed;
+        map.Rotate.canceled += OnRotateCanceled;
+        map.Roll.performed += OnRollPerformed;
+        map.Roll.canceled += OnRollCanceled;
+        map.Thrust.performed += OnThrustPerformed;
+        map.Thrust.canceled += OnThrustCanceled;
+        map.Reset.performed += OnResetPerformed;
+        map.SpawnPrefab.performed += OnSpawnPrefabPerformed;
+
+        _inputBound = true;
+    }
+
+    private void UnbindInput()
+    {
+        if (!_inputBound || inputController?.Probe == null)
+            return;
+
         var map = inputController.Probe;
 
-        map.Rotate.performed += ctx => rotateInput = ctx.ReadValue<Vector2>();
-        map.Rotate.canceled += _ => rotateInput = Vector2.zero;
+        map.Rotate.performed -= OnRotatePerformed;
+        map.Rotate.canceled -= OnRotateCanceled;
+        map.Roll.performed -= OnRollPerformed;
+        map.Roll.canceled -= OnRollCanceled;
+        map.Thrust.performed -= OnThrustPerformed;
+        map.Thrust.canceled -= OnThrustCanceled;
+        map.Reset.performed -= OnResetPerformed;
+        map.SpawnPrefab.performed -= OnSpawnPrefabPerformed;
 
-        map.Roll.performed += ctx => rollInput = ctx.ReadValue<float>();
-        map.Roll.canceled += _ => rollInput = 0f;
+        map.Disable();
+        rotateInput = Vector2.zero;
+        rollInput = 0f;
+        thrustInput = 0f;
+        _inputBound = false;
+    }
 
-        map.Thrust.performed += ctx => thrustInput = ctx.ReadValue<float>();
-        map.Thrust.canceled += _ => thrustInput = 0f;
+    private void BindComponentEvents()
+    {
+        UnbindComponentEvents();
 
-        map.Reset.performed += _ => HandleMinusKey();
-        map.SpawnPrefab.performed += _ => spawnPrefab();
-
-        // Saubere Event-Handler (und null-sicher)
         if (autopilot != null)
         {
             autopilot.AutoPilotStarted += HandleAutoPilotStarted;
@@ -110,19 +171,15 @@ public class ProbeController : MonoBehaviour
         }
         else
         {
-            Debug.LogWarning("ProbeController: Kein ProbeAutopilot auf dem Prefab.");
+            Debug.LogWarning("[ProbeController] Kein ProbeAutopilot auf dem Prefab.");
         }
 
         if (miner != null)
-        {
             miner.StatusUpdated += HandleMinerStatusUpdated;
-        }
     }
 
-    void OnDisable()
+    private void UnbindComponentEvents()
     {
-        inputController.Disable();
-
         if (autopilot != null)
         {
             autopilot.AutoPilotStarted -= HandleAutoPilotStarted;
@@ -131,12 +188,17 @@ public class ProbeController : MonoBehaviour
         }
 
         if (miner != null)
-        {
             miner.StatusUpdated -= HandleMinerStatusUpdated;
-        }
     }
 
-    private void OnDestroy() => inputController?.Dispose();
+    private void OnRotatePerformed(InputAction.CallbackContext ctx) => rotateInput = ctx.ReadValue<Vector2>();
+    private void OnRotateCanceled(InputAction.CallbackContext _) => rotateInput = Vector2.zero;
+    private void OnRollPerformed(InputAction.CallbackContext ctx) => rollInput = ctx.ReadValue<float>();
+    private void OnRollCanceled(InputAction.CallbackContext _) => rollInput = 0f;
+    private void OnThrustPerformed(InputAction.CallbackContext ctx) => thrustInput = ctx.ReadValue<float>();
+    private void OnThrustCanceled(InputAction.CallbackContext _) => thrustInput = 0f;
+    private void OnResetPerformed(InputAction.CallbackContext _) => HandleMinusKey();
+    private void OnSpawnPrefabPerformed(InputAction.CallbackContext _) => spawnPrefab();
 
     private void Start()
     {

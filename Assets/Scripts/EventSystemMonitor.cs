@@ -20,7 +20,7 @@ public class EventSystemMonitor : MonoBehaviour
 
     private void CheckAndCleanupEventSystems()
     {
-        EventSystem[] allEventSystems = FindObjectsByType<EventSystem>(FindObjectsSortMode.None);
+        EventSystem[] allEventSystems = FindObjectsByType<EventSystem>();
         
         if (allEventSystems.Length <= 1) return;
         

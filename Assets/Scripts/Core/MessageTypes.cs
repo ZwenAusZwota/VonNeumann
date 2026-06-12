@@ -115,6 +115,7 @@ public class SystemObject
     public string DisplayName;            // Anzeigename (HUD / UI)
     public object Dto;             // StarDto, PlanetDto oder AsteroidBeltDto
     public GameObject GameObject;  // Referenz auf die Instanz in der Szene
+    public bool RequiresNearScan;  // FarScan-Stubs bis NearScan Details liefert
     public readonly List<SystemObject> Children = new();
 }
 

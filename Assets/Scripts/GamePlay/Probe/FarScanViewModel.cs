@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// Hält die letzten FarScan-Ergebnisse. Implementiert IScanResultsReceiver,
+/// Hï¿½lt die letzten FarScan-Ergebnisse. Implementiert IScanResultsReceiver,
 /// damit BaseScannerController die Liste direkt setzen kann.
 /// </summary>
 [DisallowMultipleComponent]
@@ -14,7 +14,6 @@ public class FarScanViewModel : MonoBehaviour, IScanResultsReceiver
 
     public void SetResults(List<SystemObject> entries)
     {
-        _latest.Clear();
-        if (entries != null) _latest.AddRange(entries);
+        ScanResultsMerger.Merge(_latest, entries, fromNearScan: false);
     }
 }

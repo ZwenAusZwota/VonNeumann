@@ -19,7 +19,7 @@ public class EventSystemEmergencyFix : EditorWindow
         GUILayout.Label("EventSystem Emergency Fix", EditorStyles.boldLabel);
         GUILayout.Space(10);
         
-        EventSystem[] allEventSystems = FindObjectsByType<EventSystem>(FindObjectsSortMode.None);
+        EventSystem[] allEventSystems = FindObjectsByType<EventSystem>();
         
         GUILayout.Label($"Gefundene EventSystems: {allEventSystems.Length}");
         
@@ -68,7 +68,7 @@ public class EventSystemEmergencyFix : EditorWindow
 
     private void FixEventSystems()
     {
-        EventSystem[] allEventSystems = FindObjectsByType<EventSystem>(FindObjectsSortMode.None);
+        EventSystem[] allEventSystems = FindObjectsByType<EventSystem>();
         
         if (allEventSystems.Length <= 1) return;
         

@@ -113,7 +113,7 @@ public static class GameEvents
     public static void TogglePanel(string panelName)
     {
         // Finde den UIPanelManager und verwende dessen Toggle-Funktionalität
-        var uiPanelManager = UnityEngine.Object.FindFirstObjectByType<UIPanelManager>();
+        var uiPanelManager = UnityEngine.Object.FindAnyObjectByType<UIPanelManager>(FindObjectsInactive.Include);
         if (uiPanelManager != null)
         {
             uiPanelManager.TogglePanelViaEvent(panelName);

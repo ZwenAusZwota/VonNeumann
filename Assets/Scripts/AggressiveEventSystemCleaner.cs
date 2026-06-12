@@ -17,7 +17,7 @@ public class AggressiveEventSystemCleaner : MonoBehaviour
 
     private void CleanupEventSystems()
     {
-        EventSystem[] allEventSystems = FindObjectsByType<EventSystem>(FindObjectsSortMode.None);
+        EventSystem[] allEventSystems = FindObjectsByType<EventSystem>();
         
         if (allEventSystems.Length <= 1) return;
         

@@ -479,8 +479,7 @@ MonoBehaviour:
   scanLayers:
     serializedVersion: 2
     m_Bits: 4294967295
-  ignoreTags:
-  - Player
+  ignoreTags: []
   defaultNearAU: 0.2
 --- !u!114 &2091974327098159234
 MonoBehaviour:
@@ -499,7 +498,6 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 4294967295
   ignoreTags:
-  - Player
   - Asteroid
   defaultFarAU: 100
   simulateLightDelay: 1

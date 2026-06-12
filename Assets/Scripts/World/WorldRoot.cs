@@ -66,7 +66,7 @@ public class WorldRoot : MonoBehaviour
     public static void Ensure()
     {
         if (GetInstance() != null) return;
-        var existing = FindFirstObjectByType<WorldRoot>();
+        var existing = FindAnyObjectByType<WorldRoot>();
         if (existing != null) 
         { 
             SetInstance(existing); 

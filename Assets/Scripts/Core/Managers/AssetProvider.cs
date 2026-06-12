@@ -37,6 +37,16 @@ public class AssetProvider : MonoBehaviour
         if (I != null && I != this) { Destroy(gameObject); return; }
         I = this;
         DontDestroyOnLoad(gameObject);
+        _logFilePath = BuildLogFilePath();
+    }
+
+    private string BuildLogFilePath()
+    {
+        var name = string.IsNullOrWhiteSpace(logFileName) ? "AssetProvider.log" : logFileName.Trim();
+        var baseDir = Application.persistentDataPath;
+        if (string.IsNullOrEmpty(baseDir))
+            return null;
+        return Path.Combine(baseDir, name);
     }
 
     /// <summary>UI-Ziel zum Anzeigen der Statusmeldungen setzen oder entfernen (null).</summary>
@@ -364,24 +374,25 @@ public class AssetProvider : MonoBehaviour
 
     private void Log(string msg)
     {
-        //if (verboseLogs)
-        //{
-            Debug.Log(msg);
-            try
+        Debug.Log(msg);
+
+        if (string.IsNullOrEmpty(_logFilePath))
+            return;
+
+        try
+        {
+            var ts = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
+            var line = $"{ts} {msg}";
+            lock (_logLock)
             {
-                var ts = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
-                var line = $"{ts} {msg}";
-                lock (_logLock)
-                {
-                    EnsureLogFileReady(writeHeader: false);
-                    File.AppendAllText(_logFilePath, line + Environment.NewLine);
-                }
+                EnsureLogFileReady(writeHeader: false);
+                File.AppendAllText(_logFilePath, line + Environment.NewLine);
             }
-            catch (Exception e)
-            {
-                Debug.LogWarning($"[AssetProvider] Logfile-Write warn: {e.Message}");
-            }
-        //}
+        }
+        catch (Exception e)
+        {
+            Debug.LogWarning($"[AssetProvider] Logfile-Write warn: {e.Message}");
+        }
     }
 
     private void SafeStatus(string msg)
@@ -401,6 +412,8 @@ public class AssetProvider : MonoBehaviour
 
     private void EnsureLogFileReady(bool writeHeader)
     {
+        if (string.IsNullOrEmpty(_logFilePath))
+            return;
 
         try
         {

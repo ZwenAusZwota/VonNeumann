@@ -723,9 +723,7 @@ public class ProbeAutopilot : MonoBehaviour
 
         if (freezeOnStop)
         {
-            rb.isKinematic = true;
-            rb.linearVelocity = Vector3.zero;
-            rb.angularVelocity = Vector3.zero;
+            ResetRigidbody(makeKinematicAfter: true);
             stickyActive = false; // kein relativer Offset
         }
         else

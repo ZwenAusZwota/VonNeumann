@@ -235,33 +235,16 @@ public class AsteroidBelt : MonoBehaviour
         Transform closest = null;
         float minDist = float.MaxValue;
 
-        // Primär: bekannte Komponentenliste
-        foreach (var comp in asteroidComps)
+        foreach (var mineable in GetComponentsInChildren<MineableAsteroid>(true))
         {
-            if (comp == null) continue;
-            float d = Vector3.Distance(probePosition, comp.transform.position);
-            if (d < minDist)
-            {
-                minDist = d;
-                closest = comp.transform;
-            }
-        }
+            if (mineable == null) continue;
 
-        // Fallback: nach Kindern mit Tag "Asteroid" suchen (falls Liste leer ist)
-        if (closest == null)
-        {
-            foreach (Transform child in transform)
-            {
-                if (child != null && child.CompareTag("Asteroid"))
-                {
-                    float d = Vector3.Distance(probePosition, child.position);
-                    if (d < minDist)
-                    {
-                        minDist = d;
-                        closest = child;
-                    }
-                }
-            }
+            var asteroidTransform = mineable.transform;
+            float d = Vector3.Distance(probePosition, asteroidTransform.position);
+            if (d >= minDist) continue;
+
+            minDist = d;
+            closest = asteroidTransform;
         }
 
         return closest;

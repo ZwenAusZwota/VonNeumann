@@ -1,6 +1,9 @@
 {
     "panelId": "NavPanel",
-    "x": 451.5330810546875,
-    "y": 173.8895263671875,
-    "visible": true
+    "x": 778.9943237304688,
+    "y": -107.40509033203125,
+    "width": 250.7427978515625,
+    "height": 240.0,
+    "hasCustomSize": true,
+    "visible": false
 }

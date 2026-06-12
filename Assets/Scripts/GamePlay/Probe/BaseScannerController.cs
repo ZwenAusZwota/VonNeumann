@@ -1,18 +1,19 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
 public abstract class BaseScannerController : MonoBehaviour
 {
-    [Header("Scanner – Reichweite (AE)")]
-    [Tooltip("Scanradius in Astronomischen Einheiten (1 AE ≈ 149,6 Mio. km).")]
+    [Header("Scanner ? Reichweite (AE)")]
+    [Tooltip("Scanradius in Astronomischen Einheiten (1 AE ? 149,6 Mio. km).")]
     [Min(0f)]
     public float scanRadiusAU = 0.10f;
 
-    [Header("Filter (für Collider-basierte Treffer)")]
+    [Header("Filter (f?r Collider-basierte Treffer)")]
     public LayerMask scanLayers = ~0;
-    public string[] ignoreTags = new[] { "Player" };
+    [Tooltip("Zus?tzliche Tags ignorieren. Die eigene Sonde wird immer ausgeschlossen.")]
+    public string[] ignoreTags = System.Array.Empty<string>();
 
     protected const float AU_IN_KM = 149_597_870.7f;
 
@@ -23,15 +24,27 @@ public abstract class BaseScannerController : MonoBehaviour
     protected float UnitsToAu(float units) =>
         UnitsToKm(units) / AU_IN_KM;
 
-    public void PerformScan()
+    public virtual void PerformScan()
     {
         float radiusUnits = AuToUnits(scanRadiusAU);
         Vector3 origin = transform.position;
 
         var results = new List<SystemObject>(128);
-        var seen = new HashSet<int>();
+        var seen = new HashSet<EntityId>();
 
-        /* ---------- 1) Collider-basierte Treffer ---------- */
+        CollectColliderHits(origin, radiusUnits, results, seen, includeAsteroids: true);
+        CollectBeltHits(origin, radiusUnits, results, seen);
+
+        Publish(results);
+    }
+
+    protected void CollectColliderHits(
+        Vector3 origin,
+        float radiusUnits,
+        List<SystemObject> results,
+        HashSet<EntityId> seen,
+        bool includeAsteroids)
+    {
         var hits = Physics.OverlapSphere(origin, radiusUnits, scanLayers);
         Array.Sort(hits, (a, b) =>
         {
@@ -45,103 +58,99 @@ public abstract class BaseScannerController : MonoBehaviour
             if (col == null) continue;
             if (ignoreTags != null && ignoreTags.Contains(col.tag)) continue;
 
-            // 1) Ausgangsobjekt (Rigidbody-Wurzel falls vorhanden)
             GameObject go = col.attachedRigidbody ? col.attachedRigidbody.gameObject : col.gameObject;
 
-            // 2) >>> Kanonisierung nur für Asteroiden:
-            // Wenn der getroffene Collider ein Kind einer Asteroiden-Hierarchie ist,
-            // auf den Root mit MineableAsteroid hochziehen, damit keine LOD-Clones gelistet werden.
             var asteroidRoot = go.GetComponentInParent<MineableAsteroid>();
             if (asteroidRoot != null)
+            {
+                if (!includeAsteroids) continue;
                 go = asteroidRoot.gameObject;
+            }
 
-            int id = go.GetInstanceID();
+            if (IsPartOfScanningProbe(go)) continue;
+
+            var id = go.GetEntityId();
             if (seen.Contains(id)) continue;
             seen.Add(id);
 
+            bool isAsteroid = asteroidRoot != null;
             results.Add(new SystemObject
             {
-                Kind = SystemObject.ObjectKind.ScannedObject,
+                Kind = isAsteroid ? SystemObject.ObjectKind.Asteroid : SystemObject.ObjectKind.ScannedObject,
                 Id = id.ToString(),
                 Name = go.tag,
                 DisplayName = BuildDisplayName(go.transform, origin),
                 Dto = col,
-                GameObject = go
+                GameObject = go,
+                RequiresNearScan = false
             });
         }
+    }
 
-        /* ---------- 2) Gürtel ohne Collider ---------- */
-        var belts = FindObjectsByType<AsteroidBelt>(FindObjectsSortMode.None);
+    protected void CollectBeltHits(
+        Vector3 origin,
+        float radiusUnits,
+        List<SystemObject> results,
+        HashSet<EntityId> seen)
+    {
+        var belts = FindObjectsByType<AsteroidBelt>();
 
         foreach (var belt in belts)
         {
             if (belt == null) continue;
 
-            int id = belt.gameObject.GetInstanceID();
+            var id = belt.gameObject.GetEntityId();
             if (seen.Contains(id)) continue;
 
-            float distUnits = BeltNearestDistanceUnits(belt, origin, out Vector3 nearestPoint, out float targetRadius);
+            float distUnits = BeltNearestDistanceUnits(belt, origin, out _, out _);
+            if (distUnits > radiusUnits) continue;
 
-            if (distUnits <= radiusUnits)
+            Transform closestAsteroid = belt.GetClosestAsteroid(origin);
+            GameObject targetObject = belt.gameObject;
+
+            if (IsPartOfScanningProbe(targetObject)) continue;
+
+            if (closestAsteroid != null)
+                seen.Add(closestAsteroid.gameObject.GetEntityId());
+
+            results.Add(new SystemObject
             {
-                // Finde den nächstgelegenen Asteroiden im Belt
-                Transform closestAsteroid = belt.GetClosestAsteroid(origin);
-                
-                // Wenn ein Asteroid gefunden wurde, verwende ihn als NavTarget
-                // Ansonsten verwende das Belt selbst als Fallback
-                GameObject targetObject = closestAsteroid != null ? closestAsteroid.gameObject : belt.gameObject;
-                
-                results.Add(new SystemObject
-                {
-                    Kind = SystemObject.ObjectKind.ScannedObject,
-                    Id = targetObject.GetInstanceID().ToString(),
-                    Name = closestAsteroid != null ? "Asteroid" : "AsteroidBelt",
-                    DisplayName = BuildDisplayNameForBelt(belt, origin, closestAsteroid),
-                    Dto = null,
-                    GameObject = targetObject
-                });
-                seen.Add(id);
-            }
+                Kind = SystemObject.ObjectKind.AsteroidBelt,
+                Id = id.ToString(),
+                Name = "AsteroidBelt",
+                DisplayName = BuildDisplayNameForBelt(belt, origin, closestAsteroid),
+                Dto = null,
+                GameObject = targetObject,
+                RequiresNearScan = false
+            });
+            seen.Add(id);
         }
-
-        Publish(results);
     }
 
-    /// <summary> Standard-Anzeige: unter 0,05 AE in km, sonst AE. </summary>
+    /// <summary>Anzeigename ohne Distanz (Distanz kommt in die Scan-Liste rechts).</summary>
     protected virtual string BuildDisplayName(Transform t, Vector3 origin)
     {
-        float distUnits = (t.position - origin).magnitude;
-        float distAu = UnitsToAu(distUnits);
-        if (distAu >= 0.05f)
-            return $"{t.tag} — {distAu:0.###} AU";
-        float distKm = UnitsToKm(distUnits);
-        return $"{t.tag} — {(int)distKm:N0} km";
+        if (!string.IsNullOrWhiteSpace(t.name))
+            return t.name.Trim();
+        return string.IsNullOrWhiteSpace(t.tag) ? "Object" : t.tag;
     }
 
-    /// <summary> Anzeige für Belts: Distanz zum nächsten Randpunkt oder Asteroid. </summary>
+    /// <summary>Anzeigename für Gürtel ohne Distanz.</summary>
     protected virtual string BuildDisplayNameForBelt(AsteroidBelt belt, Vector3 origin, Transform nearestAsteroid)
     {
-        if (nearestAsteroid != null)
-        {
-            float distUnits = (nearestAsteroid.position - origin).magnitude;
-            float distAu = UnitsToAu(distUnits);
-            return $"Asteroid — {distAu:0.###} AU";
-        }
-        else
-        {
-            float distUnits = BeltNearestDistanceUnits(belt, origin, out Vector3 nearestPoint, out float targetRadius);
-            float distAu = UnitsToAu(distUnits);
-            string range = $"[{belt.innerRadius:0.#}..{belt.outerRadius:0.#} u]";
-            return $"AsteroidBelt — {distAu:0.###} AU (edge) {range}";
-        }
+        return string.IsNullOrWhiteSpace(belt.name) ? "Asteroidengürtel" : belt.name.Trim();
     }
 
     /// <summary>
-    /// Kürzeste Entfernung von 'pos' zur Belt-Ringfläche in Units.
-    /// Gibt zusätzlich den nächstgelegenen Punkt 'nearestPoint' und den zugehörigen Zielradius zurück.
+    /// K?rzeste Entfernung von 'pos' zur Belt-Ringfl?che in Units.
+    /// Gibt zus?tzlich den n?chstgelegenen Punkt 'nearestPoint' und den zugeh?rigen Zielradius zur?ck.
     /// </summary>
     protected static float BeltNearestDistanceUnits(AsteroidBelt belt, Vector3 pos, out Vector3 nearestPoint, out float targetRadius)
     {
+        var cfg = belt.ToResolvedConfig();
+        float inner = cfg.innerRadiusUU;
+        float outer = cfg.outerRadiusUU;
+
         Vector3 C = belt.transform.position;
         Vector3 N = belt.transform.up;
 
@@ -153,13 +162,13 @@ public abstract class BaseScannerController : MonoBehaviour
 
         float r = inPlane.magnitude;
 
-        if (r < belt.innerRadius) targetRadius = belt.innerRadius;
-        else if (r > belt.outerRadius) targetRadius = belt.outerRadius;
+        if (r < inner) targetRadius = inner;
+        else if (r > outer) targetRadius = outer;
         else
         {
-            float dInner = r - belt.innerRadius;
-            float dOuter = belt.outerRadius - r;
-            targetRadius = (dInner <= dOuter) ? belt.innerRadius : belt.outerRadius;
+            float dInner = r - inner;
+            float dOuter = outer - r;
+            targetRadius = (dInner <= dOuter) ? inner : outer;
         }
 
         Vector3 radialDir = inPlane.normalized;
@@ -168,10 +177,26 @@ public abstract class BaseScannerController : MonoBehaviour
         return Vector3.Distance(pos, nearestPoint);
     }
 
+    /// <summary>Eigene Sonde (Scanner-Hierarchie) von Ergebnissen ausschlie?en.</summary>
+    protected bool IsPartOfScanningProbe(GameObject go)
+    {
+        if (go == null) return false;
+
+        Transform probeRoot = GetScanningProbeRoot();
+        Transform t = go.transform;
+        return t == probeRoot || t.IsChildOf(probeRoot);
+    }
+
+    private Transform GetScanningProbeRoot()
+    {
+        var probe = GetComponentInParent<ProbeController>();
+        return probe != null ? probe.transform : transform.root;
+    }
+
     /// <summary> Von Near/Far-Spezialisierungen zu implementieren. </summary>
     protected abstract void Publish(List<SystemObject> entries);
 
-    // --------- Gemeinsamer Helper für Near/Far: ViewModel befüllen + HUD-Refresh ----------
+    // --------- Gemeinsamer Helper f?r Near/Far: ViewModel bef?llen + HUD-Refresh ----------
     /// <summary>
     /// Schreibt die Scan-Ergebnisse in ein ViewModel-Component (wird bei Bedarf angelegt)
     /// und triggert danach ein HUD-Update via WorldRegistry.
@@ -196,7 +221,7 @@ public abstract class BaseScannerController : MonoBehaviour
 }
 
 /// <summary>
-/// Minimales Interface für Scanner-ViewModels, damit Base die Ergebnisse einfüllen kann.
+/// Minimales Interface f?r Scanner-ViewModels, damit Base die Ergebnisse einf?llen kann.
 /// </summary>
 public interface IScanResultsReceiver
 {

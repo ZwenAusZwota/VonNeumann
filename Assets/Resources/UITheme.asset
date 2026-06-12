@@ -1,0 +1,50 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6075d55e5b5ba184cb7338dc3b9dae32, type: 3}
+  m_Name: UITheme
+  m_EditorClassIdentifier: Assembly-CSharp::UITheme
+  backgroundNormal: {r: 0.03, g: 0.05, b: 0.09, a: 0.97}
+  backgroundHover: {r: 0.06, g: 0.1, b: 0.17, a: 0.98}
+  backgroundSelected: {r: 0.1, g: 0.25, b: 0.41, a: 1}
+  backgroundDisabled: {r: 0.05, g: 0.07, b: 0.11, a: 0.55}
+  textPrimary: {r: 0.84, g: 0.93, b: 1, a: 1}
+  textSecondary: {r: 0.43, g: 0.56, b: 0.69, a: 1}
+  textAccent: {r: 0.24, g: 0.84, b: 0.96, a: 1}
+  textDisabled: {r: 0.3, g: 0.38, b: 0.48, a: 1}
+  asteroidColor: {r: 0.6, g: 0.4, b: 0.2, a: 1}
+  planetColor: {r: 0.2, g: 0.6, b: 0.8, a: 1}
+  starColor: {r: 1, g: 0.9, b: 0.3, a: 1}
+  stationColor: {r: 0.5, g: 0.8, b: 0.3, a: 1}
+  unknownColor: {r: 0.5, g: 0.5, b: 0.5, a: 1}
+  successColor: {r: 0.24, g: 0.86, b: 0.55, a: 1}
+  warningColor: {r: 1, g: 0.72, b: 0.22, a: 1}
+  errorColor: {r: 0.95, g: 0.28, b: 0.32, a: 1}
+  infoColor: {r: 0.24, g: 0.72, b: 0.95, a: 1}
+  ironColor: {r: 0.6, g: 0.6, b: 0.65, a: 1}
+  goldColor: {r: 1, g: 0.84, b: 0, a: 1}
+  silverColor: {r: 0.75, g: 0.75, b: 0.75, a: 1}
+  carbonColor: {r: 0.2, g: 0.2, b: 0.25, a: 1}
+  iceColor: {r: 0.7, g: 0.9, b: 1, a: 1}
+  panelBackground: {r: 0.04, g: 0.07, b: 0.13, a: 0.93}
+  panelBorder: {r: 0.18, g: 0.61, b: 0.79, a: 0.85}
+  panelHeaderBackground: {r: 0.06, g: 0.11, b: 0.19, a: 0.98}
+  scrollPanelBackground: {r: 0.02, g: 0.03, b: 0.055, a: 0.98}
+  scrollViewportBackground: {r: 0.015, g: 0.025, b: 0.045, a: 0.99}
+  scrollTrackBackground: {r: 0.05, g: 0.08, b: 0.14, a: 0.8}
+  scrollHandle: {r: 0.18, g: 0.45, b: 0.62, a: 0.9}
+  buttonNormal: {r: 0.08, g: 0.16, b: 0.27, a: 1}
+  buttonHover: {r: 0.12, g: 0.24, b: 0.4, a: 1}
+  buttonPressed: {r: 0.04, g: 0.09, b: 0.16, a: 1}
+  progressEmpty: {r: 0.08, g: 0.1, b: 0.16, a: 1}
+  progressFull: {r: 0.18, g: 0.8, b: 0.53, a: 1}
+  progressWarning: {r: 1, g: 0.7, b: 0.2, a: 1}
+  progressCritical: {r: 0.9, g: 0.2, b: 0.2, a: 1}

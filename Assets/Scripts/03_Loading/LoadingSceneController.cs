@@ -18,6 +18,7 @@ public class LoadingScreenController : MonoBehaviour
     [SerializeField] private RectTransform content;          // Content unter ScrollView
     [SerializeField] private TMP_Text messageItemTemplate;   // Optionales TMP-Text-Prefab (inactive)
 
+    private static LoadingScreenController _active;
     private readonly Queue<GameObject> _items = new();
     //[Header("Szenennamen (anpassen falls abweichend)")]
     //[SerializeField] private string gameSceneName = "10_Game";
@@ -36,10 +37,51 @@ public class LoadingScreenController : MonoBehaviour
     private void Awake()
     {
         AutoWireReferences();
+        if (!ClaimActiveInstance())
+            return;
+    }
+
+    private void OnDestroy()
+    {
+        if (_active == this)
+            _active = null;
+    }
+
+    private bool ClaimActiveInstance()
+    {
+        if (_active == null || _active == this)
+        {
+            _active = this;
+            return true;
+        }
+
+        if (UiWiringScore() > _active.UiWiringScore())
+        {
+            _active.enabled = false;
+            _active = this;
+            return true;
+        }
+
+        Debug.LogWarning("[Loading] Doppelte LoadingScreenController-Instanz wird ignoriert.");
+        enabled = false;
+        return false;
+    }
+
+    private int UiWiringScore()
+    {
+        int score = 0;
+        if (progressBar) score++;
+        if (txtStatus) score++;
+        if (content) score++;
+        if (scrollRect) score++;
+        return score;
     }
 
     private async void Start()
     {
+        if (_active != this)
+            return;
+
         try
         {
             Time.timeScale = 1;
@@ -99,9 +141,7 @@ public class LoadingScreenController : MonoBehaviour
     /// <summary> Lädt eine Szene als Single und wartet bis fertig. </summary>
     private async UniTask LoadSingle(string sceneName)
     {
-        var op = SceneManager.LoadSceneAsync(sceneName, LoadSceneMode.Single);
-        if (op == null) throw new InvalidOperationException($"Scene '{sceneName}' konnte nicht gestartet werden.");
-        while (!op.isDone) await UniTask.Yield();
+        await EventSystemCleaner.LoadSceneSingleAsync(sceneName);
         var s = SceneManager.GetSceneByName(sceneName);
         if (s.IsValid()) SceneManager.SetActiveScene(s);
     }
@@ -119,9 +159,7 @@ public class LoadingScreenController : MonoBehaviour
             return;
         }
 
-        var op = SceneManager.LoadSceneAsync(sceneName, LoadSceneMode.Additive);
-        if (op == null) throw new InvalidOperationException($"Additives Laden von '{sceneName}' fehlgeschlagen.");
-        while (!op.isDone) await UniTask.Yield();
+        await EventSystemCleaner.LoadSceneAdditiveAsync(sceneName);
 
         var loaded = SceneManager.GetSceneByName(sceneName);
         if (!loaded.IsValid() || !loaded.isLoaded)
@@ -135,9 +173,9 @@ public class LoadingScreenController : MonoBehaviour
         if (!scrollRect) scrollRect = GetComponentInChildren<ScrollRect>(true);
         if (!content && scrollRect) content = scrollRect.content;
 
-        if (!content)
+        if (!content && _active == this)
         {
-            Debug.LogWarning("[HUDMessageLogUI] 'content' ist nicht zugewiesen. Bitte im Inspector setzen (ScrollRect -> Content).");
+            Debug.LogWarning("[Loading] Message-Log 'content' ist nicht zugewiesen – nur txtStatus wird genutzt.");
         }
     }
 
@@ -166,10 +204,7 @@ public class LoadingScreenController : MonoBehaviour
         if (string.IsNullOrWhiteSpace(msg)) return;
 
         if (!content)
-        {
-            Debug.LogWarning("[HUDMessageLogUI] Kein Content zugewiesen – Nachricht wird verworfen.");
             return;
-        }
 
         EnsureTemplateExists();
 

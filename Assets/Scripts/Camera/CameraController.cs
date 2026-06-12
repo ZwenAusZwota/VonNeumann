@@ -1,7 +1,8 @@
-﻿// Assets/Scripts/Core/CameraController.cs
+// Assets/Scripts/Core/CameraController.cs
 using System.Collections;
 using System.Linq;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
 
@@ -13,135 +14,108 @@ public class CameraController : MonoBehaviour
     public Transform target;
 
     [Header("Automatische Bindung")]
-    [Tooltip("Beim Start automatisch nach einer Sonde suchen und binden.")]
     public bool autoBindOnStart = true;
-
-    [Tooltip("Wie lange nach dem Start wird wiederholt nach einer Sonde gesucht?")]
     public float autoBindWindowSeconds = 5f;
-
-    [Tooltip("Versuchsintervall für Auto-Bind in Sekunden.")]
     public float autoBindRetryInterval = 0.25f;
-
-    [Tooltip("Bevorzugte Tags für die Zielsuche (Reihenfolge wichtig).")]
     public string[] candidateTags = new[] { "Probe", "Player", "Ship" };
-
-    [Tooltip("Heuristik über Namen, falls kein Tag/Controller gefunden.")]
     public string[] candidateNamesContains = new[] { "Probe", "Sonde" };
 
-    [Header("Weltraum-Kamera Einstellungen")]
-    [Tooltip("Standard-Rückstand zur Sonde")]
+    [Header("Orbit")]
+    [Tooltip("Standard-R?ckstand zur Sonde (Z = Entfernung, Y = H?hen-Offset)")]
     public Vector3 defaultOffset = new(0f, 2f, -8f);
 
-    [Tooltip("Minimum Entfernung zur Sonde (in Unity Units)")]
     public float minDistance = 0.1f;
-
-    [Tooltip("Maximum Entfernung zur Sonde (für Übersicht)")]
     public float maxDistance = 1000f;
 
-    [Tooltip("Zoom-Geschwindigkeit (Mausrad)")]
+    [Header("Maus ? Orbit (rechte Maustaste)")]
+    public float mouseSensitivity = 0.15f;
+    public float pitchLimit = 85f;
+    public bool invertY = false;
+    [Tooltip("Mauszeiger beim Orbit verstecken/sperren")]
+    public bool lockCursorWhileOrbiting = false;
+    [Tooltip("Kein Orbit, wenn der Mauszeiger ?ber UI liegt")]
+    public bool blockOrbitOverUI = true;
+
+    [Header("Zoom")]
     public float zoomSpeed = 0.1f;
-
-    [Tooltip("Smooth Zoom für flüssige Übergänge")]
     public bool smoothZoom = true;
-
-    [Tooltip("Zoom Smoothing Geschwindigkeit")]
     public float zoomSmoothSpeed = 5f;
 
-    [Header("Maus-Steuerung")]
-    [Tooltip("Empfindlichkeit für Freilook (rechte Maustaste)")]
-    public float mouseSensitivity = 2f;
-
-    [Tooltip("Maximaler Pitch-Winkel (Hoch/Runter schauen)")]
-    public float pitchLimit = 85f;
-
-    [Tooltip("Maus-Inversion für Y-Achse")]
-    public bool invertY = false;
-
-
     [Header("Weltraum-Navigation")]
-    [Tooltip("Automatisch auf nahe Objekte fokussieren (falls Registry vorhanden).")]
     public bool autoFocusNearbyObjects = true;
-
-    [Tooltip("Entfernung für automatischen Fokus-Wechsel")]
     public float autoFocusDistance = 50f;
-
-    [Tooltip("Geschwindigkeit der Kamera-Bewegung beim Ziel-Wechsel")]
     public float targetTransitionSpeed = 2f;
 
     [Header("FOV & Rendering")]
-    [Tooltip("Standard Field of View")]
     public float defaultFOV = 60f;
-
-    [Tooltip("FOV beim maximalen Zoom-out (für Übersicht)")]
     public float maxFOV = 120f;
-
-    [Tooltip("Dynamisches FOV basierend auf Abstand/Geschwindigkeit")]
     public bool dynamicFOV = true;
 
     [Header("Collision & Clipping")]
-    [Tooltip("Kamera-Kollision mit Objekten verhindern")]
-    public bool preventCollision = false; // Im Weltraum meist aus
-
-    [Tooltip("Layer für Kollisions-Erkennung")]
+    public bool preventCollision = false;
     public LayerMask collisionLayers = ~0;
-
-    [Tooltip("Radius für Kollisions-Erkennung")]
     public float collisionRadius = 0.5f;
 
-    // Internals
     private InputController controls;
     private Camera cam;
-    private bool followTarget = true;
-    private float yaw, pitch;
-    private Vector3 currentOffset;
+    private float yaw;
+    private float pitch;
     private float currentDistance;
     private float targetDistance;
-    private Vector3 velocityOffset;
-    private bool isTransitioning = false;
-    
+    private float orbitHeight;
+    private Vector3 velocityPosition;
+    private bool isTransitioning;
+    private bool orbitInputActive;
+    private float pendingZoomDelta;
 
     private void Awake()
     {
         cam = GetComponent<Camera>();
         cam.fieldOfView = defaultFOV;
 
-        // Falls eine Scene/Render-Fehlkonfiguration vorlag:
         if (cam.clearFlags == CameraClearFlags.Nothing)
             cam.clearFlags = CameraClearFlags.Skybox;
 
-        currentOffset = defaultOffset;
-        currentDistance = defaultOffset.magnitude;
+        orbitHeight = defaultOffset.y;
+        currentDistance = GetDefaultOrbitDistance();
         targetDistance = currentDistance;
 
         InitializeInputSystem();
 
-        // Sicherstellen, dass wir zu Beginn eine sinnvolle Pose haben:
         if (target != null)
-        {
             ResetToDefaultView(immediatePosition: true);
-        }
 
-        // Nach Szenenwechsel erneut versuchen zu binden
         SceneManager.sceneLoaded += OnSceneLoaded;
     }
 
     private void Start()
     {
         if (target == null && autoBindOnStart)
-        {
             StartCoroutine(AutoBindRoutine());
-        }
+    }
+
+    private void OnEnable()
+    {
+        controls?.Camera.Enable();
+    }
+
+    private void OnDisable()
+    {
+        if (controls != null && controls.Camera.enabled)
+            controls.Camera.Disable();
+
+        if (orbitInputActive)
+            EndOrbitInput();
     }
 
     private void OnDestroy()
     {
-        controls?.Dispose();
+        ShutdownInputSystem();
         SceneManager.sceneLoaded -= OnSceneLoaded;
     }
 
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
-        // Bei Eintritt in 10_Game oder generell nach Laden erneut binden
         if (autoBindOnStart)
         {
             StopAllCoroutines();
@@ -152,7 +126,6 @@ public class CameraController : MonoBehaviour
     private IEnumerator AutoBindRoutine()
     {
         float deadline = Time.time + autoBindWindowSeconds;
-        Debug.Log("[CameraController] Auto-Bind gestartet...", this);
         while (target == null && Time.time < deadline)
         {
             TryAutoBind();
@@ -160,24 +133,17 @@ public class CameraController : MonoBehaviour
             yield return new WaitForSeconds(autoBindRetryInterval);
         }
 
-        // Falls wir etwas gefunden haben, sofort sauber ausrichten
         if (target != null)
-        {
             ResetToDefaultView(immediatePosition: true);
-        }
     }
 
-    /// <summary>Versucht in sinnvoller Reihenfolge, eine Sonde zu finden.</summary>
     private void TryAutoBind()
     {
-        // 1) Bereits vom Inspector gesetzt?
         if (target != null) return;
 
-        // 2) Über Controller-Typ (empfohlen)
-        var probe = FindFirstObjectOfTypeSafe<MonoBehaviour>("ProbeController");
+        var probe = FindFirstObjectByTypeSafe<MonoBehaviour>("ProbeController");
         if (probe != null) { SetTarget(probe.transform); return; }
 
-        // 3) Über Tag
         foreach (var t in candidateTags)
         {
             try
@@ -188,27 +154,18 @@ public class CameraController : MonoBehaviour
             catch (UnityException ex)
             {
                 Debug.LogWarning($"[CameraController] Tag '{t}' ist nicht definiert: {ex.Message}");
-                continue;
             }
         }
 
-        // 4) Über Namen-Heuristik
-        var all = FindObjectsByType<Transform>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+        var all = FindObjectsByType<Transform>(FindObjectsInactive.Exclude);
         var byName = all.FirstOrDefault(tr =>
             candidateNamesContains.Any(key => tr.name.ToLower().Contains(key.ToLower())));
-        if (byName != null) { SetTarget(byName); return; }
-
-        // 5) Optional: Planet-/Hub-Registries, falls vorhanden (später per Code-Aufruf bindbar)
-        // -> Externe Systeme können jederzeit CameraController.Instance.SetTarget(...) aufrufen.
+        if (byName != null) SetTarget(byName);
     }
 
-    // Utility: findet ein Objekt eines Typs per Namen ohne harte Abhängigkeit.
-    private T FindFirstObjectOfTypeSafe<T>(string typeName) where T : class
+    private T FindFirstObjectByTypeSafe<T>(string typeName) where T : class
     {
-        // Versuche zunächst generisch
-        var typed = Object.FindFirstObjectByType<MonoBehaviour>(FindObjectsInactive.Exclude);
-        // Fallback: wir suchen alle MonoBehaviours und matchen nach Typname
-        var all = FindObjectsByType<MonoBehaviour>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+        var all = FindObjectsByType<MonoBehaviour>(FindObjectsInactive.Exclude);
         var hit = all.FirstOrDefault(m => m != null && m.GetType().Name == typeName);
         return hit as T;
     }
@@ -216,120 +173,142 @@ public class CameraController : MonoBehaviour
     private void InitializeInputSystem()
     {
         controls = new InputController();
-        controls.Camera.Enable();
 
-        // Freilook mit rechter Maustaste
-        controls.Camera.Look.performed += ctx =>
-        {
-            if (Mouse.current != null && Mouse.current.rightButton.isPressed)
-            {
-                Vector2 mouseDelta = ctx.ReadValue<Vector2>() * mouseSensitivity;
+        controls.Camera.RightClick.started += OnRightClickStarted;
+        controls.Camera.RightClick.canceled += OnRightClickCanceled;
+        controls.Camera.Zoom.performed += OnZoomPerformed;
+        controls.Camera.Reset.performed += OnResetPerformed;
+    }
 
-                yaw += mouseDelta.x;
-                pitch += invertY ? mouseDelta.y : -mouseDelta.y;
-                pitch = Mathf.Clamp(pitch, -pitchLimit, pitchLimit);
+    private void ShutdownInputSystem()
+    {
+        if (controls == null) return;
 
-                ApplyFreeRotation();
-            }
-        };
+        controls.Camera.RightClick.started -= OnRightClickStarted;
+        controls.Camera.RightClick.canceled -= OnRightClickCanceled;
+        controls.Camera.Zoom.performed -= OnZoomPerformed;
+        controls.Camera.Reset.performed -= OnResetPerformed;
 
-        controls.Camera.RightClick.started += _ =>
-        {
-            StartFreeLookTransition();
+        if (controls.Camera.enabled)
+            controls.Camera.Disable();
+
+        controls.Dispose();
+        controls = null;
+    }
+
+    private void OnRightClickStarted(InputAction.CallbackContext _) => BeginOrbitInput();
+    private void OnRightClickCanceled(InputAction.CallbackContext _) => EndOrbitInput();
+    private void OnZoomPerformed(InputAction.CallbackContext ctx) => pendingZoomDelta += ctx.ReadValue<float>();
+    private void OnResetPerformed(InputAction.CallbackContext _) => ResetToDefaultView();
+
+    private void BeginOrbitInput()
+    {
+        orbitInputActive = true;
+        if (lockCursorWhileOrbiting)
             Cursor.lockState = CursorLockMode.Locked;
-        };
-        controls.Camera.RightClick.canceled += _ =>
-        {
-            EndFreeLookTransition();
-            Cursor.lockState = CursorLockMode.None;
-        };
+    }
 
-        // Zoom mit Mausrad
-        controls.Camera.Zoom.performed += ctx =>
-        {
-            if (target == null) return;
-
-            float scrollInput = ctx.ReadValue<float>();
-            float zoomFactor = 1f + (scrollInput * zoomSpeed);
-
-            targetDistance = currentDistance / zoomFactor;
-            targetDistance = Mathf.Clamp(targetDistance, minDistance, maxDistance);
-
-            if (!smoothZoom)
-            {
-                currentDistance = targetDistance;
-                UpdateOffsetFromDistance();
-            }
-        };
-
-        // Reset auf F1
-        controls.Camera.Reset.performed += _ => ResetToDefaultView();
+    private void EndOrbitInput()
+    {
+        orbitInputActive = false;
+        Cursor.lockState = CursorLockMode.None;
     }
 
     private void LateUpdate()
     {
-        // Wenn das Target noch nicht da ist, regelmäßig (sparsam) nachbinden
-        if (target == null)
-            return;
+        if (target == null) return;
 
+        ProcessOrbitInput();
+        ProcessZoomInput();
         UpdateCameraDistance();
-        UpdateCameraPosition();
+        UpdateCameraTransform();
         UpdateDynamicFOV();
 
         if (autoFocusNearbyObjects && !isTransitioning)
             CheckForNearbyObjects();
     }
 
+    private void ProcessOrbitInput()
+    {
+        if (!orbitInputActive) return;
+        if (blockOrbitOverUI && IsPointerOverUI()) return;
+
+        Vector2 delta = controls.Camera.Look.ReadValue<Vector2>();
+        if (delta.sqrMagnitude < 0.0001f) return;
+
+        yaw += delta.x * mouseSensitivity;
+        pitch += (invertY ? delta.y : -delta.y) * mouseSensitivity;
+        pitch = Mathf.Clamp(pitch, -pitchLimit, pitchLimit);
+    }
+
+    private void ProcessZoomInput()
+    {
+        if (target == null || Mathf.Abs(pendingZoomDelta) < 0.001f) return;
+
+        if (blockOrbitOverUI && IsPointerOverUI())
+        {
+            pendingZoomDelta = 0f;
+            return;
+        }
+
+        float scrollInput = pendingZoomDelta;
+        pendingZoomDelta = 0f;
+
+        currentDistance = Vector3.Distance(transform.position, GetOrbitPivot());
+        float zoomFactor = 1f + (scrollInput * zoomSpeed);
+        targetDistance = Mathf.Clamp(currentDistance / zoomFactor, minDistance, maxDistance);
+
+        if (!smoothZoom)
+            currentDistance = targetDistance;
+    }
+
+    private static bool IsPointerOverUI()
+    {
+        return EventSystem.current != null && EventSystem.current.IsPointerOverGameObject();
+    }
+
     private void UpdateCameraDistance()
     {
-        if (smoothZoom && Mathf.Abs(currentDistance - targetDistance) > 0.01f)
-        {
-            currentDistance = Mathf.Lerp(currentDistance, targetDistance, Time.deltaTime * zoomSmoothSpeed);
-            UpdateOffsetFromDistance();
-        }
+        if (!smoothZoom || Mathf.Abs(currentDistance - targetDistance) <= 0.01f) return;
+        currentDistance = Mathf.Lerp(currentDistance, targetDistance, Time.deltaTime * zoomSmoothSpeed);
     }
 
-    private void UpdateOffsetFromDistance()
+    private Vector3 GetOrbitPivot()
     {
-        Vector3 direction = currentOffset.sqrMagnitude > 1e-6f ? currentOffset.normalized : Vector3.back;
-        currentOffset = direction * currentDistance;
+        return target.position + Vector3.up * orbitHeight;
     }
 
-    private void UpdateCameraPosition()
+    private Vector3 GetOrbitDirection()
     {
-        if (target == null) return;
+        return Quaternion.Euler(pitch, yaw, 0f) * Vector3.back;
+    }
 
-        if (followTarget)
+    private void UpdateCameraTransform()
+    {
+        Vector3 pivot = GetOrbitPivot();
+        Vector3 direction = GetOrbitDirection().normalized;
+        Vector3 desiredPosition = pivot + direction * currentDistance;
+
+        if (preventCollision)
+            desiredPosition = CheckCollision(pivot, desiredPosition);
+
+        // Kamera schaut immer auf den Orbit-Pivot (Sonde)
+        transform.rotation = Quaternion.LookRotation(pivot - desiredPosition, Vector3.up);
+
+        if (isTransitioning)
         {
-            // Folge-Modus: Kamera folgt der Sonden-Rotation (Yaw-orientiert)
-            Vector3 flatFwd = Vector3.ProjectOnPlane(target.forward, Vector3.up);
-            if (flatFwd.sqrMagnitude < 1e-6f) flatFwd = Vector3.forward;
+            transform.position = Vector3.SmoothDamp(
+                transform.position,
+                desiredPosition,
+                ref velocityPosition,
+                1f / Mathf.Max(0.01f, targetTransitionSpeed));
 
-            Quaternion targetRotation = Quaternion.LookRotation(flatFwd, Vector3.up);
-            transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, Time.deltaTime * targetTransitionSpeed);
-            
-            Vector3 desiredPosition = target.position + transform.rotation * currentOffset;
-            
-            if (preventCollision)
-            {
-                desiredPosition = CheckCollision(target.position, desiredPosition);
-            }
-
-            if (isTransitioning)
-            {
-                transform.position = Vector3.SmoothDamp(transform.position, desiredPosition, ref velocityOffset, 1f / Mathf.Max(0.01f, targetTransitionSpeed));
-                if (Vector3.Distance(transform.position, desiredPosition) < 0.1f)
-                    isTransitioning = false;
-            }
-            else
-            {
-                transform.position = desiredPosition;
-            }
+            if (Vector3.Distance(transform.position, desiredPosition) < 0.1f)
+                isTransitioning = false;
         }
         else
         {
-            // Freilook-Modus: Kamera behält ihre Position bei und rotiert nur um sich selbst
-            // Position wird nicht geändert, nur die Rotation wird durch ApplyFreeRotation() aktualisiert
+            transform.position = desiredPosition;
         }
     }
 
@@ -339,25 +318,21 @@ public class CameraController : MonoBehaviour
         float distance = Vector3.Distance(targetPos, desiredPos);
 
         if (Physics.SphereCast(targetPos, collisionRadius, direction, out RaycastHit hit, distance, collisionLayers))
-        {
             return targetPos + direction * Mathf.Max(0f, hit.distance - collisionRadius);
-        }
+
         return desiredPos;
     }
 
     private void UpdateDynamicFOV()
     {
-        if (!dynamicFOV || target == null) return;
+        if (!dynamicFOV) return;
 
-        // FOV abhängig von Entfernung
         float distanceRatio = Mathf.InverseLerp(minDistance, maxDistance, currentDistance);
         float targetFov = Mathf.Lerp(defaultFOV, maxFOV, distanceRatio);
 
-        // Optionaler Geschwindigkeits-Boost (Rigidbody vorhanden?)
         if (target.TryGetComponent<Rigidbody>(out var rb))
         {
-            float speed = rb.linearVelocity.magnitude; // FIX: velocity statt linearVelocity
-            float speedFov = Mathf.Clamp(speed * 0.5f, 0f, 20f);
+            float speedFov = Mathf.Clamp(rb.linearVelocity.magnitude * 0.5f, 0f, 20f);
             targetFov += speedFov;
         }
 
@@ -366,7 +341,10 @@ public class CameraController : MonoBehaviour
 
     private void CheckForNearbyObjects()
     {
-        // Optional: only if a registry exists in your project
+        // Sonde nicht durch Auto-Fokus ersetzen (z. B. beim Hineinzoomen)
+        if (target != null && target.GetComponent<ProbeController>() != null)
+            return;
+
         var registry = ServiceContainer.Instance?.Get<PlanetRegistry>();
         if (registry == null) return;
 
@@ -385,51 +363,36 @@ public class CameraController : MonoBehaviour
         }
 
         if (closestObject != null)
-        {
             SetTarget(closestObject);
-        }
-    }
-
-    private void ApplyFreeRotation()
-    {
-        transform.rotation = Quaternion.Euler(pitch, yaw, 0f);
     }
 
     public void ResetToDefaultView(bool immediatePosition = false)
     {
         if (target == null) return;
 
-        followTarget = true;
+        orbitHeight = defaultOffset.y;
+        currentDistance = GetDefaultOrbitDistance();
+        targetDistance = currentDistance;
+        cam.fieldOfView = defaultFOV;
+        isTransitioning = false;
 
-        // Kamera SOFORT hinter die Sonde – nur Yaw wird übernommen
         Vector3 flatFwd = Vector3.ProjectOnPlane(target.forward, Vector3.up);
         if (flatFwd.sqrMagnitude < 0.001f) flatFwd = Vector3.forward;
-        transform.rotation = Quaternion.LookRotation(flatFwd, Vector3.up);
 
-        currentOffset = defaultOffset;
-        currentDistance = defaultOffset.magnitude;
-        targetDistance = currentDistance;
-
-        cam.fieldOfView = defaultFOV;
+        yaw = Mathf.Atan2(flatFwd.x, flatFwd.z) * Mathf.Rad2Deg;
+        pitch = 0f;
 
         if (immediatePosition)
-        {
-            // Stelle sicher, dass beim ersten Frame kein „schwarzer“ Offset passiert
-            transform.position = target.position + transform.rotation * currentOffset;
-        }
+            ApplyOrbitPose();
         else
-        {
-            isTransitioning = true; // sanft nachziehen
-        }
+            isTransitioning = true;
     }
 
     public void SetTarget(Transform newTarget)
     {
         if (newTarget == null) return;
-
         target = newTarget;
         ResetToDefaultView(immediatePosition: true);
-        Debug.Log($"[CameraController] Target gesetzt: {newTarget.name}", this);
     }
 
     public void ZoomTo(float distance)
@@ -445,30 +408,25 @@ public class CameraController : MonoBehaviour
     }
 
     public float GetCurrentDistance() => currentDistance;
-    public bool IsFollowing() => followTarget;
+    public bool IsFollowing() => target != null;
+    public bool IsOrbiting => orbitInputActive;
 
-    // ==================== Freilook-Übergang ====================
-
-    private void StartFreeLookTransition()
+    private float GetDefaultOrbitDistance()
     {
-        // Initialisiere Freilook-Winkel basierend auf aktueller Kamera-Rotation
-        Vector3 forward = transform.forward;
-        yaw = Mathf.Atan2(forward.x, forward.z) * Mathf.Rad2Deg;
-        pitch = Mathf.Asin(forward.y) * Mathf.Rad2Deg;
-        
-        // Sofort in Freilook-Modus wechseln
-        followTarget = false;
+        float horizontal = new Vector3(defaultOffset.x, 0f, defaultOffset.z).magnitude;
+        return Mathf.Clamp(horizontal > 0.01f ? horizontal : Mathf.Abs(defaultOffset.z), minDistance, maxDistance);
     }
 
-    private void EndFreeLookTransition()
+    private void ApplyOrbitPose()
     {
-        // Zurück zum Folge-Modus
-        followTarget = true;
-        
-        // Sanfter Übergang zurück zur Standard-Position
-        ResetToDefaultView();
-    }
+        if (target == null) return;
 
+        Vector3 pivot = GetOrbitPivot();
+        Vector3 direction = GetOrbitDirection().normalized;
+        Vector3 position = pivot + direction * currentDistance;
+        transform.position = position;
+        transform.rotation = Quaternion.LookRotation(pivot - position, Vector3.up);
+    }
 
     private void OnDrawGizmosSelected()
     {

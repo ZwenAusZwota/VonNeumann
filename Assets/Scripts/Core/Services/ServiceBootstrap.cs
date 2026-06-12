@@ -54,35 +54,35 @@ public class ServiceBootstrap : MonoBehaviour
     private void RegisterManagerServices(ServiceContainer container)
     {
         // HUDBindingService
-        var hudService = FindFirstObjectByType<HUDBindingService>();
+        var hudService = FindAnyObjectByType<HUDBindingService>();
         if (hudService != null)
         {
             container.RegisterSingleton<HUDBindingService>(hudService);
         }
 
         // InputRouter
-        var inputRouter = FindFirstObjectByType<InputRouter>();
+        var inputRouter = FindAnyObjectByType<InputRouter>();
         if (inputRouter != null)
         {
             container.RegisterSingleton<InputRouter>(inputRouter);
         }
 
         // SceneRouter
-        var sceneRouter = FindFirstObjectByType<SceneRouter>();
+        var sceneRouter = FindAnyObjectByType<SceneRouter>();
         if (sceneRouter != null)
         {
             container.RegisterSingleton<SceneRouter>(sceneRouter);
         }
 
         // SaveSystem
-        var saveSystem = FindFirstObjectByType<SaveSystem>();
+        var saveSystem = FindAnyObjectByType<SaveSystem>();
         if (saveSystem != null)
         {
             container.RegisterSingleton<SaveSystem>(saveSystem);
         }
 
         // AssetProvider
-        var assetProvider = FindFirstObjectByType<AssetProvider>();
+        var assetProvider = FindAnyObjectByType<AssetProvider>();
         if (assetProvider != null)
         {
             container.RegisterSingleton<AssetProvider>(assetProvider);
@@ -92,42 +92,42 @@ public class ServiceBootstrap : MonoBehaviour
     private void RegisterWorldServices(ServiceContainer container)
     {
         // WorldRoot
-        var worldRoot = FindFirstObjectByType<WorldRoot>();
+        var worldRoot = FindAnyObjectByType<WorldRoot>();
         if (worldRoot != null)
         {
             container.RegisterSingleton<WorldRoot>(worldRoot);
         }
 
         // PlanetRegistry
-        var planetRegistry = FindFirstObjectByType<PlanetRegistry>();
+        var planetRegistry = FindAnyObjectByType<PlanetRegistry>();
         if (planetRegistry != null)
         {
             container.RegisterSingleton<PlanetRegistry>(planetRegistry);
         }
 
         // AsteroidPool
-        var asteroidPool = FindFirstObjectByType<AsteroidPool>();
+        var asteroidPool = FindAnyObjectByType<AsteroidPool>();
         if (asteroidPool != null)
         {
             container.RegisterSingleton<AsteroidPool>(asteroidPool);
         }
 
         // HubRegistry
-        var hubRegistry = FindFirstObjectByType<HubRegistry>();
+        var hubRegistry = FindAnyObjectByType<HubRegistry>();
         if (hubRegistry != null)
         {
             container.RegisterSingleton<HubRegistry>(hubRegistry);
         }
 
         // WorldRegistry
-        var worldRegistry = FindFirstObjectByType<WorldRegistry>();
+        var worldRegistry = FindAnyObjectByType<WorldRegistry>();
         if (worldRegistry != null)
         {
             container.RegisterSingleton<WorldRegistry>(worldRegistry);
         }
 
         // EntityFactory
-        var entityFactory = FindFirstObjectByType<EntityFactory>();
+        var entityFactory = FindAnyObjectByType<EntityFactory>();
         if (entityFactory != null)
         {
             container.RegisterSingleton<EntityFactory>(entityFactory);
@@ -137,7 +137,7 @@ public class ServiceBootstrap : MonoBehaviour
     private void RegisterGameplayServices(ServiceContainer container)
     {
         // MiningTaskManager
-        var miningTaskManager = FindFirstObjectByType<MiningTaskManager>();
+        var miningTaskManager = FindAnyObjectByType<MiningTaskManager>();
         if (miningTaskManager != null)
         {
             container.RegisterSingleton<MiningTaskManager>(miningTaskManager);
@@ -167,7 +167,7 @@ public class ServiceBootstrap : MonoBehaviour
     private void RegisterUIServices(ServiceContainer container)
     {
         // UIPanelManager
-        var uiPanelManager = FindFirstObjectByType<UIPanelManager>();
+        var uiPanelManager = FindAnyObjectByType<UIPanelManager>();
         if (uiPanelManager != null)
         {
             container.RegisterSingleton<UIPanelManager>(uiPanelManager);

@@ -1,12 +1,12 @@
-﻿using UnityEngine;
+using UnityEngine;
 using UnityEngine.InputSystem;
-using Cysharp.Threading.Tasks; // für .Forget()
+using Cysharp.Threading.Tasks; // f?r .Forget()
 using SpaceGame.Core.Managers;
 
 namespace SpaceGame.Input
 {
     /// <summary>
-    /// Hotkeys für Gameplay:
+    /// Hotkeys f?r Gameplay:
     /// S -> Scan-Panel toggeln
     /// I -> Inventar-Panel toggeln
     /// Navigation -> Nav-Panel toggeln
@@ -39,7 +39,7 @@ namespace SpaceGame.Input
         }
 
         /// <summary>
-        /// Prüft, ob die Input-Actions korrekt registriert sind
+        /// Pr?ft, ob die Input-Actions korrekt registriert sind
         /// </summary>
         private void CheckInputActions()
         {
@@ -58,7 +58,7 @@ namespace SpaceGame.Input
 
             Debug.Log($"[GameHotkeys] GamePlay map enabled: {gameplayMap.enabled}");
             
-            // Prüfe spezifische Actions
+            // Pr?fe spezifische Actions
             var scanAction = gameplayMap.Scan;
             var inventoryAction = gameplayMap.Inventory;
             var navigationAction = gameplayMap.Navigation;
@@ -69,7 +69,7 @@ namespace SpaceGame.Input
         }
 
         /// <summary>
-        /// Test-Methode für Debugging - kann manuell aufgerufen werden
+        /// Test-Methode f?r Debugging - kann manuell aufgerufen werden
         /// </summary>
         [ContextMenu("Test Scan Panel")]
         public void TestScanPanel()
@@ -79,7 +79,7 @@ namespace SpaceGame.Input
         }
 
         /// <summary>
-        /// Test-Methode für Debugging - kann manuell aufgerufen werden
+        /// Test-Methode f?r Debugging - kann manuell aufgerufen werden
         /// </summary>
         [ContextMenu("Test Inventory Panel")]
         public void TestInventoryPanel()
@@ -89,7 +89,7 @@ namespace SpaceGame.Input
         }
 
         /// <summary>
-        /// Test-Methode für Debugging - kann manuell aufgerufen werden
+        /// Test-Methode f?r Debugging - kann manuell aufgerufen werden
         /// </summary>
         [ContextMenu("Test Navigation Panel")]
         public void TestNavigationPanel()
@@ -122,7 +122,14 @@ namespace SpaceGame.Input
 
         private void OnDestroy()
         {
-            _actions?.Dispose();
+            if (_actions != null)
+            {
+                _actions.GamePlay.RemoveCallbacks(this);
+                if (_actions.GamePlay.enabled)
+                    _actions.GamePlay.Disable();
+                _actions.Dispose();
+                _actions = null;
+            }
             if (_instance == this) _instance = null;
         }
 
@@ -130,68 +137,40 @@ namespace SpaceGame.Input
 
         public void OnScan(InputAction.CallbackContext ctx)
         {
-            Debug.Log($"[GameHotkeys] OnScan called - performed: {ctx.performed}, started: {ctx.started}, canceled: {ctx.canceled}");
             if (!ctx.performed) return;
-            Debug.Log("[GameHotkeys] OnScan triggered!");
-            
-            // Verwende UIPanelManager für korrektes Toggling
-            var uiPanelManager = FindFirstObjectByType<UIPanelManager>();
-            if (uiPanelManager != null)
-            {
-                uiPanelManager.TogglePanel("ScanPanel");
-                Debug.Log($"[GameHotkeys] ScanPanel toggled via UIPanelManager");
-            }
-            else
-            {
-                Debug.LogWarning("[GameHotkeys] UIPanelManager not found! Using GameEvents as fallback.");
-                
-                // Fallback: Event-System verwenden
-                GameEvents.TogglePanel("ScanPanel");
-            }
+            ToggleHudPanel("ScanPanel");
         }
 
         public void OnInventory(InputAction.CallbackContext ctx)
         {
-            Debug.Log($"[GameHotkeys] OnInventory called - performed: {ctx.performed}, started: {ctx.started}, canceled: {ctx.canceled}");
             if (!ctx.performed) return;
-            Debug.Log("[GameHotkeys] OnInventory triggered!");
-            
-            // Verwende UIPanelManager für korrektes Toggling
-            var uiPanelManager = FindFirstObjectByType<UIPanelManager>();
-            if (uiPanelManager != null)
-            {
-                uiPanelManager.TogglePanel("InventoryPanel");
-                Debug.Log($"[GameHotkeys] InventoryPanel toggled via UIPanelManager");
-            }
-            else
-            {
-                Debug.LogWarning("[GameHotkeys] UIPanelManager not found! Using GameEvents as fallback.");
-                
-                // Fallback: Event-System verwenden
-                GameEvents.TogglePanel("InventoryPanel");
-            }
+            ToggleHudPanel("InventoryPanel");
         }
 
         public void OnNavigation(InputAction.CallbackContext ctx)
         {
-            Debug.Log($"[GameHotkeys] OnNavigation called - performed: {ctx.performed}, started: {ctx.started}, canceled: {ctx.canceled}");
             if (!ctx.performed) return;
-            Debug.Log("[GameHotkeys] OnNavigation triggered!");
-            
-            // Verwende UIPanelManager für korrektes Toggling
-            var uiPanelManager = FindFirstObjectByType<UIPanelManager>();
-            if (uiPanelManager != null)
+            ToggleHudPanel("NavPanel");
+        }
+
+        private void ToggleHudPanel(string panelId)
+        {
+            var uiPanelManager = FindAnyObjectByType<UIPanelManager>(FindObjectsInactive.Include);
+            if (uiPanelManager != null && uiPanelManager.TryTogglePanel(panelId))
+                return;
+
+            var panel = FindPanel(panelId);
+            if (panel == null)
             {
-                uiPanelManager.TogglePanel("NavPanel");
-                Debug.Log($"[GameHotkeys] NavPanel toggled via UIPanelManager");
+                Debug.LogWarning($"[GameHotkeys] Panel {panelId} not found (UI scene loaded?)");
+                return;
             }
+
+            var adapter = panel.GetComponent<HUDPanelStateAdapter>();
+            if (adapter != null)
+                adapter.SetVisible(!adapter.IsVisible());
             else
-            {
-                Debug.LogWarning("[GameHotkeys] UIPanelManager not found! Using GameEvents as fallback.");
-                
-                // Fallback: Event-System verwenden
-                GameEvents.TogglePanel("NavPanel");
-            }
+                panel.SetActive(!panel.activeSelf);
         }
 
         public void OnMining(InputAction.CallbackContext ctx)
@@ -199,48 +178,36 @@ namespace SpaceGame.Input
             if (!ctx.performed) return;
 
 #if UNITY_2023_1_OR_NEWER
-            var miner = Object.FindFirstObjectByType<ProbeMiner>(FindObjectsInactive.Include);
+            var miner = Object.FindAnyObjectByType<ProbeMiner>(FindObjectsInactive.Include);
 #else
-            var miner = Object.FindFirstObjectByType<ProbeMiner>(FindObjectsInactive.Include);
+            var miner = Object.FindAnyObjectByType<ProbeMiner>(FindObjectsInactive.Include);
 #endif
             if (miner == null)
             {
-                GameEvents.PostHUDMessage("Kein ProbeMiner gefunden – Mining nicht möglich.");
+                GameEvents.PostHUDMessage("Kein ProbeMiner gefunden ? Mining nicht m?glich.");
                 return;
             }
 
-            miner.ToggleMining(); // kümmert sich um HUD-Meldung & Inventar
+            miner.ToggleMining(); // k?mmert sich um HUD-Meldung & Inventar
         }
 
         /// <summary>
-        /// F10/M: Pausieren + Management als Single-Set laden (entlädt 10_Game / 10_Game_UI).
+        /// F10/M: Pausieren + Management als Single-Set laden (entl?dt 10_Game / 10_Game_UI).
         /// </summary>
         public void OnManagement(InputAction.CallbackContext ctx)
         {
             if (!ctx.performed) return;
-
-            if (SceneRouter.I == null)
-            {
-                Debug.LogError("[GameHotkeys] SceneRouter.I ist null – Management-Aufruf abgebrochen.");
-                return;
-            }
 
             _actions?.GamePlay.Disable();
             SceneRouter.I.ToManagementOverlaySingle().Forget();
         }
 
         /// <summary>
-        /// ESC/F11: Pausieren + Pause als Single-Set laden (entlädt 10_Game / 10_Game_UI).
+        /// ESC/F11: Pausieren + Pause als Single-Set laden (entl?dt 10_Game / 10_Game_UI).
         /// </summary>
         public void OnPause(InputAction.CallbackContext ctx)
         {
             if (!ctx.performed) return;
-
-            if (SceneRouter.I == null)
-            {
-                Debug.LogError("[GameHotkeys] SceneRouter.I ist null – Pause-Aufruf abgebrochen.");
-                return;
-            }
 
             _actions?.GamePlay.Disable();
             SceneRouter.I.ToPauseOverlaySingle().Forget();
@@ -249,7 +216,7 @@ namespace SpaceGame.Input
         public void OnQuickSave(InputAction.CallbackContext ctx) { }
         public void OnQuickLoad(InputAction.CallbackContext ctx) { }
 
-        /// <summary>Vom Overlay (Resume) wieder ins Spiel zurück.</summary>
+        /// <summary>Vom Overlay (Resume) wieder ins Spiel zur?ck.</summary>
         public void ReenableGamePlay()
         {
             _actions?.GamePlay.Enable();
@@ -271,7 +238,7 @@ namespace SpaceGame.Input
             }
 
             // Suche nach HUDPanelStateAdapter mit der entsprechenden ID
-            var adapters = FindObjectsByType<HUDPanelStateAdapter>(FindObjectsSortMode.None);
+            var adapters = FindObjectsByType<HUDPanelStateAdapter>(FindObjectsInactive.Include);
             Debug.Log($"[GameHotkeys] Found {adapters.Length} HUDPanelStateAdapter components");
             
             foreach (var adapter in adapters)

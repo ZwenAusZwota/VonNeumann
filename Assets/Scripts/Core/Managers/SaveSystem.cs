@@ -360,7 +360,7 @@ public class SaveSystem : MonoBehaviour
 
     private T FindObjectOfTypeMono<T>() where T : class
     {
-        foreach (var mb in FindObjectsByType<MonoBehaviour>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+        foreach (var mb in FindObjectsByType<MonoBehaviour>(FindObjectsInactive.Include))
             if (mb is T t) return t;
         return null;
     }
@@ -368,7 +368,7 @@ public class SaveSystem : MonoBehaviour
     private List<T> FindAllInterfaces<T>() where T : class
     {
         var list = new List<T>();
-        foreach (var mb in FindObjectsByType<MonoBehaviour>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+        foreach (var mb in FindObjectsByType<MonoBehaviour>(FindObjectsInactive.Include))
             if (mb is T t) list.Add(t);
         return list;
     }
