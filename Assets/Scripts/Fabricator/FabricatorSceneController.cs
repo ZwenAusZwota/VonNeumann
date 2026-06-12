@@ -1,12 +1,12 @@
-﻿using Cysharp.Threading.Tasks;
+using Cysharp.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
 
 /// <summary>
-/// Overlay-Szene für Sonden-Management (F10). Spielwelt bleibt geladen.
+/// Overlay-Szene für den Sonden-Fabrikator (F11). Spielwelt bleibt geladen.
 /// </summary>
-public class ManagementSceneController : MonoBehaviour
+public class FabricatorSceneController : MonoBehaviour
 {
     private bool _isBusy;
     private InputAction _cancelAction;
@@ -14,8 +14,8 @@ public class ManagementSceneController : MonoBehaviour
     private void Awake()
     {
         OverlaySceneCamera.Ensure();
-        if (GetComponent<ManagementUIController>() == null)
-            gameObject.AddComponent<ManagementUIController>();
+        if (GetComponent<FabricatorUIController>() == null)
+            gameObject.AddComponent<FabricatorUIController>();
     }
 
     private void OnEnable()
@@ -37,33 +37,13 @@ public class ManagementSceneController : MonoBehaviour
     private void OnCancelPerformed(InputAction.CallbackContext ctx)
     {
         if (!ctx.performed) return;
-        CloseManagement();
+        CloseFabricator();
     }
 
-    public void CloseManagement()
+    public void CloseFabricator()
     {
         if (_isBusy) return;
         ResumeToGameAsync().Forget();
-    }
-
-    public void OpenFabricator()
-    {
-        if (_isBusy) return;
-        OpenFabricatorAsync().Forget();
-    }
-
-    private async UniTask OpenFabricatorAsync()
-    {
-        _isBusy = true;
-        try
-        {
-            if (SceneRouter.I != null)
-                await SceneRouter.I.ToFabricatorOverlaySingle();
-        }
-        finally
-        {
-            _isBusy = false;
-        }
     }
 
     private async UniTask ResumeToGameAsync()
@@ -72,9 +52,9 @@ public class ManagementSceneController : MonoBehaviour
         try
         {
             Time.timeScale = 1f;
-            var management = SceneManager.GetSceneByName("12_Management");
-            if (management.IsValid() && management.isLoaded)
-                await SceneManager.UnloadSceneAsync(management).ToUniTask();
+            var fabricator = SceneManager.GetSceneByName("14_Fabricator");
+            if (fabricator.IsValid() && fabricator.isLoaded)
+                await SceneManager.UnloadSceneAsync(fabricator).ToUniTask();
 
             var game = SceneManager.GetSceneByName("10_Game");
             if (game.IsValid())

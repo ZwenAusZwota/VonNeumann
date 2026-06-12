@@ -41,6 +41,8 @@ public class InventoryController : MonoBehaviour
         CargoChanged?.Invoke(usedVolume, maxVolume);
     }
 
+    public IReadOnlyList<InventoryItemView> GetInventorySnapshot() => BuildSnapshot();
+
     // ───────────── Materialien ─────────────
 
     public float GetMaterialUnits(MaterialSO material)

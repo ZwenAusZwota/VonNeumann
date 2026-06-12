@@ -18,6 +18,11 @@ public class MainMenuController : MonoBehaviour
 
     // Save/Flow: Lädt automatisch den neuesten Spielstand
 
+    void Awake()
+    {
+        ApplyStandardLayout();
+    }
+
     void Start()
     {
         // Sicherheit: Zeit normalisieren, UI-Eingaben aktivieren
@@ -37,6 +42,37 @@ public class MainMenuController : MonoBehaviour
     }
 
     void OnEnable() => RefreshContinueUI();
+
+    private void ApplyStandardLayout()
+    {
+        var canvas = GetComponentInParent<Canvas>();
+        if (canvas == null)
+            canvas = FindAnyObjectByType<Canvas>();
+
+        RectTransform menuRoot = null;
+        TextMeshProUGUI titleLabel = null;
+
+        if (btnNewGame != null)
+            menuRoot = btnNewGame.transform.parent?.parent as RectTransform;
+
+        if (menuRoot != null)
+        {
+            foreach (var tmp in menuRoot.GetComponentsInChildren<TextMeshProUGUI>(true))
+            {
+                if (tmp.text.Contains("VON NEUMANN", System.StringComparison.OrdinalIgnoreCase))
+                {
+                    titleLabel = tmp;
+                    break;
+                }
+            }
+        }
+
+        if (canvas != null && menuRoot != null)
+            StandardMenuLayout.ApplyMainMenu(canvas, menuRoot, titleLabel);
+
+        if (optionsPanel != null)
+            HudPanelThemeApplier.ApplyTo(optionsPanel.transform);
+    }
 
     // ----------------- Actions -----------------
     private async UniTask OnNewGameClicked()

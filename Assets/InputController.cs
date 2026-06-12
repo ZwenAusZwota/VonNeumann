@@ -528,6 +528,24 @@ public partial class @InputController: IInputActionCollection2, IDisposable
                     ""processors"": """",
                     ""interactions"": """",
                     ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""Science"",
+                    ""type"": ""Button"",
+                    ""id"": ""a4f8c2e1-9b3d-4f7a-8c2e-1d5f9a3b7c6e"",
+                    ""expectedControlType"": """",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""Fabricator"",
+                    ""type"": ""Button"",
+                    ""id"": ""b5e9d3f2-0c4e-5a8b-9d3f-2e6a0b4c8d7f"",
+                    ""expectedControlType"": """",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
                 }
             ],
             ""bindings"": [
@@ -589,11 +607,22 @@ public partial class @InputController: IInputActionCollection2, IDisposable
                 {
                     ""name"": """",
                     ""id"": ""5926cea7-e1ae-4765-bef8-09b0b0489f3d"",
-                    ""path"": ""<Keyboard>/f9"",
+                    ""path"": ""<Keyboard>/f8"",
                     ""interactions"": """",
                     ""processors"": """",
                     ""groups"": """",
                     ""action"": ""QuickLoad"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""b7e3a1f4-2c8d-4e9a-b1f2-3d4c5e6f7081"",
+                    ""path"": ""<Keyboard>/f9"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""Science"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
                 },
@@ -616,6 +645,17 @@ public partial class @InputController: IInputActionCollection2, IDisposable
                     ""processors"": """",
                     ""groups"": """",
                     ""action"": ""Mining"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""c6f0e4a3-1d5f-6a9c-0e4a-3f7a1c5d9e8a"",
+                    ""path"": ""<Keyboard>/f11"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""Fabricator"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
                 }
@@ -651,6 +691,8 @@ public partial class @InputController: IInputActionCollection2, IDisposable
         m_GamePlay_QuickLoad = m_GamePlay.FindAction("QuickLoad", throwIfNotFound: true);
         m_GamePlay_Navigation = m_GamePlay.FindAction("Navigation", throwIfNotFound: true);
         m_GamePlay_Mining = m_GamePlay.FindAction("Mining", throwIfNotFound: true);
+        m_GamePlay_Science = m_GamePlay.FindAction("Science", throwIfNotFound: true);
+        m_GamePlay_Fabricator = m_GamePlay.FindAction("Fabricator", throwIfNotFound: true);
     }
 
     ~@InputController()
@@ -1118,6 +1160,8 @@ public partial class @InputController: IInputActionCollection2, IDisposable
     private readonly InputAction m_GamePlay_QuickLoad;
     private readonly InputAction m_GamePlay_Navigation;
     private readonly InputAction m_GamePlay_Mining;
+    private readonly InputAction m_GamePlay_Science;
+    private readonly InputAction m_GamePlay_Fabricator;
     /// <summary>
     /// Provides access to input actions defined in input action map "GamePlay".
     /// </summary>
@@ -1161,6 +1205,14 @@ public partial class @InputController: IInputActionCollection2, IDisposable
         /// Provides access to the underlying input action "GamePlay/Mining".
         /// </summary>
         public InputAction @Mining => m_Wrapper.m_GamePlay_Mining;
+        /// <summary>
+        /// Provides access to the underlying input action "GamePlay/Science".
+        /// </summary>
+        public InputAction @Science => m_Wrapper.m_GamePlay_Science;
+        /// <summary>
+        /// Provides access to the underlying input action "GamePlay/Fabricator".
+        /// </summary>
+        public InputAction @Fabricator => m_Wrapper.m_GamePlay_Fabricator;
         /// <summary>
         /// Provides access to the underlying input action map instance.
         /// </summary>
@@ -1211,6 +1263,12 @@ public partial class @InputController: IInputActionCollection2, IDisposable
             @Mining.started += instance.OnMining;
             @Mining.performed += instance.OnMining;
             @Mining.canceled += instance.OnMining;
+            @Science.started += instance.OnScience;
+            @Science.performed += instance.OnScience;
+            @Science.canceled += instance.OnScience;
+            @Fabricator.started += instance.OnFabricator;
+            @Fabricator.performed += instance.OnFabricator;
+            @Fabricator.canceled += instance.OnFabricator;
         }
 
         /// <summary>
@@ -1246,6 +1304,12 @@ public partial class @InputController: IInputActionCollection2, IDisposable
             @Mining.started -= instance.OnMining;
             @Mining.performed -= instance.OnMining;
             @Mining.canceled -= instance.OnMining;
+            @Science.started -= instance.OnScience;
+            @Science.performed -= instance.OnScience;
+            @Science.canceled -= instance.OnScience;
+            @Fabricator.started -= instance.OnFabricator;
+            @Fabricator.performed -= instance.OnFabricator;
+            @Fabricator.canceled -= instance.OnFabricator;
         }
 
         /// <summary>
@@ -1443,5 +1507,19 @@ public partial class @InputController: IInputActionCollection2, IDisposable
         /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
         /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
         void OnMining(InputAction.CallbackContext context);
+        /// <summary>
+        /// Method invoked when associated input action "Science" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+        /// </summary>
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+        void OnScience(InputAction.CallbackContext context);
+        /// <summary>
+        /// Method invoked when associated input action "Fabricator" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+        /// </summary>
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+        void OnFabricator(InputAction.CallbackContext context);
     }
 }

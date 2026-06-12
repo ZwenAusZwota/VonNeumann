@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.SceneManagement;
 using Cysharp.Threading.Tasks; // f?r .Forget()
 using SpaceGame.Core.Managers;
 
@@ -10,6 +11,7 @@ namespace SpaceGame.Input
     /// S -> Scan-Panel toggeln
     /// I -> Inventar-Panel toggeln
     /// Navigation -> Nav-Panel toggeln
+    /// F9 -> Forschungsbaum (13_ScienceTree; pausiert)
     /// F10/M -> Management als Single-Set (pausiert + 12_Management; 10_Game & 10_Game_UI werden entladen)
     /// ESC/F11 -> Pause als Single-Set (pausiert + 11_PauseOptions; 10_Game & 10_Game_UI werden entladen)
     /// </summary>
@@ -191,15 +193,46 @@ namespace SpaceGame.Input
             miner.ToggleMining(); // k?mmert sich um HUD-Meldung & Inventar
         }
 
-        /// <summary>
-        /// F10/M: Pausieren + Management als Single-Set laden (entl?dt 10_Game / 10_Game_UI).
-        /// </summary>
+        /// <summary>F10: Sonden-Management öffnen/schließen (12_Management).</summary>
         public void OnManagement(InputAction.CallbackContext ctx)
         {
             if (!ctx.performed) return;
 
+            var managementScene = SceneManager.GetSceneByName("12_Management");
+            if (managementScene.IsValid() && managementScene.isLoaded)
+            {
+#if UNITY_2023_1_OR_NEWER
+                var controller = Object.FindAnyObjectByType<ManagementSceneController>(FindObjectsInactive.Include);
+#else
+                var controller = Object.FindAnyObjectByType<ManagementSceneController>();
+#endif
+                controller?.CloseManagement();
+                return;
+            }
+
             _actions?.GamePlay.Disable();
             SceneRouter.I.ToManagementOverlaySingle().Forget();
+        }
+
+        /// <summary>F11: Fabrikator öffnen/schließen (14_Fabricator).</summary>
+        public void OnFabricator(InputAction.CallbackContext ctx)
+        {
+            if (!ctx.performed) return;
+
+            var fabricatorScene = SceneManager.GetSceneByName("14_Fabricator");
+            if (fabricatorScene.IsValid() && fabricatorScene.isLoaded)
+            {
+#if UNITY_2023_1_OR_NEWER
+                var controller = Object.FindAnyObjectByType<FabricatorSceneController>(FindObjectsInactive.Include);
+#else
+                var controller = Object.FindAnyObjectByType<FabricatorSceneController>();
+#endif
+                controller?.CloseFabricator();
+                return;
+            }
+
+            _actions?.GamePlay.Disable();
+            SceneRouter.I.ToFabricatorOverlaySingle().Forget();
         }
 
         /// <summary>
@@ -211,6 +244,27 @@ namespace SpaceGame.Input
 
             _actions?.GamePlay.Disable();
             SceneRouter.I.ToPauseOverlaySingle().Forget();
+        }
+
+        /// <summary>F9: Forschungsbaum öffnen/schließen (13_ScienceTree).</summary>
+        public void OnScience(InputAction.CallbackContext ctx)
+        {
+            if (!ctx.performed) return;
+
+            var scienceScene = SceneManager.GetSceneByName("13_ScienceTree");
+            if (scienceScene.IsValid() && scienceScene.isLoaded)
+            {
+#if UNITY_2023_1_OR_NEWER
+                var controller = Object.FindAnyObjectByType<ScienceTreeSceneController>(FindObjectsInactive.Include);
+#else
+                var controller = Object.FindAnyObjectByType<ScienceTreeSceneController>();
+#endif
+                controller?.CloseScienceTree();
+                return;
+            }
+
+            _actions?.GamePlay.Disable();
+            SceneRouter.I.ToScienceOverlaySingle().Forget();
         }
 
         public void OnQuickSave(InputAction.CallbackContext ctx) { }

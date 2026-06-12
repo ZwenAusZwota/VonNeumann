@@ -39,6 +39,27 @@ public class LoadingScreenController : MonoBehaviour
         AutoWireReferences();
         if (!ClaimActiveInstance())
             return;
+
+        ApplyStandardLayout();
+    }
+
+    private void ApplyStandardLayout()
+    {
+        var canvas = GetComponentInParent<Canvas>();
+        if (canvas == null)
+            canvas = GetComponentInChildren<Canvas>(true);
+
+        RectTransform progressArea = null;
+        if (progressBar != null)
+            progressArea = progressBar.transform.parent as RectTransform;
+
+        StandardMenuLayout.ApplyLoadingScreen(
+            canvas,
+            scrollRect,
+            progressArea,
+            progressBar,
+            percentLabel,
+            txtStatus);
     }
 
     private void OnDestroy()

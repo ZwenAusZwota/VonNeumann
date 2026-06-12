@@ -213,7 +213,7 @@ public class ProbeStartupBriefing : MonoBehaviour
             "Fabrikator",
             probe => probe.GetComponentInChildren<FabricatorController>(true) != null,
             probe => IsBehaviourActive<FabricatorController>(probe),
-            ic => KeyLabel(ic.GamePlay.Management)),
+            ic => KeyLabel(ic.GamePlay.Fabricator)),
     };
 
     private static bool IsBehaviourActive<T>(GameObject root) where T : Behaviour

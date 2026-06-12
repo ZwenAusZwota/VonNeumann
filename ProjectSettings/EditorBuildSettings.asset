@@ -29,6 +29,12 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/12_Management.unity
     guid: 2692e6d40a9f216418ec41bc3d9dd36f
+  - enabled: 1
+    path: Assets/Scenes/13_ScienceTree.unity
+    guid: f3a8b2c14e5d6789a0b1c2d3e4f56789
+  - enabled: 1
+    path: Assets/Scenes/14_Fabricator.unity
+    guid: d4e5f60718293a4b5c6d7e8f90123456
   m_configObjects:
     com.unity.addressableassets: {fileID: 11400000, guid: 19dce15868f0be6458a5148008eac245, type: 2}
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 054d26526b23c584698f604308a62315, type: 3}

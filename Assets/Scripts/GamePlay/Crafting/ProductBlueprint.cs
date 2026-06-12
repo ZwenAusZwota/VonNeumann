@@ -6,10 +6,18 @@ using UnityEngine;
                  menuName = "SpaceGame/Fabrication/Product Blueprint")]
 public class ProductBlueprint : ScriptableObject
 {
+    public enum ProductCategory
+    {
+        Component,
+        Equipment,
+        ExternalUnit
+    }
+
     /* ---------- Basis-Infos ---------- */
     [Header("Basis-Infos")]
     public string productId;
     public string displayName;
+    public ProductCategory category = ProductCategory.Component;
     public Sprite icon;
     public GameObject prefab;
     public float buildTime = 15f;

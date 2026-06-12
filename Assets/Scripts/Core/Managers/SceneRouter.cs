@@ -13,7 +13,9 @@ public enum AppScene
     Game,
     GameUI,
     Pause,
-    Management
+    Management,
+    Science,
+    Fabricator
 }
 
 /// <summary>
@@ -163,19 +165,75 @@ public class SceneRouter : MonoBehaviour
     /// </summary>
     public async UniTask ToOverlaySingle(AppScene overlay)
     {
-        if (overlay != AppScene.Pause && overlay != AppScene.Management)
+        if (overlay == AppScene.Management || overlay == AppScene.Fabricator)
+        {
+            Time.timeScale = 1f;
+            await LoadOverlayWithGameWorld(overlay);
+            return;
+        }
+
+        if (overlay != AppScene.Pause && overlay != AppScene.Science)
         {
             Debug.LogWarning($"[SceneRouter] ToOverlaySingle: '{overlay}' ist kein Overlay. Abgebrochen.");
             return;
         }
 
-        Time.timeScale = (overlay == AppScene.Pause) ? 0f : 1f;
+        Time.timeScale = 0f;
         await LoadSet(new[] { overlay });
     }
 
     // Komfort-Wrapper
     public UniTask ToPauseOverlaySingle() => ToOverlaySingle(AppScene.Pause);
     public UniTask ToManagementOverlaySingle() => ToOverlaySingle(AppScene.Management);
+    public UniTask ToScienceOverlaySingle() => ToOverlaySingle(AppScene.Science);
+    public UniTask ToFabricatorOverlaySingle() => ToOverlaySingle(AppScene.Fabricator);
+
+    /// <summary>
+    /// Lädt Management/Fabrikator additiv, hält 10_Game + 10_Game_UI geladen.
+    /// </summary>
+    private async UniTask LoadOverlayWithGameWorld(AppScene overlay)
+    {
+        if (IsBusy) return;
+        IsBusy = true;
+
+        try
+        {
+            var set = new[] { AppScene.Game, AppScene.GameUI, overlay };
+            OnBeforeLoadSet?.Invoke(set);
+
+            foreach (var sc in new[] { AppScene.Game, AppScene.GameUI })
+            {
+                string name = SceneName(sc);
+                var scene = SceneManager.GetSceneByName(name);
+                if (!scene.isLoaded)
+                    await EventSystemCleaner.LoadSceneAdditiveAsync(name);
+            }
+
+            string overlayName = SceneName(overlay);
+            if (!SceneManager.GetSceneByName(overlayName).isLoaded)
+                await EventSystemCleaner.LoadSceneAdditiveAsync(overlayName);
+
+            foreach (var other in new[] { AppScene.Pause, AppScene.Management, AppScene.Science, AppScene.Fabricator })
+            {
+                if (other == overlay) continue;
+                string otherName = SceneName(other);
+                var otherScene = SceneManager.GetSceneByName(otherName);
+                if (otherScene.IsValid() && otherScene.isLoaded && CanUnloadScene(otherName))
+                    await SceneManager.UnloadSceneAsync(otherName).ToUniTask();
+            }
+
+            var target = SceneManager.GetSceneByName(overlayName);
+            if (target.IsValid())
+                SceneManager.SetActiveScene(target);
+
+            OnAfterLoadSet?.Invoke(set);
+            EventSystemCleaner.EnsureSingleEventSystem();
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
 
     // ------------------------------------------------------------------------
     // Interne Helpers
@@ -314,6 +372,8 @@ public class SceneRouter : MonoBehaviour
         AppScene.GameUI => "10_Game_UI",   // <- konsistenter Name mit Unterstrich
         AppScene.Pause => "11_PauseOptions",
         AppScene.Management => "12_Management",
+        AppScene.Science => "13_ScienceTree",
+        AppScene.Fabricator => "14_Fabricator",
         _ => string.Empty
     };
 

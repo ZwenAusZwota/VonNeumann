@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 [RequireComponent(typeof(InventoryController))]
@@ -44,12 +45,18 @@ public class FabricatorController : MonoBehaviour
     {
         get
         {
+            var merged = new List<ProductBlueprint>();
             if (catalog != null)
+                merged.AddRange(catalog.GetFor(fabricatorType));
+
+            foreach (var bp in FabricatorBlueprintRegistry.GetFor(fabricatorType))
             {
-                var list = catalog.GetFor(fabricatorType); // List<ProductBlueprint> oder null
-                if (list != null) return list;
+                if (bp == null) continue;
+                if (merged.Any(m => m != null && m.productId == bp.productId)) continue;
+                merged.Add(bp);
             }
-            return System.Array.Empty<ProductBlueprint>(); // ProductBlueprint[]
+
+            return merged;
         }
     }
 
@@ -113,7 +120,13 @@ public class FabricatorController : MonoBehaviour
         if (wasRunning) ProductionCompleted?.Invoke(null, false);
     }
 
-    public void ForceRefreshUI() => RaiseQueueUpdated();
+    public void ForceRefreshUI()
+    {
+        RaiseTemplatesUpdated();
+        RaiseQueueUpdated();
+    }
+
+    public bool IsProducing => currentProduct != null;
 
     /* ---------- Produktionsschleife ---------- */
     private void Update()
@@ -155,19 +168,8 @@ public class FabricatorController : MonoBehaviour
     private void FinishCurrentAndStartNext()
     {
         var finished = currentProduct;
-
-        // Ergebnis "einlagern" oder spawnen; hier als Beispiel: Einlagern als ItemKey == productId
-        if (inv != null)
-        {
-            if (inv.TryAddProduct(finished))
-                ProductionCompleted?.Invoke(finished, true);
-            else
-                ProductionCompleted?.Invoke(finished, false);
-        }
-        else
-        {
-            ProductionCompleted?.Invoke(finished, false);
-        }
+        bool stored = HandleProductionResult(finished);
+        ProductionCompleted?.Invoke(finished, stored);
 
         // Entferne das erste Queue-Element (das gerade fertig wurde)
         if (queue.Count > 0) queue.RemoveAt(0);
@@ -196,12 +198,25 @@ public class FabricatorController : MonoBehaviour
 
     private void RaiseQueueUpdated()
     {
-        // (optional) Templates bei jedem Tick aktualisieren (falls Katalog dynamisch)
-        TemplatesUpdated?.Invoke(TemplatesOrCatalog);
         QueueUpdated?.Invoke(currentProduct, timeRemaining, queueMirror);
     }
 
     // Beispiel: Ressourcenprüfung (optional – hier Dummy immer true)
     private bool InventoryHasCosts(ProductBlueprint bp) => true;
 
+    private bool HandleProductionResult(ProductBlueprint finished)
+    {
+        if (finished == null) return false;
+
+        switch (finished.category)
+        {
+            case ProductBlueprint.ProductCategory.Equipment:
+                return InstalledEquipmentService.I.TryInstall(finished, gameObject);
+            case ProductBlueprint.ProductCategory.ExternalUnit:
+                FleetRegistry.I.DeployFromProduction(finished, transform.position);
+                return true;
+            default:
+                return inv != null && inv.TryAddProduct(finished);
+        }
+    }
 }
